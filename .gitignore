@@ -115,8 +115,25 @@ dmypy.json
 ehthumbs.db
 Thumbs.db
 
-# Project specific
-*.pth
-*.pkl
-*.h5
-*.hdf5
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Model files (too large for git)
+models/*.pth
+models/*.h5
+models/*.pkl
+
+# Data files (too large for git)
+data/*.csv
+data/*.json
+data/*.xlsx
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp

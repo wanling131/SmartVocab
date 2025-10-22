@@ -1,0 +1,52 @@
+"""
+用户认证API模块
+提供用户注册、登录等认证相关接口
+"""
+
+from flask import Blueprint, request
+from core.auth.user_auth import UserAuth
+from .utils import APIResponse, handle_api_error
+
+# 创建蓝图
+auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
+
+# 初始化认证管理器
+user_auth = UserAuth()
+
+@auth_bp.route('/register', methods=['POST'])
+@handle_api_error
+def register():
+    """用户注册"""
+    data = request.get_json()
+    username = data.get('username')
+    password = data.get('password')
+    email = data.get('email')
+    
+    if not username or not password:
+        return APIResponse.error('用户名和密码不能为空', 400)
+    
+    result = user_auth.register(username, password, email)
+    if result['success']:
+        return APIResponse.success(result.get('user_id'), result['message'])
+    else:
+        return APIResponse.error(result['message'], 400)
+
+@auth_bp.route('/login', methods=['POST'])
+@handle_api_error
+def login():
+    """用户登录"""
+    data = request.get_json()
+    username = data.get('username')
+    password = data.get('password')
+    
+    if not username or not password:
+        return APIResponse.error('用户名和密码不能为空', 400)
+    
+    result = user_auth.login(username, password)
+    if result['success']:
+        return APIResponse.success({
+            'user_id': result.get('user_id'),
+            'username': username
+        }, result['message'])
+    else:
+        return APIResponse.error(result['message'], 401)
