@@ -1,0 +1,21 @@
+digraph G {
+    rankdir=TB;
+    node [shape=box, style=solid, fontsize=10];
+    Root [label="智能单词测试", fontsize=12];
+    Root -> F1; Root -> F2; Root -> F3;
+    F1 [label="计算遗忘曲线"];
+    F2 [label="生成智能测试"];
+    F3 [label="优化复习调度"];
+    F1 -> F1a; F1 -> F1b; F1 -> F1c;
+    F1a [label="建立记忆衰减模型"];
+    F1b [label="预测复习时间"];
+    F1c [label="计算复习间隔"];
+    F2 -> F2a; F2 -> F2b; F2 -> F2c;
+    F2a [label="自动生成测试"];
+    F2b [label="触发记忆状态检测"];
+    F2c [label="更新测试结果"];
+    F3 -> F3a; F3 -> F3b; F3 -> F3c;
+    F3a [label="调整动态间隔"];
+    F3b [label="设置个性化参数"];
+    F3c [label="优化复习策略"];
+}

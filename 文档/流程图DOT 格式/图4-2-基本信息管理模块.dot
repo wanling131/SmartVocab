@@ -1,0 +1,30 @@
+digraph G {
+    rankdir=TB;
+    node [shape=box, style=solid, fontsize=10];
+    Root [label="基本信息管理", fontsize=12];
+    Root -> A1; Root -> A2; Root -> A3;
+    A1 [label="管理词库"];
+    A2 [label="管理学员"];
+    A3 [label="管理词库等级"];
+    A1 -> A1a; A1 -> A1b; A1 -> A1c; A1 -> A1d; A1 -> A1e; A1 -> A1f; A1 -> A1g;
+    A1a [label="导入词库"];
+    A1b [label="查询词库"];
+    A1c [label="更新词库"];
+    A1d [label="删除词库"];
+    A1e [label="批量导入词库"];
+    A1f [label="导出词库"];
+    A1g [label="备份词库"];
+    A2 -> A2a; A2 -> A2b; A2 -> A2c; A2 -> A2d; A2 -> A2e; A2 -> A2f; A2 -> A2g;
+    A2a [label="注册学员"];
+    A2b [label="登录系统"];
+    A2c [label="查询学员信息"];
+    A2d [label="修改学员信息"];
+    A2e [label="加密密码"];
+    A2f [label="管理会话"];
+    A2g [label="重置密码"];
+    A3 -> A3a; A3 -> A3b; A3 -> A3c; A3 -> A3d;
+    A3a [label="分类CEFR等级"];
+    A3b [label="分级难度"];
+    A3c [label="管理多套词库"];
+    A3d [label="筛选等级词汇"];
+}

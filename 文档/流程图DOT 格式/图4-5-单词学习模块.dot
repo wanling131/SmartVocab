@@ -1,0 +1,26 @@
+digraph G {
+    rankdir=TB;
+    node [shape=box, style=solid, fontsize=10];
+    Root [label="单词学习模块", fontsize=12];
+    Root -> D1; Root -> D2; Root -> D3;
+    D1 [label="实施闯关模式"];
+    D2 [label="进行随机记忆"];
+    D3 [label="进行测试"];
+    D1 -> D1a; D1 -> D1b; D1 -> D1c; D1 -> D1d;
+    D1a [label="划分关卡"];
+    D1b [label="设置解锁条件"];
+    D1c [label="记录关卡进度"];
+    D1d [label="统计完成情况"];
+    D2 -> D2a; D2 -> D2b; D2 -> D2c; D2 -> D2d; D2 -> D2e;
+    D2a [label="浏览单词"];
+    D2b [label="学习单词"];
+    D2c [label="标记收藏单词"];
+    D2d [label="调整展示顺序"];
+    D2e [label="写入学习记录表"];
+    D3 -> D3a; D3 -> D3b; D3 -> D3c; D3 -> D3d; D3 -> D3e;
+    D3a [label="出选择题"];
+    D3b [label="出翻译题"];
+    D3c [label="出拼写题"];
+    D3d [label="更新掌握程度"];
+    D3e [label="写入学习记录表"];
+}

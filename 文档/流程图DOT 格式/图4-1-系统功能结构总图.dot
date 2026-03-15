@@ -1,0 +1,13 @@
+digraph G {
+    rankdir=TB;
+    node [shape=box, style=solid, fontsize=10];
+    Root [label="智能词汇学习系统 SmartVocab", fontsize=12];
+    Root -> M1; Root -> M2; Root -> M3; Root -> M4; Root -> M5; Root -> M6; Root -> M7;
+    M1 [label="基本信息管理"];
+    M2 [label="评测模块"];
+    M3 [label="学习计划模块"];
+    M4 [label="单词学习模块"];
+    M5 [label="智能复习模块"];
+    M6 [label="智能单词测试"];
+    M7 [label="系统集成"];
+}

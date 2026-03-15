@@ -1,0 +1,26 @@
+digraph G {
+    rankdir=TB;
+    node [shape=box, style=solid, fontsize=10];
+    Root [label="智能复习模块", fontsize=12];
+    Root -> E1; Root -> E2; Root -> E3;
+    E1 [label="推荐复习内容"];
+    E2 [label="制定复习计划"];
+    E3 [label="分析学习情况"];
+    E1 -> E1a; E1 -> E1b; E1 -> E1c; E1 -> E1d; E1 -> E1e;
+    E1a [label="读取学习记录表"];
+    E1b [label="按记忆曲线计算下次复习时间"];
+    E1c [label="筛选到期词汇生成复习表"];
+    E1d [label="排序复习优先级"];
+    E1e [label="展示推荐内容"];
+    E1b -> E1b1; E1b -> E1b2;
+    E1b1 [label="读取首次学习时间与复习次数"];
+    E1b2 [label="将到期词汇加入复习表"];
+    E2 -> E2a; E2 -> E2b; E2 -> E2c;
+    E2a [label="设置每日数量"];
+    E2b [label="安排复习时间"];
+    E2c [label="调整复习计划"];
+    E3 -> E3a; E3 -> E3b; E3 -> E3c;
+    E3a [label="统计学习数据"];
+    E3b [label="识别薄弱环节"];
+    E3c [label="生成学习报告"];
+}

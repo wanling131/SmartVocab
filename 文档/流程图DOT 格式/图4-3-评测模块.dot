@@ -1,0 +1,24 @@
+digraph G {
+    rankdir=TB;
+    node [shape=box, style=solid, fontsize=10];
+    Root [label="评测模块", fontsize=12];
+    Root -> B1; Root -> B2; Root -> B3;
+    B1 [label="实施等级测试"];
+    B2 [label="统计学习数据"];
+    B3 [label="处理评测结果"];
+    B1 -> B1a; B1 -> B1b; B1 -> B1c; B1 -> B1d; B1 -> B1e;
+    B1a [label="抽题组卷"];
+    B1b [label="出选择题"];
+    B1c [label="出翻译题"];
+    B1d [label="出拼写题"];
+    B1e [label="自动计分"];
+    B2 -> B2a; B2 -> B2b; B2 -> B2c; B2 -> B2d;
+    B2a [label="统计成绩"];
+    B2b [label="统计正确率"];
+    B2c [label="生成进度报告"];
+    B2d [label="展示可视化"];
+    B3 -> B3a; B3 -> B3b; B3 -> B3c;
+    B3a [label="计算掌握程度"];
+    B3b [label="判断达标"];
+    B3c [label="生成计划依据"];
+}

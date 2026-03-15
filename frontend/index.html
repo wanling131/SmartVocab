@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <!-- 页面基础配置 -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartVocab - 智能英语学习平台</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%238b5cf6'/><text x='16' y='20' font-family='Arial' font-size='18' font-weight='bold' fill='white' text-anchor='middle'>S</text></svg>">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- 用户认证页面 -->
+    <div id="auth-page" class="page active">
+        <div class="auth-container">
+            <div class="auth-header">
+                <h1>SmartVocab</h1>
+                <p>智能推荐 · 高效学习</p>
+            </div>
+            
+            <div class="auth-tabs">
+                <button class="tab-btn active" data-tab="login">登录</button>
+                <button class="tab-btn" data-tab="register">注册</button>
+            </div>
+
+            <form id="login-form" class="auth-form active">
+                <div class="form-group">
+                    <label for="login-username">用户名</label>
+                    <input type="text" id="login-username" required>
+                </div>
+                <div class="form-group">
+                    <label for="login-password">密码</label>
+                    <input type="password" id="login-password" required>
+                </div>
+                <button type="submit" class="btn btn-primary">登录</button>
+                <div class="error-message" id="login-error"></div>
+            </form>
+
+            <form id="register-form" class="auth-form">
+                <div class="form-group">
+                    <label for="register-username">用户名</label>
+                    <input type="text" id="register-username" required minlength="3" maxlength="16">
+                </div>
+                <div class="form-group">
+                    <label for="register-email">邮箱（可选）</label>
+                    <input type="email" id="register-email">
+                </div>
+                <div class="form-group">
+                    <label for="register-password">密码</label>
+                    <input type="password" id="register-password" required minlength="6">
+                </div>
+                <button type="submit" class="btn btn-primary">注册</button>
+                <div class="error-message" id="register-error"></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 主控制台页面 -->
+    <div id="dashboard-page" class="page">
+        <nav class="navbar">
+            <div class="nav-brand">SmartVocab</div>
+            <div class="nav-menu">
+                <a href="#" class="nav-link active" data-page="dashboard">首页</a>
+                <a href="#" class="nav-link" data-page="statistics">统计</a>
+            </div>
+            <div class="nav-user">
+                <span id="username-display"></span>
+                <button id="logout-btn" class="btn btn-secondary">退出</button>
+            </div>
+        </nav>
+
+        <div class="container">
+            <section class="progress-section">
+                <h2>学习进度</h2>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">📚</div>
+                        <div class="stat-info">
+                            <div class="stat-value" id="total-words">0</div>
+                            <div class="stat-label">总词汇量</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">✅</div>
+                        <div class="stat-info">
+                            <div class="stat-value" id="learned-words">0</div>
+                            <div class="stat-label">已掌握</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">📖</div>
+                        <div class="stat-info">
+                            <div class="stat-value" id="learning-words">0</div>
+                            <div class="stat-label">学习中</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">🎯</div>
+                        <div class="stat-info">
+                            <div class="stat-value" id="mastery-rate">0%</div>
+                            <div class="stat-label">掌握率</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="recommendations-section">
+                <div class="section-header">
+                    <h2>智能推荐</h2>
+                    <button id="refresh-recommendations" class="btn btn-secondary">刷新推荐</button>
+                </div>
+                <div id="recommendations-grid" class="recommendations-grid">
+                     推荐内容将动态加载 
+                </div>
+            </section>
+
+            <section class="quick-start-section">
+                <h2>深度学习</h2>
+                <div class="quick-start-options">
+                    <div class="option-card">
+                        <h3>新词学习</h3>
+                        <p>学习新的词汇</p>
+                        <div class="form-group">
+                            <label>难度等级</label>
+                            <select id="difficulty-level">
+                                <option value="1">初级</option>
+                                <option value="2" selected>中级</option>
+                                <option value="3">高级</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>单词数量</label>
+                            <input type="number" id="word-count" value="10" min="5" max="50">
+                        </div>
+                        <div class="form-group">
+                            <label>题型设置</label>
+                            <select id="question-type">
+                                <option value="mixed">混合题型（选择题+翻译题）</option>
+                                <option value="choice">仅选择题</option>
+                                <option value="translation">仅翻译题</option>
+                            </select>
+                        </div>
+                        <button id="start-learning-btn" class="btn btn-primary">开始学习</button>
+                    </div>
+                    <div class="option-card">
+                        <h3>复习模式</h3>
+                        <p>复习已学词汇</p>
+                        <button id="start-review-btn" class="btn btn-primary">开始复习</button>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <!-- 学习页面 -->
+    <div id="learning-page" class="page">
+        <nav class="navbar">
+            <div class="nav-brand">SmartVocab</div>
+            <button id="back-to-dashboard" class="btn btn-secondary">返回首页</button>
+        </nav>
+
+        <div class="container">
+            <div class="learning-container">
+                <div class="learning-header">
+                    <div class="progress-bar">
+                        <div id="learning-progress" class="progress-fill"></div>
+                    </div>
+                    <div class="learning-stats">
+                        <span id="current-word-index">0</span> / <span id="total-word-count">0</span>
+                    </div>
+                </div>
+
+                <div id="word-card" class="word-card">
+                    <div class="word-display">
+                        <h1 id="current-word">Loading...</h1>
+                        <p id="word-phonetic" class="phonetic"></p>
+                        <!-- <p id="word-pos" class="pos"></p> -->
+                    </div>
+
+                    <!-- 选择题界面 -->
+                    <div id="choice-section" class="choice-section hidden">
+                        <div class="choice-question">
+                            <h3 id="choice-question">请选择正确的中文释义：</h3>
+                        </div>
+                        <div id="choice-options" class="choice-options">
+                            <!-- 选项将通过JavaScript动态生成 -->
+                        </div>
+                    </div>
+
+                    <!-- 翻译题界面 -->
+                    <div id="translation-section" class="translation-section">
+                        <div class="answer-section">
+                            <input type="text" id="answer-input" placeholder="请输入中文翻译" autocomplete="off">
+                            <button id="submit-answer-btn" class="btn btn-primary">提交答案</button>
+                            <button id="show-answer-btn" class="btn btn-secondary">显示答案</button>
+                        </div>
+                    </div>
+
+                    <div id="feedback-section" class="feedback-section hidden">
+                        <div id="feedback-message" class="feedback-message"></div>
+                        <div id="correct-answer" class="correct-answer"></div>
+                        <button id="next-word-btn" class="btn btn-primary">下一个</button>
+                    </div>
+                </div>
+
+                <div id="session-complete" class="session-complete hidden">
+                    <h2>学习完成！</h2>
+                    <div class="session-stats">
+                        <p>正确率: <span id="session-accuracy">0%</span></p>
+                        <p>用时: <span id="session-time">0</span> 秒</p>
+                    </div>
+                    <button id="finish-session-btn" class="btn btn-primary">完成</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="statistics-page" class="page">
+        <nav class="navbar">
+            <div class="nav-brand">SmartVocab</div>
+            <div class="nav-menu">
+                <a href="#" class="nav-link" data-page="dashboard">首页</a>
+                <a href="#" class="nav-link active" data-page="statistics">统计</a>
+            </div>
+            <div class="nav-user">
+                <span id="username-display-stats"></span>
+                <button id="logout-btn-stats" class="btn btn-secondary">退出</button>
+            </div>
+        </nav>
+
+        <div class="container">
+            <h2>学习统计</h2>
+            
+            <div class="stats-period">
+                <button class="period-btn active" data-days="7">最近7天</button>
+                <button class="period-btn" data-days="30">最近30天</button>
+                <button class="period-btn" data-days="90">最近90天</button>
+                <button id="refresh-statistics" class="btn btn-secondary">刷新数据</button>
+            </div>
+
+            <div class="statistics-grid">
+                <div class="stat-card-large">
+                    <h3>学习概览</h3>
+                    <div class="stat-details">
+                        <p>总复习次数: <span id="total-reviews">0</span></p>
+                        <p>新学单词: <span id="new-words">0</span></p>
+                        <p>已掌握单词: <span id="learned-words-stats">0</span></p>
+                        <p>日均复习: <span id="avg-reviews">0</span></p>
+                    </div>
+                </div>
+
+                <div class="stat-card-large">
+                    <h3>复习计划</h3>
+                    <div id="forgetting-curve-chart" class="chart-container">
+                        <canvas id="forgetting-curve-canvas"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="recent-records">
+                <h3>最近学习记录</h3>
+                <div id="records-list" class="records-list">
+                     学习记录将动态加载 
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,22 @@
+digraph G {
+    rankdir=TB;
+    node [shape=box, style=solid, fontsize=10];
+    Root [label="系统集成", fontsize=12];
+    Root -> G1; Root -> G2; Root -> G3; Root -> G4;
+    G1 [label="实现前后端分离"];
+    G2 [label="集成深度学习"];
+    G3 [label="集成数据库"];
+    G4 [label="执行测试与优化"];
+    G1 -> G1a; G1 -> G1b;
+    G1a [label="提供RESTful API"];
+    G1b [label="使用Flask Blueprint"];
+    G2 -> G2a; G2 -> G2b;
+    G2a [label="采用双塔模型"];
+    G2b [label="融合多算法"];
+    G3 -> G3a; G3 -> G3b;
+    G3a [label="设计核心表结构"];
+    G3b [label="执行CRUD操作"];
+    G4 -> G4a; G4 -> G4b;
+    G4a [label="执行集成测试"];
+    G4b [label="优化系统性能"];
+}
