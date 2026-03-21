@@ -143,7 +143,7 @@ gunicorn -w 4 -b 0.0.0.0:5000 --timeout 120 wsgi:app
 
 ### Docker Compose
 
-1. 复制 `.env.example` 为 `.env`，设置 `SECRET_KEY`、`DB_*`（与 `docker-compose.yml` 中 MySQL 一致）。
+1. 复制 `.env.example` 为 `.env`，**必须**设置 `SECRET_KEY`（如 `openssl rand -hex 32`）；`docker-compose.yml` 不再提供弱占位默认值，未设置时 `docker compose` 会报错。同时配置 `DB_*`（与 `docker-compose.yml` 中 MySQL 一致）。
 2. **先**在数据库中执行建表与迁移脚本（见下文「数据库」），或使用已初始化的 MySQL 数据卷。
 3. 在项目根目录执行：`docker compose up -d --build`
 

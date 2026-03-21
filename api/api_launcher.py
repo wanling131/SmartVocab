@@ -14,6 +14,16 @@ from config import APP_CONFIG
 
 logger = logging.getLogger(__name__)
 
+# 生产环境禁止使用的占位/弱密钥（与 docker-compose 等模板中的占位符对齐）
+_KNOWN_INSECURE_SECRET_KEYS = frozenset(
+    {
+        "please-set-secret-key-in-production",
+        "changeme",
+        "secret",
+        "your-secret-key",
+    }
+)
+
 # 导入所有API模块
 from .auth_api import auth_bp
 from .vocabulary_api import vocabulary_bp
@@ -47,8 +57,8 @@ class APILauncher:
         self._register_security_headers()
 
     def _configure_app(self) -> None:
-        """Flask 配置：密钥、请求体大小等"""
-        secret = os.environ.get("SECRET_KEY")
+        """Flask 配置：密钥、请求体大小等（统一使用 strip 后的密钥，避免首尾空白通过校验却写入配置）"""
+        secret = (os.environ.get("SECRET_KEY") or "").strip()
         if not secret:
             if APP_CONFIG.get("production"):
                 raise RuntimeError(
@@ -56,6 +66,10 @@ class APILauncher:
                 )
             secret = "dev-" + token_hex(16)
             logger.warning("未设置 SECRET_KEY，已使用临时开发密钥；切勿用于生产")
+        elif APP_CONFIG.get("production") and secret in _KNOWN_INSECURE_SECRET_KEYS:
+            raise RuntimeError(
+                "生产环境 SECRET_KEY 不能使用占位/弱密钥，请设置强随机值（例如 openssl rand -hex 32）"
+            )
 
         self.app.config["SECRET_KEY"] = secret
         self.app.config["MAX_CONTENT_LENGTH"] = APP_CONFIG.get("max_content_length", 16 * 1024 * 1024)
