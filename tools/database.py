@@ -3,11 +3,14 @@
 简化版本，只保留必要的功能
 """
 
+import logging
 import mysql.connector
 from mysql.connector import pooling
 import threading
 import os
 from typing import Optional, Dict, Any
+
+logger = logging.getLogger(__name__)
 
 # 简化的数据库配置
 DATABASE_CONFIG = {
@@ -45,9 +48,9 @@ class DatabaseManager:
         """初始化连接池"""
         try:
             self._pool = mysql.connector.pooling.MySQLConnectionPool(**DATABASE_CONFIG)
-            print(f"数据库连接池初始化成功，池大小: {DATABASE_CONFIG['pool_size']}")
+            logger.info("数据库连接池初始化成功，池大小: %s", DATABASE_CONFIG['pool_size'])
         except Exception as e:
-            print(f"数据库连接池初始化失败: {e}")
+            logger.error("数据库连接池初始化失败: %s", e)
             self._pool = None
     
     def get_connection(self) -> Optional[mysql.connector.connection.MySQLConnection]:
@@ -57,7 +60,7 @@ class DatabaseManager:
         try:
             return self._pool.get_connection()
         except Exception as e:
-            print(f"获取连接失败: {e}")
+            logger.warning("获取连接失败: %s", e)
             return None
     
     def return_connection(self, connection: mysql.connector.connection.MySQLConnection):
@@ -91,21 +94,21 @@ def get_pool_status() -> Dict[str, Any]:
 
 def test_connection() -> bool:
     """测试数据库连接"""
-    print("=== 测试数据库连接 ===")
+    logger.info("=== 测试数据库连接 ===")
     
     pool_status = get_pool_status()
-    print(f"连接池状态: {pool_status}")
+    logger.info("连接池状态: %s", pool_status)
     
     try:
         with get_database_context() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT VERSION()")
             version = cursor.fetchone()[0]
-            print(f"MySQL版本: {version}")
+            logger.info("MySQL版本: %s", version)
             cursor.close()
             return True
     except Exception as e:
-        print(f"连接测试失败: {e}")
+        logger.error("连接测试失败: %s", e)
         return False
 
 class DatabaseConnection:

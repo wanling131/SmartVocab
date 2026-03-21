@@ -1,18 +1,23 @@
 """
 词汇学习API模块
-提供词汇学习、测试、练习等核心功能接口
+提供词汇学习、测试、练习、词库导入导出等功能接口
 """
 
-from flask import Blueprint, request, jsonify
+import csv
+import io
+import json
+from flask import Blueprint, request, jsonify, Response
 from core.vocabulary.vocabulary_learning_manager import VocabularyLearningManager
+from tools.words_crud import WordsCRUD
 from config import LEARNING_PARAMS
 from .utils import APIResponse, handle_api_error
 
 # 创建蓝图
 vocabulary_bp = Blueprint('vocabulary', __name__, url_prefix='/api/vocabulary')
 
-# 初始化词汇学习管理器
+# 初始化
 vocabulary_manager = VocabularyLearningManager()
+words_crud = WordsCRUD()
 
 @vocabulary_bp.route('/start-session', methods=['POST'])
 @handle_api_error
@@ -117,3 +122,65 @@ def start_review_session():
         return APIResponse.success(result.get('session_info'), result['message'])
     else:
         return APIResponse.error(result['message'], 400)
+
+
+@vocabulary_bp.route('/import', methods=['POST'])
+@handle_api_error
+def import_words():
+    """批量导入词库（JSON body）"""
+    data = request.get_json()
+    if not data:
+        return APIResponse.error('请提供 JSON 数据', 400)
+    words_list = data if isinstance(data, list) else data.get('words', [])
+    dataset_type = data.get('dataset_type') if isinstance(data, dict) else None
+    count = 0
+    for w in words_list:
+        try:
+            wid = words_crud.create(
+                word=str(w.get('word', '')).strip(),
+                translation=str(w.get('translation', '')).strip(),
+                phonetic=w.get('phonetic', ''),
+                pos=w.get('pos', ''),
+                tag=w.get('tag', ''),
+                total=int(w.get('frequency_rank', w.get('total', 0)) or 0),
+                spoken_ratio=float(w.get('spoken_ratio', 0) or 0),
+                academic_ratio=float(w.get('academic_ratio', 0) or 0),
+                cefr_standard=w.get('cefr_standard', ''),
+                difficulty_level=int(w.get('difficulty_level', 3) or 3),
+                dataset_type=w.get('dataset_type') or dataset_type,
+                definition_en=w.get('definition_en'),
+                example_sentence=w.get('example_sentence')
+            )
+            if wid:
+                count += 1
+        except Exception:
+            pass
+    return APIResponse.success({'imported': count}, f"成功导入 {count} 个单词")
+
+
+@vocabulary_bp.route('/export', methods=['GET'])
+@handle_api_error
+def export_words():
+    """导出词库"""
+    dataset_type = request.args.get('dataset_type')
+    format_type = request.args.get('format', 'json')
+    limit = request.args.get('limit', 10000, type=int)
+    
+    if dataset_type:
+        words = words_crud.execute_query(
+            "SELECT * FROM words WHERE dataset_type = %s LIMIT %s",
+            (dataset_type, limit), fetch_all=True
+        ) or []
+    else:
+        words = words_crud.list_all(limit=limit, offset=0)
+    
+    if format_type == 'csv':
+        output = io.StringIO()
+        writer = csv.writer(output)
+        if words:
+            writer.writerow(words[0].keys())
+            for row in words:
+                writer.writerow([str(v) if v is not None else '' for v in row.values()])
+        return Response(output.getvalue(), mimetype='text/csv',
+                       headers={'Content-Disposition': 'attachment;filename=words_export.csv'})
+    return APIResponse.success(words, "导出成功")

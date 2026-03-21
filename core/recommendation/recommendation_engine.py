@@ -1,12 +1,15 @@
-﻿"""
+"""
 智能推荐算法模块
 基于用户画像和学习历史的单词推荐
 """
 
 # 导入配置常量
+import logging
 from config import LEARNING_PARAMS
 
 from tools.learning_records_crud import LearningRecordsCRUD
+
+logger = logging.getLogger(__name__)
 from tools.words_crud import WordsCRUD
 from tools.recommendations_crud import RecommendationsCRUD
 from datetime import datetime, timedelta
@@ -20,7 +23,7 @@ try:
     DEEP_LEARNING_AVAILABLE = True
 except ImportError:
     DEEP_LEARNING_AVAILABLE = False
-    print("深度学习推荐器不可用，将使用传统推荐算法")
+    logging.getLogger(__name__).warning("深度学习推荐器不可用，将使用传统推荐算法")
 
 class RecommendationEngine:
     """
@@ -52,10 +55,10 @@ class RecommendationEngine:
                 self.deep_learning_recommender = DeepLearningRecommendationEngine()
                 # 只在第一次初始化时打印成功信息
                 if not hasattr(RecommendationEngine, '_dl_initialized'):
-                    print("深度学习推荐器初始化成功")
+                    logger.info("深度学习推荐器初始化成功")
                     RecommendationEngine._dl_initialized = True
             except Exception as e:
-                print(f"深度学习推荐器初始化失败: {str(e)}")
+                logger.warning("深度学习推荐器初始化失败: %s", e)
                 self.deep_learning_recommender = None
     
     def get_recommendations(self, user_id, limit=LEARNING_PARAMS["default_recommendation_limit"], algorithm="mixed"):
@@ -229,10 +232,10 @@ class RecommendationEngine:
             
             # 如果模型未训练，尝试为当前用户训练
             if not self.deep_learning_recommender.is_trained:
-                print(f"为用户 {user_id} 训练深度学习模型...")
+                logger.info("为用户 %s 训练深度学习模型...", user_id)
                 success = self.deep_learning_recommender.train_model_for_user(user_id)
                 if not success:
-                    print("深度学习模型训练失败，使用传统推荐")
+                    logger.warning("深度学习模型训练失败，使用传统推荐")
                     return self._get_difficulty_based_recommendations(user_id, learned_word_ids, limit)
             
             # 使用深度学习模型获取推荐
@@ -245,7 +248,7 @@ class RecommendationEngine:
             
             return recommendations
         except Exception as e:
-            print(f"深度学习推荐失败: {str(e)}")
+            logger.warning("深度学习推荐失败: %s", e)
             # 降级到传统推荐
             return self._get_difficulty_based_recommendations(user_id, learned_word_ids, limit)
     
@@ -387,7 +390,7 @@ class RecommendationEngine:
                 return "智能推荐：个性化学习"
                 
         except Exception as e:
-            print(f"生成推荐理由失败: {str(e)}")
+            logger.debug("生成推荐理由失败: %s", e)
             return "智能推荐"
     
     def _get_difficulty_based_recommendations(self, user_id, learned_word_ids, limit):
@@ -418,8 +421,15 @@ class RecommendationEngine:
                            if word['difficulty_level'] == target_difficulty 
                            and word['id'] not in learned_word_ids]
         
+        # 该难度下无可用词时，退化为「任意未学词」，避免 random.sample 空列表崩溃
+        if not difficulty_words:
+            difficulty_words = [word for word in all_words if word['id'] not in learned_word_ids]
+        if not difficulty_words:
+            return []
+        
         # 随机选择
-        selected_words = random.sample(difficulty_words, min(limit, len(difficulty_words)))
+        k = min(limit, len(difficulty_words))
+        selected_words = random.sample(difficulty_words, k)
         
         # 添加推荐分数
         for word in selected_words:
@@ -534,8 +544,14 @@ class RecommendationEngine:
                           if word['id'] not in learned_word_ids
                           and min_difficulty <= word['difficulty_level'] <= max_difficulty]
         
-        # 随机选择
-        selected_words = random.sample(unlearned_words, min(limit, len(unlearned_words)))
+        # 难度范围内无词时退化为任意未学词，避免 random.sample 空列表崩溃
+        if not unlearned_words:
+            unlearned_words = [word for word in all_words if word['id'] not in learned_word_ids]
+        if not unlearned_words:
+            return []
+        
+        k = min(limit, len(unlearned_words))
+        selected_words = random.sample(unlearned_words, k)
         
         # 添加推荐分数
         for word in selected_words:

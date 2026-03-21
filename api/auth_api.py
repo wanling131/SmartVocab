@@ -50,3 +50,37 @@ def login():
         }, result['message'])
     else:
         return APIResponse.error(result['message'], 401)
+
+
+@auth_bp.route('/profile/<int:user_id>', methods=['GET'])
+@handle_api_error
+def get_profile(user_id):
+    """查询个人信息"""
+    info = user_auth.get_user_info(user_id)
+    if not info:
+        return APIResponse.error('用户不存在', 404)
+    for k in ['password_hash', 'model_filename']:
+        info.pop(k, None)
+    return APIResponse.success(info, "获取个人信息成功")
+
+
+@auth_bp.route('/profile/<int:user_id>', methods=['PUT'])
+@handle_api_error
+def update_profile(user_id):
+    """更新个人信息"""
+    from tools.users_crud import UsersCRUD
+    data = request.get_json()
+    crud = UsersCRUD()
+    user = crud.read(user_id)
+    if not user:
+        return APIResponse.error('用户不存在', 404)
+    fields = {}
+    for k in ['student_no', 'real_name', 'email']:
+        if k in data:
+            fields[k] = data[k]
+    if fields:
+        crud.update(user_id, **fields)
+    updated = crud.read(user_id)
+    for k in ['password_hash', 'model_filename']:
+        updated.pop(k, None)
+    return APIResponse.success(updated, "更新成功")

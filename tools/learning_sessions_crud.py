@@ -3,7 +3,10 @@
 提供学习会话的增删改查功能
 """
 
+import logging
 from tools.base_crud import BaseCRUD
+
+logger = logging.getLogger(__name__)
 from tools.database import get_database_context
 from datetime import datetime
 import json
@@ -26,7 +29,7 @@ class LearningSessionsCRUD(BaseCRUD):
         Returns:
             int: 会话ID
         """
-        print(f"DEBUG LearningSessionsCRUD.create: user_id={user_id}, session_type={session_type}")
+        logger.debug("LearningSessionsCRUD.create: user_id=%s, session_type=%s", user_id, session_type)
         
         with get_database_context() as connection:
             cursor = connection.cursor()
@@ -54,11 +57,11 @@ class LearningSessionsCRUD(BaseCRUD):
                 
                 connection.commit()
                 session_id = cursor.lastrowid
-                print(f"DEBUG LearningSessionsCRUD.create: 成功创建会话，ID={session_id}")
+                logger.debug("LearningSessionsCRUD.create: 成功创建会话，ID=%s", session_id)
                 return session_id
                 
             except Exception as e:
-                print(f"DEBUG LearningSessionsCRUD.create: 创建会话失败: {e}")
+                logger.warning("LearningSessionsCRUD.create: 创建会话失败: %s", e)
                 return None
             finally:
                 cursor.close()
@@ -76,7 +79,7 @@ class LearningSessionsCRUD(BaseCRUD):
         Returns:
             bool: 更新是否成功
         """
-        print(f"DEBUG LearningSessionsCRUD.update: session_id={session_id}")
+        logger.debug("LearningSessionsCRUD.update: session_id=%s", session_id)
         
         update_fields = []
         params = []
@@ -115,11 +118,11 @@ class LearningSessionsCRUD(BaseCRUD):
                 connection.commit()
                 affected_rows = cursor.rowcount
                 
-                print(f"DEBUG LearningSessionsCRUD.update: 更新了{affected_rows}行")
+                logger.debug("LearningSessionsCRUD.update: 更新了%s行", affected_rows)
                 return affected_rows > 0
                 
             except Exception as e:
-                print(f"DEBUG LearningSessionsCRUD.update: 更新失败: {e}")
+                logger.warning("LearningSessionsCRUD.update: 更新失败: %s", e)
                 return False
             finally:
                 cursor.close()
@@ -135,7 +138,7 @@ class LearningSessionsCRUD(BaseCRUD):
         Returns:
             dict: 会话信息，包含session_data
         """
-        print(f"DEBUG LearningSessionsCRUD.get_active_session: user_id={user_id}, session_type={session_type}")
+        logger.debug("LearningSessionsCRUD.get_active_session: user_id=%s, session_type=%s", user_id, session_type)
         
         query = """
         SELECT * FROM learning_sessions 
@@ -150,14 +153,14 @@ class LearningSessionsCRUD(BaseCRUD):
             # 解析JSON数据
             try:
                 result['session_data'] = json.loads(result['session_data'])
-                print(f"DEBUG LearningSessionsCRUD.get_active_session: 找到活跃会话，ID={result['id']}")
+                logger.debug("LearningSessionsCRUD.get_active_session: 找到活跃会话，ID=%s", result['id'])
             except json.JSONDecodeError as e:
-                print(f"DEBUG LearningSessionsCRUD.get_active_session: JSON解析失败: {e}")
+                logger.warning("LearningSessionsCRUD.get_active_session: JSON解析失败: %s", e)
                 result['session_data'] = {}
             
             return result
         
-        print(f"DEBUG LearningSessionsCRUD.get_active_session: 未找到活跃会话")
+        logger.debug("LearningSessionsCRUD.get_active_session: 未找到活跃会话")
         return None
     
     def deactivate_session(self, session_id):
@@ -170,7 +173,7 @@ class LearningSessionsCRUD(BaseCRUD):
         Returns:
             bool: 操作是否成功
         """
-        print(f"DEBUG LearningSessionsCRUD.deactivate_session: session_id={session_id}")
+        logger.debug("LearningSessionsCRUD.deactivate_session: session_id=%s", session_id)
         
         return self.update(session_id, is_active=0)
     
@@ -186,7 +189,7 @@ class LearningSessionsCRUD(BaseCRUD):
         Returns:
             list: 会话列表
         """
-        print(f"DEBUG LearningSessionsCRUD.get_by_user: user_id={user_id}, limit={limit}, offset={offset}")
+        logger.debug("LearningSessionsCRUD.get_by_user: user_id=%s, limit=%s, offset=%s", user_id, limit, offset)
         
         query = """
         SELECT * FROM learning_sessions 
@@ -213,6 +216,6 @@ class LearningSessionsCRUD(BaseCRUD):
                 except json.JSONDecodeError:
                     result['session_data'] = {}
             
-            print(f"DEBUG LearningSessionsCRUD.get_by_user: 找到{len(results)}个会话")
+            logger.debug("LearningSessionsCRUD.get_by_user: 找到%s个会话", len(results))
         
         return results or []

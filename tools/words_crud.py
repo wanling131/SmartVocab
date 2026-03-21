@@ -1,4 +1,4 @@
-﻿"""
+"""
 词汇表CRUD操作
 """
 
@@ -82,7 +82,8 @@ class WordsCRUD(BaseCRUD):
     
     def create(self, word: str, translation: str, phonetic: str, pos: str, tag: str, 
                total: int, spoken_ratio: float, academic_ratio: float, 
-               cefr_standard: str, difficulty_level: int, dataset_type: str) -> Optional[int]:
+               cefr_standard: str, difficulty_level: int, dataset_type: str = None,
+               definition_en: str = None, example_sentence: str = None) -> Optional[int]:
         """
         创建新词汇记录
         
@@ -97,34 +98,31 @@ class WordsCRUD(BaseCRUD):
             academic_ratio (float): 学术使用频率
             cefr_standard (str): CEFR标准等级
             difficulty_level (int): 难度等级 1-6
-            dataset_type (str): 数据集类型
+            dataset_type (str): 词库体系
+            definition_en (str): 英文释义
+            example_sentence (str): 例句
             
         Returns:
             Optional[int]: 新创建的词汇ID
         """
         self.log_operation("创建单词", word=word, difficulty_level=difficulty_level)
         
-        # 验证必需字段
         required_fields = ["word", "translation", "difficulty_level"]
         if not self.validate_fields({
             "word": word, "translation": translation, "difficulty_level": difficulty_level
         }, required_fields):
             return None
         
-        # 构建domain字段（JSON格式）
-        domain_data = {
-            "spoken_ratio": spoken_ratio,
-            "academic_ratio": academic_ratio
-        }
+        domain_data = {"spoken_ratio": spoken_ratio, "academic_ratio": academic_ratio}
         domain_json = json.dumps(domain_data, ensure_ascii=False)
 
         query = """
-        INSERT INTO words (word, translation, phonetic, pos, tag, frequency_rank, 
-                         cefr_standard, difficulty_level, domain)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+        INSERT INTO words (word, translation, definition_en, phonetic, pos, example_sentence,
+            tag, frequency_rank, cefr_standard, difficulty_level, domain, dataset_type)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
-        params = (word, translation, phonetic, pos, tag, total, 
-                 cefr_standard, difficulty_level, domain_json)
+        params = (word, translation, definition_en, phonetic, pos, example_sentence,
+                 tag, total, cefr_standard, difficulty_level, domain_json, dataset_type)
         
         word_id = self.execute_insert(query, params)
         if word_id:
@@ -176,7 +174,8 @@ class WordsCRUD(BaseCRUD):
         
         # 过滤允许更新的字段
         allowed_fields = ['word', 'translation', 'difficulty_level', 'frequency_rank', 
-                         'domain', 'phonetic', 'pos', 'tag', 'cefr_standard']
+                         'domain', 'phonetic', 'pos', 'tag', 'cefr_standard',
+                         'definition_en', 'example_sentence', 'dataset_type']
         
         fields = {}
         for field, value in kwargs.items():

@@ -1,4 +1,4 @@
-﻿"""
+"""
 用户表CRUD操作
 """
 
@@ -11,7 +11,8 @@ class UsersCRUD(BaseCRUD):
     def __init__(self):
         super().__init__("users")
     
-    def create(self, username: str, password_hash: str, email: Optional[str] = None) -> Optional[int]:
+    def create(self, username: str, password_hash: str, email: Optional[str] = None,
+               student_no: Optional[str] = None, real_name: Optional[str] = None) -> Optional[int]:
         """
         创建新用户
         
@@ -19,23 +20,23 @@ class UsersCRUD(BaseCRUD):
             username (str): 用户名
             password_hash (str): 密码哈希
             email (Optional[str]): 邮箱（可选）
+            student_no (Optional[str]): 学号
+            real_name (Optional[str]): 真实姓名
             
         Returns:
             Optional[int]: 新创建的用户ID
         """
         self.log_operation("创建用户", username=username, email=email)
         
-        # 验证必需字段
         if not self.validate_fields({"username": username, "password_hash": password_hash}, 
                                   ["username", "password_hash"]):
             return None
         
         query = """
-        INSERT INTO users (username, email, password_hash)
-        VALUES (%s, %s, %s)
+        INSERT INTO users (username, email, password_hash, student_no, real_name)
+        VALUES (%s, %s, %s, %s, %s)
         """
-        params = (username, email, password_hash)
-        
+        params = (username, email, password_hash, student_no or None, real_name or None)
         user_id = self.execute_insert(query, params)
         if user_id:
             self.logger.info(f"成功创建用户，ID={user_id}")
@@ -110,7 +111,9 @@ class UsersCRUD(BaseCRUD):
         return results or []
     
     def update(self, user_id: int, username: Optional[str] = None, 
-               password_hash: Optional[str] = None, email: Optional[str] = None) -> int:
+               password_hash: Optional[str] = None, email: Optional[str] = None,
+               student_no: Optional[str] = None, real_name: Optional[str] = None,
+               last_login_at=None) -> int:
         """
         更新用户信息
         
@@ -119,13 +122,15 @@ class UsersCRUD(BaseCRUD):
             username (Optional[str]): 新用户名（可选）
             password_hash (Optional[str]): 新密码哈希（可选）
             email (Optional[str]): 新邮箱（可选）
+            student_no (Optional[str]): 学号
+            real_name (Optional[str]): 真实姓名
+            last_login_at: 最后登录时间
             
         Returns:
             int: 受影响的行数
         """
         self.log_operation("更新用户", user_id=user_id, username=username, email=email)
         
-        # 构建更新字段
         fields = {}
         if username is not None:
             fields['username'] = username
@@ -133,6 +138,12 @@ class UsersCRUD(BaseCRUD):
             fields['password_hash'] = password_hash
         if email is not None:
             fields['email'] = email
+        if student_no is not None:
+            fields['student_no'] = student_no
+        if real_name is not None:
+            fields['real_name'] = real_name
+        if last_login_at is not None:
+            fields['last_login_at'] = last_login_at
         
         if not fields:
             self.logger.warning("没有要更新的字段")

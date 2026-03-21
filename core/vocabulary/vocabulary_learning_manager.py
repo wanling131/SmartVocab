@@ -3,18 +3,19 @@
 负责词汇学习、测试、练习等核心功能
 """
 
+import logging
+import random
+from datetime import datetime
+
 from tools.words_crud import WordsCRUD
 from tools.learning_records_crud import LearningRecordsCRUD
 from tools.learning_sessions_crud import LearningSessionsCRUD
 from core.learning.learning_record_manager import LearningRecordManager
 from core.forgetting_curve.forgetting_curve_manager import ForgettingCurveManager
 from core.recommendation.recommendation_engine import RecommendationEngine
-
-# 导入配置常量
 from config import LEARNING_PARAMS
 
-from datetime import datetime
-import random
+logger = logging.getLogger(__name__)
 
 class VocabularyLearningManager:
     """
@@ -70,9 +71,9 @@ class VocabularyLearningManager:
         session_id = self.learning_sessions_crud.create(user_id, session_info, "learning")
         if session_id:
             session_info["session_id"] = session_id
-            print(f"DEBUG: 学习会话已保存，ID={session_id}")
+            logger.debug("学习会话已保存，ID=%s", session_id)
         else:
-            print("DEBUG: 学习会话保存失败")
+            logger.warning("学习会话保存失败")
         
         return {
             "success": True,
@@ -91,21 +92,21 @@ class VocabularyLearningManager:
         Returns:
             dict: 活跃会话信息，如果没有则返回None
         """
-        print(f"DEBUG: 获取活跃会话 - user_id={user_id}, session_type={session_type}")
+        logger.debug("获取活跃会话 - user_id=%s, session_type=%s", user_id, session_type)
         
         session_record = self.learning_sessions_crud.get_active_session(user_id, session_type)
         
         if session_record:
             session_info = session_record['session_data']
             session_info['session_id'] = session_record['id']
-            print(f"DEBUG: 找到活跃会话，ID={session_record['id']}")
+            logger.debug("找到活跃会话，ID=%s", session_record['id'])
             return {
                 "success": True,
                 "message": "找到活跃会话",
                 "session_info": session_info
             }
         else:
-            print(f"DEBUG: 未找到活跃会话")
+            logger.debug("未找到活跃会话")
             return {
                 "success": False,
                 "message": "没有活跃的学习会话"
@@ -121,13 +122,13 @@ class VocabularyLearningManager:
         Returns:
             bool: 操作是否成功
         """
-        print(f"DEBUG: 完成学习会话 - session_id={session_id}")
+        logger.debug("完成学习会话 - session_id=%s", session_id)
         
         success = self.learning_sessions_crud.deactivate_session(session_id)
         if success:
-            print(f"DEBUG: 会话已停用，ID={session_id}")
+            logger.debug("会话已停用，ID=%s", session_id)
         else:
-            print(f"DEBUG: 会话停用失败，ID={session_id}")
+            logger.warning("会话停用失败，ID=%s", session_id)
         
         return success
     
@@ -161,6 +162,9 @@ class VocabularyLearningManager:
         if session_question_type == "choice":
             # 仅选择题模式
             return self._generate_choice_question(word_info)
+        elif session_question_type == "spelling":
+            # 仅拼写题模式
+            return self._generate_spelling_question(word_info)
         elif session_question_type == "translation":
             # 仅翻译题模式
             return {
@@ -178,6 +182,8 @@ class VocabularyLearningManager:
             # 混合模式：根据当前阶段决定
             if current_stage == "choice":
                 return self._generate_choice_question(word_info)
+            elif current_stage == "spelling":
+                return self._generate_spelling_question(word_info)
             else:
                 return {
                     "word_id": word_info["id"],
@@ -209,15 +215,17 @@ class VocabularyLearningManager:
             dict: 答题结果
         """
         try:
-            print(f"DEBUG: 提交答案 - user_id={user_id}, word_id={word_id}, user_answer='{user_answer}', correct_answer='{correct_answer}', question_type='{question_type}'")
+            logger.debug(
+                "提交答案 - user_id=%s, word_id=%s, user_answer=%r, correct_answer=%r, question_type=%s",
+                user_id, word_id, user_answer, correct_answer, question_type)
             
             # 判断答案是否正确
             is_correct = self._check_answer(user_answer, correct_answer, question_type)
-            print(f"DEBUG: 答案检查结果 - is_correct={is_correct}")
+            logger.debug("答案检查结果 - is_correct=%s", is_correct)
             
             # 获取或创建学习记录
             existing_record = self.learning_record_manager.get_word_learning_record(user_id, word_id)
-            print(f"DEBUG: 现有记录 - {existing_record}")
+            logger.debug("现有记录 - %s", existing_record)
             
             if existing_record:
                 # 更新现有记录
@@ -227,7 +235,7 @@ class VocabularyLearningManager:
                     is_correct,
                     question_type
                 )
-                print(f"DEBUG: 更新记录结果 - {result}")
+                logger.debug("更新记录结果 - %s", result)
             else:
                 # 创建新记录
                 if mastery_override is not None:
@@ -253,11 +261,13 @@ class VocabularyLearningManager:
                     review_count=1,
                     is_mastered=mastery_level >= 0.8
                 )
-                print(f"DEBUG: 创建记录结果 - {result}")
+                logger.debug("创建学习记录结果: %s", result)
             
             # 生成反馈消息
             if question_type == "choice":
                 message = "选择正确！" if is_correct else f"选择错误，正确答案是：{correct_answer}"
+            elif question_type == "spelling":
+                message = "拼写正确！" if is_correct else f"拼写错误，正确答案是：{correct_answer}"
             else:
                 message = "翻译正确！" if is_correct else f"翻译错误，正确答案是：{correct_answer}"
             
@@ -269,16 +279,16 @@ class VocabularyLearningManager:
                 word_stages[str(word_id)] = "translation"
                 session_info["word_stages"] = word_stages
                 updated_session_info = session_info
-                print(f"DEBUG: 学习阶段切换 - word_id={word_id}, stage=translation")
+                logger.debug("学习阶段切换 - word_id=%s, stage=translation", word_id)
                 
                 # 更新数据库中的会话信息
                 session_id = session_info.get("session_id")
                 if session_id:
                     success = self.learning_sessions_crud.update(session_id, session_data=session_info)
                     if success:
-                        print(f"DEBUG: 会话信息已更新到数据库，ID={session_id}")
+                        logger.debug("会话信息已更新到数据库，session_id=%s", session_id)
                     else:
-                        print(f"DEBUG: 会话信息更新失败，ID={session_id}")
+                        logger.warning("会话信息更新失败，session_id=%s", session_id)
             
             return {
                 "success": True,
@@ -291,7 +301,7 @@ class VocabularyLearningManager:
                 "session_info": updated_session_info
             }
         except Exception as e:
-            print(f"DEBUG: 提交答案异常 - {str(e)}")
+            logger.exception("提交答案异常: %s", e)
             return {
                 "success": False,
                 "message": f"提交答案失败: {str(e)}"
@@ -362,11 +372,15 @@ class VocabularyLearningManager:
             # 获取复习单词
             review_words = self.get_review_words(user_id, word_count)
             
-            print(f"DEBUG: 获取复习单词 - user_id={user_id}, 找到{len(review_words)}个单词")
+            logger.debug(
+                "获取复习单词: user_id=%s, count=%s",
+                user_id,
+                len(review_words),
+            )
             
             if not review_words:
                 # 如果没有需要复习的单词，获取最近学习但未完全掌握的单词
-                print("DEBUG: 没有需要复习的单词，获取最近学习的单词")
+                logger.debug("没有需要复习的单词，获取最近学习的单词")
                 all_records = self.learning_record_manager.get_user_learning_records(user_id, limit=1000)
                 
                 # 筛选未完全掌握的单词
@@ -376,9 +390,9 @@ class VocabularyLearningManager:
                     # 按最后复习时间排序，最近学习的优先
                     learning_records.sort(key=lambda x: x['last_reviewed_at'] or datetime.min, reverse=True)
                     review_words = learning_records[:word_count]
-                    print(f"DEBUG: 获取最近学习的单词 - 找到{len(review_words)}个")
+                    logger.debug("获取最近学习的单词 - 找到%s个", len(review_words))
                 else:
-                    print("DEBUG: 没有找到任何学习记录")
+                    logger.debug("没有找到任何学习记录")
                     return {
                         "success": False,
                         "message": "暂无学习记录，请先学习一些单词"
@@ -418,7 +432,7 @@ class VocabularyLearningManager:
                 "learning_stage": "translation"  # 复习模式直接使用翻译题
             }
             
-            print(f"DEBUG: 创建复习会话 - 单词数量: {len(word_details)}")
+            logger.debug("创建复习会话 - 单词数量: %s", len(word_details))
             
             return {
                 "success": True,
@@ -427,7 +441,7 @@ class VocabularyLearningManager:
             }
             
         except Exception as e:
-            print(f"开始复习会话失败: {e}")
+            logger.exception("开始复习会话失败: %s", e)
             return {
                 "success": False,
                 "message": f"开始复习会话失败: {str(e)}"
@@ -470,6 +484,8 @@ class VocabularyLearningManager:
             list: 单词列表
         """
         words = self.words_crud.get_by_difficulty(difficulty_level)
+        if not words:
+            return []
         return random.sample(words, min(word_count, len(words)))
     
     def _generate_choice_question(self, word_info):
@@ -574,7 +590,7 @@ class VocabularyLearningManager:
             return wrong_options
             
         except Exception as e:
-            print(f"生成错误选项失败: {e}")
+            logger.warning("生成错误选项失败: %s", e)
             # 备用方案：使用预定义选项
             return self._get_fallback_wrong_options(correct_translation)
     
@@ -617,6 +633,9 @@ class VocabularyLearningManager:
         if question_type == "choice":
             # 选择题：直接比较选项
             return user_answer.strip() == correct_answer.strip()
+        elif question_type == "spelling":
+            # 拼写题：不区分大小写精确匹配
+            return user_answer.strip().lower() == correct_answer.strip().lower()
         else:
             # 翻译题：智能匹配
             return self._smart_translation_match(user_answer, correct_answer)
@@ -720,11 +739,14 @@ class VocabularyLearningManager:
         return {
             "question_id": f"spell_{word_info['id']}",
             "word_id": word_info["id"],
+            "word": word_info["word"],
+            "translation": word_info["translation"],
+            "phonetic": word_info["phonetic"],
             "question_type": "spelling",
-            "question": f"请拼写以下单词：{word_info['translation']}",
+            "question": f"以下释义对应的英文单词是：{word_info['translation']}",
             "correct_answer": word_info["word"],
             "hint": f"音标：{word_info['phonetic']}",
-            "difficulty": word_info["difficulty_level"]
+            "difficulty_level": word_info["difficulty_level"]
         }
     
     def close(self):
@@ -738,31 +760,33 @@ def main():
     """
     测试函数
     """
+    from config import configure_logging
+    configure_logging()
     vlm = VocabularyLearningManager()
     
-    print("=== 词汇学习管理测试 ===")
+    logger.info("=== 词汇学习管理测试 ===")
     
     # 测试开始学习会话
-    print("\n1. 测试开始学习会话:")
+    logger.info("1. 测试开始学习会话:")
     session_result = vlm.start_learning_session(1, difficulty_level=2, word_count=5)
-    print(f"学习会话结果: {session_result['success']}")
+    logger.info("学习会话结果: %s", session_result['success'])
     
     if session_result["success"]:
         session_info = session_result["session_info"]
-        print(f"学习单词数量: {session_info['total_count']}")
+        logger.info("学习单词数量: %s", session_info['total_count'])
         
         # 测试获取当前单词
-        print("\n2. 测试获取当前单词:")
+        logger.info("2. 测试获取当前单词:")
         current_word = vlm.get_current_word(session_info)
         if current_word:
-            print(f"当前单词: {current_word['word']} - {current_word['translation']}")
+            logger.info("当前单词: %s - %s", current_word.get('word'), current_word.get('translation'))
         
         # 测试生成测试题目
-        print("\n3. 测试生成测试题目:")
+        logger.info("3. 测试生成测试题目:")
         questions = vlm.generate_test_questions(1, word_count=3)
-        print(f"生成了 {len(questions)} 道题目")
+        logger.info("生成了 %s 道题目", len(questions))
         for i, q in enumerate(questions[:2]):  # 只显示前2道题
-            print(f"  题目{i+1}: {q['question']}")
+            logger.info("  题目%s: %s", i + 1, q['question'])
     
     vlm.close()
 

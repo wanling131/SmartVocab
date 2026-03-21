@@ -1,4 +1,4 @@
-﻿"""
+"""
 遗忘曲线模块
 基于艾宾浩斯遗忘曲线的学习时间安排
 """
@@ -9,6 +9,24 @@ from config import LEARNING_PARAMS
 from tools.learning_records_crud import LearningRecordsCRUD
 from datetime import datetime, timedelta
 import math
+from typing import Any, List
+
+
+def _circular_slice(items: List[Any], offset: int, limit: int) -> List[Any]:
+    """
+    在环形列表上从 offset 起取恰好 limit 条（不足时在列表头继续取）。
+    若 limit > len(items)，会按环重复同一批记录，以保证条数严格等于 limit。
+    """
+    n = len(items)
+    if n == 0 or limit <= 0:
+        return []
+    start_idx = offset % n
+    end_idx = start_idx + limit
+    if end_idx <= n:
+        return items[start_idx:end_idx]
+    # 跨边界：用下标取满 limit 条，避免「前半段 + [:end-n]」在 end-n > n 时条数错误
+    return [items[(start_idx + i) % n] for i in range(limit)]
+
 
 class ForgettingCurveManager:
     """遗忘曲线管理类"""
@@ -79,6 +97,7 @@ class ForgettingCurveManager:
     def get_review_words(self, user_id, limit=LEARNING_PARAMS["default_review_limit"], offset=0):
         """
         获取需要复习的单词
+        优先使用 DB 中 next_review_at 筛选到期词；若无该列或无数据则回退到实时计算
         
         Args:
             user_id (int): 用户ID
@@ -88,54 +107,46 @@ class ForgettingCurveManager:
         Returns:
             list: 需要复习的单词记录列表
         """
-        # 获取用户所有学习记录
-        all_records = self.learning_records_crud.get_by_user(user_id)
+        # 尝试使用 next_review_at 从 DB 筛选到期词
+        try:
+            due_records = self.learning_records_crud.get_review_due(user_id, limit=500, offset=0)
+            if due_records:
+                # 筛选掌握程度 < 1.0，并计算紧急程度
+                now = datetime.now()
+                review_records = []
+                for record in due_records:
+                    if record.get('mastery_level', 0) < 1.0:
+                        next_review = record.get('next_review_at')
+                        if next_review and isinstance(next_review, str):
+                            next_review = datetime.fromisoformat(next_review.replace('Z', '+00:00'))
+                        if record['mastery_level'] < 0.6:
+                            record['urgency'] = 1000
+                        elif next_review:
+                            overdue_hours = (now - next_review).total_seconds() / 3600
+                            record['urgency'] = max(0, overdue_hours)
+                        else:
+                            record['urgency'] = 500
+                        review_records.append(record)
+                review_records.sort(key=lambda x: x['urgency'], reverse=True)
+                return _circular_slice(review_records, offset, limit)
+        except Exception:
+            pass
         
-        # 筛选需要复习的记录
+        # 回退：实时计算（无 next_review_at 列或出错时）
+        all_records = self.learning_records_crud.get_by_user(user_id)
         review_records = []
         now = datetime.now()
-        
         for record in all_records:
-            # 只要掌握程度小于1.0就需要复习
             if record['mastery_level'] < 1.0:
-                # 计算应该复习的时间
                 next_review_time = self.calculate_next_review_time(
-                    user_id, 
-                    record['word_id'], 
-                    record['mastery_level'], 
-                    record['review_count']
+                    user_id, record['word_id'], record['mastery_level'], record['review_count']
                 )
-                
-                # 如果当前时间已经超过应该复习的时间，或者刚学习完（掌握程度较低）
                 if now >= next_review_time or record['mastery_level'] < 0.6:
-                    # 计算复习紧急程度
-                    if record['mastery_level'] < 0.6:
-                        # 刚学习完的单词，紧急程度设为最高
-                        urgency = 1000
-                    else:
-                        # 时间越久越紧急
-                        urgency = (now - next_review_time).total_seconds() / 3600
-                    
-                    record['urgency'] = urgency
+                    record['urgency'] = 1000 if record['mastery_level'] < 0.6 else (
+                        now - next_review_time).total_seconds() / 3600
                     review_records.append(record)
-        
-        # 按紧急程度排序，最紧急的优先
         review_records.sort(key=lambda x: x['urgency'], reverse=True)
-        
-        # 支持轮播：从offset开始取limit个
-        start_idx = offset % len(review_records) if review_records else 0
-        end_idx = start_idx + limit
-        
-        if end_idx <= len(review_records):
-            # 正常情况
-            return review_records[start_idx:end_idx]
-        else:
-            # 需要循环取数据
-            result = review_records[start_idx:]
-            remaining = limit - len(result)
-            if remaining > 0:
-                result.extend(review_records[:remaining])
-            return result
+        return _circular_slice(review_records, offset, limit)
     
     def update_review_result(self, record_id, is_correct, response_time):
         """
@@ -167,21 +178,22 @@ class ForgettingCurveManager:
         # 判断是否已学会
         new_is_learned = new_mastery >= 0.9
         
-        # 更新记录
-        affected_rows = self.learning_records_crud.update(
-            record_id,
-            mastery_level=new_mastery,
-            review_count=new_review_count,
-            last_reviewed_at=datetime.now(),
-            is_mastered=new_is_learned
-        )
-        
-        # 计算下次复习时间
+        # 计算下次复习时间并持久化
         next_review_time = self.calculate_next_review_time(
             record['user_id'],
             record['word_id'],
             new_mastery,
             new_review_count
+        )
+        
+        # 更新记录（含 next_review_at）
+        affected_rows = self.learning_records_crud.update(
+            record_id,
+            mastery_level=new_mastery,
+            review_count=new_review_count,
+            last_reviewed_at=datetime.now(),
+            is_mastered=new_is_learned,
+            next_review_at=next_review_time
         )
         
         return {

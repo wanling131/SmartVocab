@@ -1,17 +1,21 @@
-﻿"""
+"""
 学习记录管理模块
 负责用户学习记录的增删改查、学习进度跟踪等功能
 """
 
 # 导入配置常量
+import logging
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 from config import LEARNING_PARAMS
 
+logger = logging.getLogger(__name__)
+
 from tools.learning_records_crud import LearningRecordsCRUD
 from tools.words_crud import WordsCRUD
 from datetime import datetime, timedelta
+from core.forgetting_curve.forgetting_curve_manager import ForgettingCurveManager
 
 class LearningRecordManager:
     """
@@ -25,6 +29,7 @@ class LearningRecordManager:
         """
         self.learning_records_crud = LearningRecordsCRUD()
         self.words_crud = WordsCRUD()
+        self.forgetting_curve_manager = ForgettingCurveManager()
     
     def create_learning_record(self, user_id, word_id, mastery_level=0.0, 
                               last_reviewed_at=None, review_count=0, 
@@ -51,15 +56,24 @@ class LearningRecordManager:
         # 设置默认最后复习时间为当前时间
         if last_reviewed_at is None:
             last_reviewed_at = datetime.now()
+        first_learned_at = last_reviewed_at
         
-        # 创建学习记录
+        # 计算下次复习时间（记忆曲线持久化）
+        next_review_at = self.forgetting_curve_manager.calculate_next_review_time(
+            user_id, word_id, mastery_level, review_count
+        )
+        
+        # 创建学习记录（含 first_learned_at、next_review_at，CRUD 内兼容旧表结构）
         record_id = self.learning_records_crud.create(
             user_id=user_id,
             word_id=word_id,
             mastery_level=mastery_level,
             last_reviewed_at=last_reviewed_at,
             review_count=review_count,
-            is_mastered=is_mastered
+            is_mastered=is_mastered,
+            first_learned_at=first_learned_at,
+            next_review_at=next_review_at,
+            level_gate_id=None
         )
         
         # 检查是否需要训练模型（每50个单词训练一次）
@@ -162,13 +176,19 @@ class LearningRecordManager:
         new_review_count = record['review_count'] + 1
         new_is_learned = new_mastery >= 0.8  # 掌握程度达到80%认为已学会
         
-        # 更新记录
+        # 计算并持久化下次复习时间（记忆曲线）
+        next_review_at = self.forgetting_curve_manager.calculate_next_review_time(
+            record['user_id'], record['word_id'], new_mastery, new_review_count
+        )
+        
+        # 更新记录（含 next_review_at）
         affected_rows = self.learning_records_crud.update(
             record_id,
             mastery_level=new_mastery,
             review_count=new_review_count,
             last_reviewed_at=datetime.now(),
-            is_mastered=new_is_learned
+            is_mastered=new_is_learned,
+            next_review_at=next_review_at
         )
         
         return {
@@ -331,14 +351,14 @@ class LearningRecordManager:
                 if hasattr(recommendation_engine, 'deep_learning_recommender') and recommendation_engine.deep_learning_recommender:
                     success = recommendation_engine.deep_learning_recommender.check_and_train_model(user_id)
                     if success:
-                        print(f"用户 {user_id} 的模型训练完成")
+                        logger.info("用户 %s 的模型训练完成", user_id)
                     else:
-                        print(f"用户 {user_id} 的模型训练失败")
+                        logger.warning("用户 %s 的模型训练失败", user_id)
                 else:
-                    print("深度学习推荐器不可用")
+                    logger.debug("深度学习推荐器不可用")
                     
         except Exception as e:
-            print(f"检查模型训练时出错: {e}")
+            logger.exception("检查模型训练时出错: %s", e)
     
     def get_learning_statistics(self, user_id, days=7):
         """

@@ -1,9 +1,13 @@
-﻿"""
+"""
 学习记录表CRUD操作
 """
 
+import logging
 import mysql.connector
 from .database import get_database_context
+
+logger = logging.getLogger(__name__)
+
 
 class LearningRecordsCRUD:
     """学习记录表CRUD操作类"""
@@ -22,23 +26,24 @@ class LearningRecordsCRUD:
         Returns:
             list: 学习记录列表，每个记录包含所有字段信息
         """
-        print(f"DEBUG LearningRecordsCRUD.list_all: limit={limit}, offset={offset}")
+        logger.debug("LearningRecordsCRUD.list_all: limit=%s, offset=%s", limit, offset)
         with get_database_context() as connection:
             cursor = connection.cursor(dictionary=True)
             try:
                 query = "SELECT * FROM user_learning_records LIMIT %s OFFSET %s"
                 cursor.execute(query, (limit, offset))
                 results = cursor.fetchall()
-                print(f"DEBUG LearningRecordsCRUD.list_all: 返回{len(results)}条记录")
+                logger.debug("LearningRecordsCRUD.list_all: 返回%s条记录", len(results))
                 return results
             except Exception as e:
-                print(f"DEBUG LearningRecordsCRUD.list_all: 查询失败: {e}")
+                logger.warning("LearningRecordsCRUD.list_all: 查询失败: %s", e)
                 return []
             finally:
                 cursor.close()
     
     def create(self, user_id, word_id, mastery_level=0.0, last_reviewed_at=None, 
-               review_count=0, is_mastered=False):
+               review_count=0, is_mastered=False, first_learned_at=None, 
+               next_review_at=None, level_gate_id=None):
         """
         创建学习记录
         
@@ -49,34 +54,53 @@ class LearningRecordsCRUD:
             last_reviewed_at (datetime): 最后复习时间
             review_count (int): 复习次数
             is_mastered (bool): 是否已掌握
+            first_learned_at (datetime): 首次学习时间（默认等于 last_reviewed_at）
+            next_review_at (datetime): 下次复习时间（由遗忘曲线计算）
+            level_gate_id (int): 关卡ID（闯关模式）
             
         Returns:
             int: 新创建的记录ID
         """
-        print(f"DEBUG LearningRecordsCRUD.create: user_id={user_id}, word_id={word_id}, mastery_level={mastery_level}, is_mastered={is_mastered}")
-        
-        # 如果没有提供最后复习时间，使用当前时间
+        from datetime import datetime
         if last_reviewed_at is None:
-            from datetime import datetime
             last_reviewed_at = datetime.now()
+        if first_learned_at is None:
+            first_learned_at = last_reviewed_at
             
         with get_database_context() as connection:
             cursor = connection.cursor()
             try:
                 query = """
-                INSERT INTO user_learning_records (user_id, word_id, last_reviewed_at, 
-                                                 mastery_level, review_count, is_mastered)
-                VALUES (%s, %s, %s, %s, %s, %s)
+                INSERT INTO user_learning_records (user_id, word_id, level_gate_id,
+                    first_learned_at, last_reviewed_at, next_review_at,
+                    mastery_level, review_count, is_mastered)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """
-                cursor.execute(query, (user_id, word_id, last_reviewed_at, 
-                                      mastery_level, review_count, is_mastered))
+                cursor.execute(query, (user_id, word_id, level_gate_id,
+                    first_learned_at, last_reviewed_at, next_review_at,
+                    mastery_level, review_count, is_mastered))
                 connection.commit()
                 record_id = cursor.lastrowid
-                print(f"DEBUG LearningRecordsCRUD.create: 成功创建记录，ID={record_id}")
                 return record_id
             except Exception as e:
-                print(f"DEBUG LearningRecordsCRUD.create: 创建记录失败: {e}")
-                return None
+                # 兼容未迁移 DB：若列不存在则使用旧版 INSERT
+                if 'Unknown column' in str(e) or 'first_learned_at' in str(e) or 'next_review_at' in str(e):
+                    try:
+                        query = """
+                        INSERT INTO user_learning_records (user_id, word_id, last_reviewed_at,
+                            mastery_level, review_count, is_mastered)
+                        VALUES (%s, %s, %s, %s, %s, %s)
+                        """
+                        cursor.execute(query, (user_id, word_id, last_reviewed_at,
+                            mastery_level, review_count, is_mastered))
+                        connection.commit()
+                        return cursor.lastrowid
+                    except Exception as e2:
+                        logger.warning("LearningRecordsCRUD.create: 创建记录失败: %s", e2)
+                        return None
+                else:
+                    logger.warning("LearningRecordsCRUD.create: 创建记录失败: %s", e)
+                    return None
             finally:
                 cursor.close()
     
@@ -90,17 +114,17 @@ class LearningRecordsCRUD:
         Returns:
             dict: 学习记录信息，如果不存在返回None
         """
-        print(f"DEBUG LearningRecordsCRUD.read: record_id={record_id}")
+        logger.debug("LearningRecordsCRUD.read: record_id=%s", record_id)
         with get_database_context() as connection:
             cursor = connection.cursor(dictionary=True)
             try:
                 query = "SELECT * FROM user_learning_records WHERE id = %s"
                 cursor.execute(query, (record_id,))
                 result = cursor.fetchone()
-                print(f"DEBUG LearningRecordsCRUD.read: 查询结果={'找到记录' if result else '记录不存在'}")
+                logger.debug("LearningRecordsCRUD.read: 查询结果=%s", '找到记录' if result else '记录不存在')
                 return result
             except Exception as e:
-                print(f"DEBUG LearningRecordsCRUD.read: 查询记录失败: {e}")
+                logger.warning("LearningRecordsCRUD.read: 查询记录失败: %s", e)
                 return None
             finally:
                 cursor.close()
@@ -116,26 +140,30 @@ class LearningRecordsCRUD:
         Returns:
             int: 受影响的行数
         """
-        print(f"DEBUG LearningRecordsCRUD.update: record_id={record_id}, kwargs={kwargs}")
+        logger.debug("LearningRecordsCRUD.update: record_id=%s, kwargs=%s", record_id, kwargs)
         if not kwargs:
-            print("DEBUG LearningRecordsCRUD.update: 没有要更新的字段")
+            logger.debug("LearningRecordsCRUD.update: 没有要更新的字段")
             return 0
         
         set_clauses = []
         values = []
         
+        # 允许更新的字段（含记忆曲线相关）
+        allowed_map = {
+            'is_learned': 'is_mastered', 'last_reviewed': 'last_reviewed_at',
+            'mastery_level': 'mastery_level', 'review_count': 'review_count',
+            'is_mastered': 'is_mastered', 'last_reviewed_at': 'last_reviewed_at',
+            'first_learned_at': 'first_learned_at', 'next_review_at': 'next_review_at',
+            'level_gate_id': 'level_gate_id',
+        }
         for field, value in kwargs.items():
-            if field in ['mastery_level', 'review_count', 'is_learned', 'last_reviewed']:
-                # 映射字段名称
-                if field == 'is_learned':
-                    field = 'is_mastered'
-                elif field == 'last_reviewed':
-                    field = 'last_reviewed_at'
-                set_clauses.append(f"{field} = %s")
+            if field in allowed_map:
+                db_field = allowed_map[field]
+                set_clauses.append(f"{db_field} = %s")
                 values.append(value)
         
         if not set_clauses:
-            print("DEBUG LearningRecordsCRUD.update: 没有有效的更新字段")
+            logger.debug("LearningRecordsCRUD.update: 没有有效的更新字段")
             return 0
         
         values.append(record_id)
@@ -146,7 +174,7 @@ class LearningRecordsCRUD:
             cursor.execute(query, values)
             connection.commit()
             affected_rows = cursor.rowcount
-            print(f"DEBUG LearningRecordsCRUD.update: 更新了{affected_rows}行")
+            logger.debug("LearningRecordsCRUD.update: 更新了%s行", affected_rows)
             cursor.close()
             return affected_rows
     
@@ -160,7 +188,7 @@ class LearningRecordsCRUD:
         Returns:
             int: 受影响的行数
         """
-        print(f"DEBUG LearningRecordsCRUD.delete: record_id={record_id}")
+        logger.debug("LearningRecordsCRUD.delete: record_id=%s", record_id)
         with get_database_context() as connection:
             cursor = connection.cursor()
             try:
@@ -168,10 +196,10 @@ class LearningRecordsCRUD:
                 cursor.execute(query, (record_id,))
                 connection.commit()
                 affected_rows = cursor.rowcount
-                print(f"DEBUG LearningRecordsCRUD.delete: 删除了{affected_rows}行")
+                logger.debug("LearningRecordsCRUD.delete: 删除了%s行", affected_rows)
                 return affected_rows
             except Exception as e:
-                print(f"DEBUG LearningRecordsCRUD.delete: 删除记录失败: {e}")
+                logger.warning("LearningRecordsCRUD.delete: 删除记录失败: %s", e)
                 return 0
             finally:
                 cursor.close()
@@ -188,7 +216,7 @@ class LearningRecordsCRUD:
         Returns:
             list: 该用户的学习记录列表
         """
-        print(f"DEBUG LearningRecordsCRUD.get_by_user: user_id={user_id}, limit={limit}, offset={offset}")
+        logger.debug("LearningRecordsCRUD.get_by_user: user_id=%s, limit=%s, offset=%s", user_id, limit, offset)
         with get_database_context() as connection:
             cursor = connection.cursor(dictionary=True)
             try:
@@ -199,10 +227,10 @@ class LearningRecordsCRUD:
                     query = "SELECT * FROM user_learning_records WHERE user_id = %s ORDER BY last_reviewed_at DESC"
                     cursor.execute(query, (user_id,))
                 results = cursor.fetchall()
-                print(f"DEBUG LearningRecordsCRUD.get_by_user: 找到{len(results)}条记录")
+                logger.debug("LearningRecordsCRUD.get_by_user: 找到%s条记录", len(results))
                 return results
             except Exception as e:
-                print(f"DEBUG LearningRecordsCRUD.get_by_user: 查询失败: {e}")
+                logger.warning("LearningRecordsCRUD.get_by_user: 查询失败: %s", e)
                 return []
             finally:
                 cursor.close()
@@ -218,17 +246,17 @@ class LearningRecordsCRUD:
         Returns:
             list: 匹配的学习记录列表
         """
-        print(f"DEBUG LearningRecordsCRUD.search_by_user_word: user_id={user_id}, word_id={word_id}")
+        logger.debug("LearningRecordsCRUD.search_by_user_word: user_id=%s, word_id=%s", user_id, word_id)
         with get_database_context() as connection:
             cursor = connection.cursor(dictionary=True)
             try:
                 query = "SELECT * FROM user_learning_records WHERE user_id = %s AND word_id = %s"
                 cursor.execute(query, (user_id, word_id))
                 results = cursor.fetchall()
-                print(f"DEBUG LearningRecordsCRUD.search_by_user_word: 找到{len(results)}条记录")
+                logger.debug("LearningRecordsCRUD.search_by_user_word: 找到%s条记录", len(results))
                 return results
             except Exception as e:
-                print(f"DEBUG LearningRecordsCRUD.search_by_user_word: 查询失败: {e}")
+                logger.warning("LearningRecordsCRUD.search_by_user_word: 查询失败: %s", e)
                 return []
             finally:
                 cursor.close()
@@ -245,6 +273,41 @@ class LearningRecordsCRUD:
         """
         return self.get_by_user(user_id)
     
+    def get_review_due(self, user_id, limit=20, offset=0):
+        """
+        获取到期需复习的记录（next_review_at <= now）
+        若表无 next_review_at 列则回退到 get_by_user
+        
+        Args:
+            user_id (int): 用户ID
+            limit (int): 限制数量
+            offset (int): 偏移量
+            
+        Returns:
+            list: 到期复习记录列表
+        """
+        with get_database_context() as connection:
+            cursor = connection.cursor(dictionary=True)
+            try:
+                query = """
+                SELECT * FROM user_learning_records 
+                WHERE user_id = %s AND (next_review_at IS NULL OR next_review_at <= NOW())
+                ORDER BY COALESCE(next_review_at, '1970-01-01') ASC, last_reviewed_at ASC
+                LIMIT %s OFFSET %s
+                """
+                cursor.execute(query, (user_id, limit, offset))
+                return cursor.fetchall()
+            except Exception as e:
+                # 若 next_review_at 列不存在，回退到按 last_reviewed 获取
+                if 'next_review_at' in str(e) or 'Unknown column' in str(e):
+                    return self.get_by_user(user_id, limit, offset)
+                raise
+            finally:
+                cursor.close()
+    
+    def close(self):
+        """兼容性方法：使用连接池时无需手动关闭"""
+        pass
     
 def main():
     """
@@ -253,11 +316,13 @@ def main():
     """
     crud = LearningRecordsCRUD()
     
-    print("=== 学习记录CRUD工具 ===")
+    from config import configure_logging
+    configure_logging()
+    logger.info("=== 学习记录CRUD工具 ===")
     
     # 列出所有学习记录
     records = crud.list_all(limit=5)
-    print(f"学习记录数量: {len(records)}")
+    logger.info("学习记录数量: %s", len(records))
     
     crud.close()
 

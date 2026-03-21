@@ -1,12 +1,4 @@
-// API 配置 - 动态检测API地址
-const API_BASE_URL = (() => {
-  // 如果是localhost访问，使用localhost
-  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-    return "http://localhost:5000/api"
-  }
-  // 否则使用当前主机地址
-  return `http://${window.location.hostname}:5000/api`
-})()
+import { apiRequest } from "./js/api-client.js"
 
 // 全局状态
 let currentUser = null
@@ -17,6 +9,7 @@ let totalAnswers = 0
 let browseMode = false  // 浏览模式标识
 let browseWords = []    // 浏览单词列表
 let currentBrowseIndex = 0  // 当前浏览索引
+let wordStartTime = 0
 
 function showLoading() {
   const overlay = document.createElement("div")
@@ -68,7 +61,7 @@ function showToast(message, type = "success") {
 }
 
 
-// 网络状态检测
+// 网络状态检测（供需要时显式调用）
 function checkNetworkStatus() {
   if (!navigator.onLine) {
     showToast("网络连接已断开，请检查网络设置", "error")
@@ -76,7 +69,6 @@ function checkNetworkStatus() {
   }
   return true
 }
-
 
 // 全局错误处理 - 忽略浏览器扩展相关错误
 window.addEventListener('error', function(event) {
@@ -100,42 +92,6 @@ window.addEventListener('unhandledrejection', function(event) {
   }
 })
 
-// 增强的API请求函数，包含网络检测
-async function apiRequest(endpoint, options = {}) {
-  if (!checkNetworkStatus()) {
-    return { success: false, message: "网络连接不可用" }
-  }
-  
-  try {
-    const url = `${API_BASE_URL}${endpoint}`
-    
-    const response = await fetch(url, {
-      ...options,
-      headers: {
-        "Content-Type": "application/json",
-        ...options.headers,
-      },
-    })
-    
-    // 检查响应状态
-    if (!response.ok) {
-      const errorMessage = `服务器错误: ${response.status} ${response.statusText}`
-      console.error(`HTTP错误: ${errorMessage}`)
-      return { success: false, message: errorMessage }
-    }
-    
-    const data = await response.json()
-    return data
-  } catch (error) {
-    console.error("API请求失败:", error)
-    if (error.name === 'TypeError' && error.message.includes('fetch')) {
-      return { success: false, message: "网络请求失败，请检查网络连接" }
-    }
-    return { success: false, message: "网络请求失败" }
-  }
-}
-
-
 // 推荐缓存
 let recommendationCache = {
   data: [],
@@ -154,7 +110,27 @@ function showPage(pageName) {
   document.querySelectorAll(".page").forEach((page) => {
     page.classList.remove("active")
   })
-  document.getElementById(`${pageName}-page`).classList.add("active")
+  const targetPage = document.getElementById(`${pageName}-page`)
+  if (targetPage) {
+    targetPage.classList.add("active")
+  }
+
+  const appNav = document.getElementById("app-navbar")
+  if (appNav) {
+    const hideMainNav = pageName === "auth" || pageName === "learning"
+    appNav.classList.toggle("hidden", hideMainNav)
+    if (!hideMainNav) {
+      appNav.querySelectorAll(".nav-link[data-page]").forEach((link) => {
+        link.classList.toggle("active", link.dataset.page === pageName)
+      })
+    }
+    const menuWrap = document.getElementById("app-nav-menu")
+    const toggle = document.getElementById("nav-menu-toggle")
+    if (menuWrap) menuWrap.classList.remove("nav-menu-wrap--open")
+    if (toggle) {
+      toggle.setAttribute("aria-expanded", "false")
+    }
+  }
 }
 
 
@@ -285,8 +261,8 @@ async function loadDashboard() {
   }
 
   // 更新用户名显示
-  document.getElementById("username-display").textContent = currentUser.username
-  document.getElementById("username-display-stats").textContent = currentUser.username
+  const uname = document.getElementById("username-display")
+  if (uname) uname.textContent = currentUser.username
 
   showLoading()
 
@@ -463,9 +439,11 @@ function loadBrowseWord() {
   document.getElementById("current-word").textContent = word.word
   document.getElementById("word-phonetic").textContent = word.phonetic || ""
   
-  // 隐藏选择题和翻译题界面
+  // 隐藏选择题、翻译题和拼写题界面
   document.getElementById("choice-section").classList.add("hidden")
   document.getElementById("translation-section").classList.add("hidden")
+  const spellingSection = document.getElementById("spelling-section")
+  if (spellingSection) spellingSection.classList.add("hidden")
   document.getElementById("feedback-section").classList.add("hidden")
   
   // 显示浏览模式界面
@@ -674,16 +652,22 @@ async function checkActiveSession() {
     
     if (result.success && result.data) {
       currentSession = result.data
-      console.log("DEBUG: 找到活跃会话，恢复学习状态")
       return true
     } else {
-      console.log("DEBUG: 没有活跃会话")
       return false
     }
   } catch (error) {
     console.error("检查活跃会话失败:", error)
     return false
   }
+}
+
+/** 安全获取当前学习会话中的单词（避免越界或未定义） */
+function getCurrentSessionWord() {
+  if (!currentSession?.words?.length) return null
+  const idx = currentSession.current_word_index
+  if (typeof idx !== "number" || idx < 0 || idx >= currentSession.words.length) return null
+  return currentSession.words[idx]
 }
 
 // 完成学习会话
@@ -696,7 +680,6 @@ async function finishLearningSession() {
           session_id: currentSession.session_id
         })
       })
-      console.log("DEBUG: 学习会话已完成")
     } catch (error) {
       console.error("完成学习会话失败:", error)
     }
@@ -784,17 +767,19 @@ async function loadCurrentWord() {
 
   if (result.success) {
     const word = result.data
-    
+    currentSession.currentWordCache = word
+
     // 记录单词显示开始时间
     wordStartTime = Date.now()
     
-    document.getElementById("current-word").textContent = word.word
-    document.getElementById("word-phonetic").textContent = word.phonetic || ""
+    document.getElementById("current-word").textContent = word.question_type === "spelling" ? "拼写练习" : word.word
+    document.getElementById("word-phonetic").textContent = word.question_type === "spelling" ? "" : (word.phonetic || "")
     // word-pos元素被注释掉了，所以跳过
     // document.getElementById("word-pos").textContent = word.pos || ""
 
-    // 更新进度
-    const progress = (currentSession.current_word_index / currentSession.total_count) * 100
+    // 更新进度（避免 total_count 为 0 时出现 NaN）
+    const totalForProgress = Math.max(1, Number(currentSession.total_count) || 1)
+    const progress = (currentSession.current_word_index / totalForProgress) * 100
     document.getElementById("learning-progress").style.width = progress + "%"
     document.getElementById("current-word-index").textContent = currentSession.current_word_index + 1
     document.getElementById("total-word-count").textContent = currentSession.total_count
@@ -802,6 +787,8 @@ async function loadCurrentWord() {
     // 根据题目类型显示不同的界面
     if (word.question_type === "choice") {
       showChoiceQuestion(word)
+    } else if (word.question_type === "spelling") {
+      showSpellingQuestion(word)
     } else {
       showTranslationQuestion(word)
     }
@@ -816,8 +803,14 @@ async function loadCurrentWord() {
 }
 
 function showChoiceQuestion(word) {
-  // 隐藏翻译题界面
+  if (!word || !Array.isArray(word.options) || word.options.length === 0) {
+    handleError("选择题数据不完整", "加载题目")
+    return
+  }
+  // 隐藏翻译题和拼写题界面
   document.getElementById("translation-section").classList.add("hidden")
+  const spellingSection = document.getElementById("spelling-section")
+  if (spellingSection) spellingSection.classList.add("hidden")
   
   // 显示选择题界面
   const choiceSection = document.getElementById("choice-section")
@@ -839,9 +832,25 @@ function showChoiceQuestion(word) {
   })
 }
 
-function showTranslationQuestion(word) {
-  // 隐藏选择题界面
+function showSpellingQuestion(word) {
   document.getElementById("choice-section").classList.add("hidden")
+  document.getElementById("translation-section").classList.add("hidden")
+  
+  const spellingSection = document.getElementById("spelling-section")
+  spellingSection.classList.remove("hidden")
+  document.getElementById("spelling-question-text").textContent = word.question || `以下释义对应的英文单词是：${word.translation}`
+  document.getElementById("spelling-phonetic-hint").textContent = word.phonetic ? `音标：${word.phonetic}` : ""
+  document.getElementById("spelling-answer-input").value = ""
+  document.getElementById("spelling-answer-input").disabled = false
+  document.getElementById("spelling-submit-btn").disabled = false
+  document.getElementById("spelling-answer-input").focus()
+}
+
+function showTranslationQuestion(word) {
+  // 隐藏选择题和拼写题界面
+  document.getElementById("choice-section").classList.add("hidden")
+  const spellingSection = document.getElementById("spelling-section")
+  if (spellingSection) spellingSection.classList.add("hidden")
   
   // 显示翻译题界面
   const translationSection = document.getElementById("translation-section")
@@ -872,9 +881,18 @@ function selectChoice(selectedOption, word) {
 }
 
 async function submitChoiceAnswer(selectedOption, word) {
+  if (!currentSession || !currentUser?.id) {
+    handleError("会话无效", "提交选择题")
+    return
+  }
+  const wid = word?.word_id ?? word?.id
+  if (wid == null) {
+    handleError("题目数据无效", "提交选择题")
+    return
+  }
   const requestData = {
     user_id: currentUser.id,
-    word_id: word.word_id,
+    word_id: wid,
     user_answer: selectedOption,
     correct_answer: word.correct_answer,
     response_time: 0,
@@ -882,14 +900,10 @@ async function submitChoiceAnswer(selectedOption, word) {
     session_info: currentSession  // 添加session_info
   }
 
-  console.log("DEBUG: 提交选择题答案:", requestData)
-
   const result = await apiRequest("/vocabulary/submit-answer", {
     method: "POST",
     body: JSON.stringify(requestData),
   })
-
-  console.log("DEBUG: 选择题答案结果:", result)
 
   if (result.success) {
     totalAnswers++
@@ -900,7 +914,6 @@ async function submitChoiceAnswer(selectedOption, word) {
     // 更新session_info（如果后端返回了更新的session_info）
     if (result.session_info) {
       currentSession = result.session_info
-      console.log("DEBUG: 更新session_info:", currentSession)
     }
 
     // 显示反馈
@@ -914,6 +927,7 @@ function showChoiceFeedback(result, word) {
   const feedbackSection = document.getElementById("feedback-section")
   const feedbackMessage = document.getElementById("feedback-message")
   const correctAnswerDiv = document.getElementById("correct-answer")
+  const expected = word?.correct_answer
 
   feedbackMessage.textContent = result.message
   feedbackMessage.className = "feedback-message " + (result.is_correct ? "correct" : "incorrect")
@@ -927,10 +941,10 @@ function showChoiceFeedback(result, word) {
   // 高亮正确答案
   const options = document.querySelectorAll(".choice-option")
   options.forEach(option => {
-    if (option.textContent === word.correct_answer) {
+    if (expected != null && option.textContent === expected) {
       option.classList.add("correct-answer")
     }
-    if (option.textContent !== word.correct_answer && option.classList.contains("selected")) {
+    if (expected != null && option.textContent !== expected && option.classList.contains("selected")) {
       option.classList.add("wrong-answer")
     }
   })
@@ -941,6 +955,64 @@ function showChoiceFeedback(result, word) {
   }, 1500)
 }
 
+async function submitSpellingAnswer() {
+  const userAnswer = document.getElementById("spelling-answer-input").value.trim()
+  if (!userAnswer) {
+    handleError("请输入英文单词", "答案验证")
+    return
+  }
+  if (!currentSession?.words?.length) {
+    handleError("学习会话无效", "提交拼写答案")
+    return
+  }
+  const currentWord = getCurrentSessionWord()
+  const spellingData = currentSession.currentWordCache || currentWord
+  const wordId = spellingData?.word_id ?? currentWord?.id
+  const correctAns = spellingData?.correct_answer ?? currentWord?.word
+  if (wordId == null || correctAns == null) {
+    handleError("当前单词数据无效，请刷新页面重试", "提交拼写答案")
+    return
+  }
+  const responseTime = (Date.now() - wordStartTime) / 1000
+  const requestData = {
+    user_id: currentUser.id,
+    word_id: wordId,
+    user_answer: userAnswer,
+    correct_answer: correctAns,
+    response_time: responseTime,
+    question_type: "spelling",
+    session_info: currentSession
+  }
+  try {
+    const result = await apiRequest("/vocabulary/submit-answer", {
+      method: "POST",
+      body: JSON.stringify(requestData),
+    })
+    if (result.success) {
+      totalAnswers++
+      if (result.is_correct) correctAnswers++
+      if (result.session_info) currentSession = result.session_info
+      const feedbackSection = document.getElementById("feedback-section")
+      const feedbackMessage = document.getElementById("feedback-message")
+      const correctAnswerDiv = document.getElementById("correct-answer")
+      feedbackMessage.textContent = result.message
+      feedbackMessage.className = "feedback-message " + (result.is_correct ? "correct" : "incorrect")
+      const correctAnswer = result.data ? result.data.correct_answer : result.correct_answer
+      correctAnswerDiv.textContent = result.is_correct ? "" : `正确答案: ${correctAnswer}`
+      feedbackSection.classList.remove("hidden")
+      document.getElementById("spelling-answer-input").disabled = true
+      document.getElementById("spelling-submit-btn").disabled = true
+      setTimeout(() => {
+        document.getElementById("next-word-btn").classList.remove("hidden")
+      }, 1500)
+    } else {
+      handleError(result.message || "提交答案失败", "提交答案")
+    }
+  } catch (error) {
+    handleError(error, "提交拼写答案")
+  }
+}
+
 async function submitAnswer() {
   const userAnswer = document.getElementById("answer-input").value.trim()
   if (!userAnswer) {
@@ -948,7 +1020,11 @@ async function submitAnswer() {
     return
   }
 
-  const currentWord = currentSession.words[currentSession.current_word_index]
+  const currentWord = getCurrentSessionWord()
+  if (!currentWord) {
+    handleError("当前单词数据无效，请返回首页重新开始", "提交答案")
+    return
+  }
   
   // 使用单词显示开始时间计算响应时间
   const responseTime = (Date.now() - wordStartTime) / 1000
@@ -967,15 +1043,11 @@ async function submitAnswer() {
     session_info: currentSession  // 添加session_info
   }
 
-  console.log("DEBUG: 提交翻译题答案:", requestData)
-
   try {
     const result = await apiRequest("/vocabulary/submit-answer", {
       method: "POST",
       body: JSON.stringify(requestData),
     })
-
-    console.log("DEBUG: 翻译题答案结果:", result)
 
     if (result.success) {
       // 只有在没有显示答案的情况下才计入统计
@@ -989,7 +1061,6 @@ async function submitAnswer() {
       // 更新session_info（如果后端返回了更新的session_info）
       if (result.session_info) {
         currentSession = result.session_info
-        console.log("DEBUG: 更新session_info:", currentSession)
       }
 
       // 显示反馈
@@ -1064,15 +1135,16 @@ function nextWord() {
   
   // 检查是否需要切换到翻译题阶段
   if (currentSession && currentSession.word_stages) {
-    const currentWordData = currentSession.words[currentSession.current_word_index]
+    const currentWordData = getCurrentSessionWord()
+    if (!currentWordData?.id) {
+      handleError("当前单词数据无效", "下一题")
+      return
+    }
     const wordId = currentWordData.id
-    const currentStage = currentSession.word_stages[wordId.toString()]  // 转换为字符串
-    
-    console.log("DEBUG: 学习阶段检查 - wordId:", wordId, "currentStage:", currentStage, "word_stages:", currentSession.word_stages)
+    const currentStage = currentSession.word_stages[String(wordId)]  // 转换为字符串
     
     if (currentStage === "choice") {
       // 选择题刚完成，切换到翻译题阶段
-      console.log("DEBUG: 切换到翻译题阶段，word_id:", wordId)
       loadCurrentWord()  // 重新加载当前单词，会显示翻译题
       return
     }
@@ -1185,15 +1257,208 @@ async function loadStatistics(days = 7) {
 
 async function loadForgettingCurve() {
   const chartContainer = document.getElementById("forgetting-curve-chart")
-  
-  // 暂时显示占位内容，等待后续开发
-  chartContainer.innerHTML = `
-    <div class="empty-state">
-      <div class="empty-state-icon">📊</div>
-      <h4>复习计划功能开发中</h4>
-      <p>该功能正在开发中，敬请期待</p>
-    </div>
-  `
+  if (!currentUser || !currentUser.id) return
+
+  try {
+    const result = await apiRequest(`/learning/forgetting-curve/${currentUser.id}?days=7`)
+    if (result.success && result.data && result.data.length > 0) {
+      const maxVal = Math.max(...result.data.map(d => d.words_to_review), 1)
+      chartContainer.innerHTML = `
+        <div class="forgetting-curve-bars">
+          ${result.data.map(d => `
+            <div class="curve-bar-wrap">
+              <div class="curve-bar" style="height: ${(d.words_to_review / maxVal) * 100}%"
+                title="${d.date}: ${d.words_to_review} 词"></div>
+              <span class="curve-label">${d.date.slice(5)}</span>
+              <span class="curve-value">${d.words_to_review}</span>
+            </div>
+          `).join('')}
+        </div>
+      `
+    } else {
+      chartContainer.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-state-icon">📊</div>
+          <h4>暂无复习计划</h4>
+          <p>开始学习后，系统将根据记忆曲线生成未来7天复习计划</p>
+        </div>
+      `
+    }
+  } catch (e) {
+    chartContainer.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-state-icon">📊</div>
+        <h4>加载失败</h4>
+        <p>${e.message || '请稍后重试'}</p>
+      </div>
+    `
+  }
+}
+
+// 学习计划页
+async function loadPlansPage() {
+  if (!currentUser?.id) return
+  const activeEl = document.getElementById("active-plan-display")
+  try {
+    const r = await apiRequest(`/plans/${currentUser.id}/active`)
+    if (r.success && r.data) {
+      activeEl.innerHTML = `
+        <p>词库: ${r.data.dataset_type}</p>
+        <p>每日新学: ${r.data.daily_new_count}</p>
+        <p>每日复习: ${r.data.daily_review_count}</p>
+      `
+    } else {
+      activeEl.innerHTML = "<p>暂无生效计划，请创建</p>"
+    }
+  } catch (e) {
+    activeEl.innerHTML = `<p>加载失败: ${e.message}</p>`
+  }
+}
+
+// 闯关模式页
+async function loadLevelsPage() {
+  if (!currentUser?.id) return
+  const listEl = document.getElementById("levels-gates-list")
+  try {
+    const [gatesRes, progressRes] = await Promise.all([
+      apiRequest("/levels/gates"),
+      apiRequest(`/levels/progress/${currentUser.id}`)
+    ])
+    const gates = gatesRes.success ? gatesRes.data : []
+    const progress = progressRes.success ? progressRes.data : []
+    const progMap = {}
+    progress.forEach(p => { progMap[p.level_gate_id] = p })
+    if (gates.length === 0) {
+      listEl.innerHTML = `
+        <div class="empty-state">
+          <p>暂无关卡，请先运行数据库迁移并初始化 level_gates 表</p>
+        </div>
+      `
+      return
+    }
+    listEl.innerHTML = gates.map(g => {
+      const p = progMap[g.id] || {}
+      const locked = !p.is_unlocked && g.gate_order > 1
+      return `
+        <div class="recommendation-card ${locked ? 'locked' : ''}">
+          <h3>${g.gate_name || '关卡' + g.gate_order}</h3>
+          <p>难度 ${g.difficulty_level} · ${g.word_count} 词</p>
+          <p>${p.mastered_count || 0}/${g.word_count} 已掌握</p>
+          ${locked ? '<span>需完成上一关</span>' : '<button class="btn btn-primary btn-sm" data-gate-id="' + g.id + '">进入</button>'}
+        </div>
+      `
+    }).join("")
+    listEl.querySelectorAll("[data-gate-id]").forEach(btn => {
+      btn.addEventListener("click", () => showToast("闯关学习功能请从首页「新词学习」选择难度进入", "info"))
+    })
+  } catch (e) {
+    listEl.innerHTML = `<div class="empty-state"><p>加载失败: ${e.message}</p></div>`
+  }
+}
+
+// 等级测试
+let evalPaperId = null
+let evalQuestions = []
+let evalAnswers = {}
+let evalStartTime = null
+
+async function loadEvaluationStart() {
+  if (!currentUser?.id) return
+  document.getElementById("evaluation-start").classList.remove("hidden")
+  document.getElementById("evaluation-test").classList.add("hidden")
+  document.getElementById("evaluation-result").classList.add("hidden")
+}
+
+async function startEvaluation() {
+  if (!currentUser?.id) return
+  const count = parseInt(document.getElementById("eval-question-count").value) || 10
+  showLoading()
+  try {
+    const r = await apiRequest("/evaluation/start", {
+      method: "POST",
+      body: JSON.stringify({ user_id: currentUser.id, question_count: count })
+    })
+    hideLoading()
+    if (!r.success || !r.data) {
+      showToast(r.message || "启动失败", "error")
+      return
+    }
+    evalPaperId = r.data.paper_id
+    evalQuestions = r.data.questions || []
+    evalAnswers = {}
+    evalStartTime = Date.now()
+    document.getElementById("evaluation-start").classList.add("hidden")
+    document.getElementById("evaluation-result").classList.add("hidden")
+    document.getElementById("evaluation-test").classList.remove("hidden")
+    renderEvalQuestions()
+  } catch (e) {
+    hideLoading()
+    showToast(e.message || "启动失败", "error")
+  }
+}
+
+function renderEvalQuestions() {
+  const container = document.getElementById("eval-questions-container")
+  document.getElementById("eval-progress").textContent = `1/${evalQuestions.length}`
+  const escape = s => String(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;")
+  container.innerHTML = evalQuestions.map((q, i) => {
+    const wid = q.word_id || q.id
+    const isChoice = (q.question_type === "choice" || q.question_type === "multiple_choice") && q.options && q.options.length
+    const isSpelling = q.question_type === "spelling"
+    const placeholder = isSpelling ? "请输入英文单词" : "请输入中文释义"
+    const inputHtml = isChoice
+      ? q.options.map(opt => `<label><input type="radio" name="q_${wid}" value="${escape(opt)}"> ${escape(opt)}</label>`).join("<br>")
+      : `<input type="text" id="q_${wid}" placeholder="${placeholder}">`
+    return `
+      <div class="eval-question" data-index="${i}">
+        <h4>${escape(q.question || "请选择/输入 " + (q.word || "") + " 的释义")}</h4>
+        ${inputHtml}
+      </div>
+    `
+  }).join("")
+}
+
+async function submitEvaluation() {
+  if (!evalPaperId || !currentUser?.id) return
+  const answers = evalQuestions.map(q => {
+    const wid = q.word_id || q.id
+    const radio = document.querySelector(`input[name="q_${wid}"]:checked`)
+    const textInp = document.getElementById(`q_${wid}`)
+    const userAnswer = radio ? radio.value : (textInp ? textInp.value.trim() : "")
+    return {
+      word_id: wid,
+      user_answer: userAnswer,
+      correct_answer: q.correct_answer
+    }
+  })
+  const duration = Math.floor((Date.now() - evalStartTime) / 1000)
+  showLoading()
+  try {
+    const r = await apiRequest("/evaluation/submit", {
+      method: "POST",
+      body: JSON.stringify({
+        user_id: currentUser.id,
+        paper_id: evalPaperId,
+        answers,
+        duration_seconds: duration
+      })
+    })
+    hideLoading()
+    if (r.success && r.data) {
+      document.getElementById("evaluation-test").classList.add("hidden")
+      const sc = typeof r.data.score === "number" ? r.data.score : 0
+      document.getElementById("eval-score").textContent = Number.isFinite(sc) ? sc.toFixed(0) : "-"
+      document.getElementById("eval-correct").textContent = r.data.correct_count ?? "-"
+      document.getElementById("eval-total").textContent = r.data.total_count ?? "-"
+      document.getElementById("eval-level").textContent = r.data.assessed_level || "-"
+      document.getElementById("evaluation-result").classList.remove("hidden")
+    } else {
+      showToast(r.message || "提交失败", "error")
+    }
+  } catch (e) {
+    hideLoading()
+    showToast(e.message || "提交失败", "error")
+  }
 }
 
 // 时间格式化函数
@@ -1260,14 +1525,28 @@ function initEventListeners() {
         loadStatistics()
       } else if (page === "dashboard") {
         loadDashboard()
+      } else if (page === "plans") {
+        loadPlansPage()
+      } else if (page === "levels") {
+        loadLevelsPage()
+      } else if (page === "evaluation") {
+        loadEvaluationStart()
       }
       // learning页面只能通过功能按钮进入，不能通过导航进入
     }
   })
 
-  // 退出登录 - 使用通用函数
+  // 退出登录
   document.getElementById("logout-btn").addEventListener("click", logout)
-  document.getElementById("logout-btn-stats").addEventListener("click", logout)
+
+  const navToggle = document.getElementById("nav-menu-toggle")
+  const menuWrap = document.getElementById("app-nav-menu")
+  if (navToggle && menuWrap) {
+    navToggle.addEventListener("click", () => {
+      const open = menuWrap.classList.toggle("nav-menu-wrap--open")
+      navToggle.setAttribute("aria-expanded", open ? "true" : "false")
+    })
+  }
 
   // 刷新推荐
   document.getElementById("refresh-recommendations").addEventListener("click", () => {
@@ -1283,8 +1562,51 @@ function initEventListeners() {
 
   document.getElementById("start-review-btn").addEventListener("click", startReviewSession)
 
+  const createPlanBtn = document.getElementById("create-plan-btn")
+  if (createPlanBtn) {
+    createPlanBtn.addEventListener("click", async () => {
+      if (!currentUser?.id) return
+      const dataset = document.getElementById("plan-dataset").value
+      const dailyNew = parseInt(document.getElementById("plan-daily-new").value) || 20
+      const dailyReview = parseInt(document.getElementById("plan-daily-review").value) || 20
+      showLoading()
+      const r = await apiRequest("/plans", {
+        method: "POST",
+        body: JSON.stringify({
+          user_id: currentUser.id,
+          dataset_type: dataset,
+          daily_new_count: dailyNew,
+          daily_review_count: dailyReview
+        })
+      })
+      hideLoading()
+      if (r.success) {
+        showToast("计划创建成功")
+        loadPlansPage()
+      } else {
+        showToast(r.message || "创建失败", "error")
+      }
+    })
+  }
+
+  const startEvalBtn = document.getElementById("start-eval-btn")
+  if (startEvalBtn) startEvalBtn.addEventListener("click", startEvaluation)
+
+  const submitEvalBtn = document.getElementById("submit-eval-btn")
+  if (submitEvalBtn) submitEvalBtn.addEventListener("click", submitEvaluation)
+
+  const evalAgainBtn = document.getElementById("eval-again-btn")
+  if (evalAgainBtn) evalAgainBtn.addEventListener("click", () => {
+    loadEvaluationStart()
+    document.getElementById("evaluation-start").classList.remove("hidden")
+  })
+
   // 学习页面
   document.getElementById("submit-answer-btn").addEventListener("click", submitAnswer)
+  const spellingSubmitBtn = document.getElementById("spelling-submit-btn")
+  if (spellingSubmitBtn) {
+    spellingSubmitBtn.addEventListener("click", submitSpellingAnswer)
+  }
   document.getElementById("next-word-btn").addEventListener("click", nextWord)
   document.getElementById("finish-session-btn").addEventListener("click", finishSession)
   document.getElementById("back-to-dashboard").addEventListener("click", () => {
@@ -1304,10 +1626,22 @@ function initEventListeners() {
       submitAnswer()
     }
   })
+  const spellingInput = document.getElementById("spelling-answer-input")
+  if (spellingInput) {
+    spellingInput.addEventListener("keypress", (e) => {
+      if (e.key === "Enter" && !document.getElementById("spelling-submit-btn").disabled) {
+        submitSpellingAnswer()
+      }
+    })
+  }
 
   // 显示答案
   document.getElementById("show-answer-btn").addEventListener("click", () => {
-    const currentWord = currentSession.words[currentSession.current_word_index]
+    const currentWord = getCurrentSessionWord()
+    if (!currentWord?.translation) {
+      showToast("无法显示答案", "error")
+      return
+    }
     document.getElementById("answer-input").value = currentWord.translation
     // 标记为显示答案状态，提交时不计入正确率
     document.getElementById("answer-input").dataset.showedAnswer = "true"

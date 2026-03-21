@@ -1,6 +1,9 @@
-﻿"""
-API接口模块
-提供RESTful API接口
+"""
+API接口模块（历史备份 / 已弃用）
+
+说明：当前生产入口请使用 ``api_launcher.APILauncher``（见 ``main.py``），
+本文件保留为旧版单文件路由参考，**不再随新接口维护**。
+遗忘曲线、评测、学习计划等接口已迁移至各 Blueprint（learning_api、evaluation_api、plans_api 等）。
 """
 
 # 导入配置常量

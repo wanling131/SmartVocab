@@ -21,6 +21,25 @@
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 16px;
+
+  /* 间距设计令牌 */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 16px;
+  --space-4: 24px;
+  --space-5: 32px;
+  --space-6: 48px;
+
+  /* 字号阶梯 */
+  --text-xs: 12px;
+  --text-sm: 14px;
+  --text-md: 16px;
+  --text-lg: 20px;
+  --text-xl: 24px;
+
+  /* 阴影层级 */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.25);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.35);
 }
 
 body {
@@ -91,6 +110,20 @@ body {
 .tab-btn.active {
   background: var(--primary);
   color: var(--text);
+}
+
+/* 键盘焦点可见性（可访问性） */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--secondary);
 }
 
 .auth-form {
@@ -229,6 +262,53 @@ body {
 .nav-user span {
   color: var(--text-secondary);
   font-size: 14px;
+}
+
+/* 统一主导航（#app-navbar） */
+.app-navbar {
+  flex-wrap: wrap;
+  gap: 12px;
+  position: relative;
+}
+
+.app-navbar.hidden {
+  display: none !important;
+}
+
+.nav-brand-row {
+  display: flex;
+  flex: 1;
+  justify-content: space-between;
+  align-items: center;
+  min-width: 0;
+}
+
+.nav-menu-wrap {
+  display: flex;
+  flex: 1;
+  justify-content: flex-end;
+  align-items: center;
+  gap: var(--space-4, 24px);
+  flex-wrap: wrap;
+}
+
+.nav-menu-toggle {
+  display: none;
+  width: 44px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-light);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  color: var(--text);
+}
+
+.nav-menu-toggle::before {
+  content: "☰";
+  font-size: 22px;
+  line-height: 1;
 }
 
 /* 容器样式 */
@@ -585,11 +665,46 @@ body {
 }
 
 .chart-container {
-  height: 200px;
+  min-height: 200px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: var(--text-secondary);
+}
+
+.forgetting-curve-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  height: 180px;
+  padding: 16px 0;
+}
+
+.curve-bar-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.curve-bar {
+  width: 100%;
+  min-height: 4px;
+  background: linear-gradient(180deg, var(--primary), var(--secondary));
+  border-radius: 4px 4px 0 0;
+  transition: height 0.3s;
+}
+
+.curve-label {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.curve-value {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--primary);
 }
 
 .records-list {
@@ -631,14 +746,45 @@ body {
 
 /* 响应式设计 */
 @media (max-width: 768px) {
-  .navbar {
+  .app-navbar {
     flex-direction: column;
-    gap: 16px;
+    align-items: stretch;
+  }
+
+  .nav-menu-toggle {
+    display: flex;
+  }
+
+  .nav-menu-wrap {
+    display: none;
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+    padding: var(--space-3, 16px);
+    background: var(--surface-light);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+  }
+
+  .nav-menu-wrap.nav-menu-wrap--open {
+    display: flex;
   }
 
   .nav-menu {
+    flex-direction: column;
     width: 100%;
-    justify-content: center;
+    gap: var(--space-2, 8px);
+  }
+
+  .nav-user {
+    justify-content: space-between;
+    border-top: 1px solid var(--border);
+    padding-top: var(--space-3, 16px);
+  }
+
+  .navbar:not(.app-navbar) {
+    flex-direction: row;
+    justify-content: space-between;
   }
 
   .stats-grid {
@@ -736,6 +882,46 @@ body {
 /* 翻译题样式 */
 .translation-section {
   margin-top: 30px;
+}
+
+/* 拼写题样式 */
+.spelling-section {
+  margin-top: 30px;
+}
+
+.spelling-prompt {
+  margin-bottom: 20px;
+  padding: 16px 20px;
+  background: var(--surface-light);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+}
+
+.spelling-prompt p {
+  margin: 0 0 8px;
+  font-size: 18px;
+  color: var(--text);
+}
+
+.spelling-prompt p:last-child {
+  margin-bottom: 0;
+}
+
+.phonetic-hint {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.spelling-section .answer-section {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.spelling-section .answer-section input {
+  flex: 1;
+  min-width: 200px;
 }
 
 /* 浏览模式样式 */

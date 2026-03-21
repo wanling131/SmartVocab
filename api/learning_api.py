@@ -6,6 +6,8 @@
 from flask import Blueprint, request
 from core.vocabulary.vocabulary_learning_manager import VocabularyLearningManager
 from core.learning.learning_record_manager import LearningRecordManager
+from core.forgetting_curve.forgetting_curve_manager import ForgettingCurveManager
+from config import LEARNING_PARAMS
 from .utils import APIResponse, handle_api_error
 
 # 创建蓝图
@@ -14,6 +16,7 @@ learning_bp = Blueprint('learning', __name__, url_prefix='/api/learning')
 # 初始化管理器
 vocabulary_manager = VocabularyLearningManager()
 learning_record_manager = LearningRecordManager()
+forgetting_curve_manager = ForgettingCurveManager()
 
 @learning_bp.route('/progress/<int:user_id>', methods=['GET'])
 @handle_api_error
@@ -39,3 +42,12 @@ def get_learning_records(user_id):
     
     records = learning_record_manager.get_user_learning_records(user_id, limit, offset)
     return APIResponse.success(records, "获取学习记录成功")
+
+
+@learning_bp.route('/forgetting-curve/<int:user_id>', methods=['GET'])
+@handle_api_error
+def get_forgetting_curve(user_id):
+    """获取遗忘曲线数据（未来N天复习计划）"""
+    days = request.args.get('days', LEARNING_PARAMS.get("days_trend_analysis", 7), type=int)
+    curve_data = forgetting_curve_manager.get_forgetting_curve_data(user_id, days)
+    return APIResponse.success(curve_data, "获取遗忘曲线数据成功")

@@ -2,186 +2,162 @@
 
 ## 项目简介
 
-SmartVocab是一个基于深度学习的智能英语词汇学习推荐系统，旨在通过个性化推荐算法提升用户的学习效率和词汇掌握程度。系统采用双塔神经网络模型，结合用户学习历史和遗忘曲线理论，为用户提供个性化的词汇学习推荐。
+SmartVocab 是一个基于深度学习的智能英语词汇学习推荐系统，旨在通过个性化推荐算法提升用户的学习效率和词汇掌握程度。系统采用双塔神经网络模型，结合用户学习历史与遗忘曲线理论，提供词汇学习、复习、评测、学习计划与闯关模式等功能。
 
 ## 主要功能
 
-### 🧠 智能推荐系统
-- **深度学习推荐**：基于PyTorch的双塔神经网络模型，推荐准确率达85%
-- **个性化推荐**：结合用户学习历史、难度偏好、学习模式等多维度特征
-- **多算法融合**：集成深度学习、协同过滤、基于内容的推荐算法
+### 智能推荐与学习
+- **深度学习推荐**：基于 PyTorch 的双塔神经网络模型（可选，不可用时回退传统推荐）
+- **多算法融合**：难度、词频、学习历史、深度学习、随机探索等
+- **多题型**：选择题、翻译题、拼写题；混合学习与复习会话
 
-### 📚 学习管理系统
-- **学习进度跟踪**：实时跟踪用户学习进度和掌握程度
-- **智能复习计划**：基于艾宾浩斯遗忘曲线自动生成复习计划
-- **多题型支持**：支持选择题、翻译题、拼写题等多种学习模式
+### 业务模块（REST API）
+- **用户认证**：注册、登录、`/api/auth/profile` 个人信息
+- **词汇**：学习会话、词库批量导入/导出（`/api/vocabulary/import`、`/api/vocabulary/export`）
+- **学习记录与统计**：进度、记录、遗忘曲线 `/api/learning/forgetting-curve/<user_id>`
+- **推荐**：`/api/recommendations/...`
+- **学习计划**：`/api/plans`（CRUD、当前生效计划）
+- **评测**：`/api/evaluation/start|submit|history`
+- **闯关**：`/api/levels/gates|progress|unlock`
+- **健康检查**：`/api/health`（便于部署与演示）
 
-### 📊 数据分析与可视化
-- **学习统计**：提供详细的学习数据分析和可视化图表
-- **掌握程度评估**：基于答题类型和正确率的动态评估算法
-- **学习效果分析**：多维度分析用户学习效果和进步情况
+### 数据分析
+- 学习统计、最近记录、未来多日复习计划柱状图（统计页）
 
 ## 技术架构
 
-### 后端技术栈
-- **深度学习框架**：PyTorch
-- **Web框架**：Flask
-- **数据库**：MySQL
-- **机器学习库**：scikit-learn, numpy, pandas
-- **API设计**：RESTful API
+| 层级 | 技术 |
+|------|------|
+| Web | Flask + Blueprint，CORS |
+| 数据库 | MySQL，连接池（`tools/database.py`） |
+| 深度学习 | PyTorch（可选） |
+| 前端 | 原生 HTML/CSS/JS（`frontend/`），可按模块拆分 |
 
-### 前端技术栈
-- **前端框架**：原生HTML5/CSS3/JavaScript
-- **UI设计**：响应式设计，支持多设备访问
-- **数据可视化**：Canvas图表展示学习数据
-
-### 核心算法
-- **双塔模型**：单词特征编码器 + 用户特征编码器
-- **特征工程**：20维单词特征 + 15维用户特征
-- **推荐算法**：深度学习推荐 + 传统推荐算法
-- **遗忘曲线**：基于艾宾浩斯遗忘曲线的复习计划
-
-## 项目结构
+## 项目结构（节选）
 
 ```
 SmartVocab/
-├── api/                    # API接口模块
-│   ├── auth_api.py        # 用户认证API
-│   ├── learning_api.py    # 学习记录API
-│   ├── recommendation_api.py # 推荐系统API
-│   └── vocabulary_api.py  # 词汇管理API
-├── core/                  # 核心业务逻辑
-│   ├── auth/             # 用户认证模块
-│   ├── learning/         # 学习记录管理
-│   ├── recommendation/   # 推荐系统
-│   └── vocabulary/       # 词汇学习管理
-├── data/                 # 数据文件
-│   ├── dataset.csv       # 词汇数据集
-│   ├── cet4_dataset.csv  # CET4词汇
-│   ├── cet6_dataset.csv  # CET6词汇
-│   ├── toefl_dataset.csv # TOEFL词汇
-│   └── gre_dataset.csv   # GRE词汇
-├── frontend/             # 前端文件
-│   ├── index.html        # 主页面
-│   ├── styles.css        # 样式文件
-│   └── app.js           # 前端逻辑
-├── models/               # 训练好的模型文件
-├── tools/                # 工具类
-│   ├── database.py       # 数据库连接
-│   ├── base_crud.py      # 基础CRUD操作
-│   └── *_crud.py         # 各模块CRUD操作
-├── config.py             # 配置文件
-├── main.py               # 主程序入口
-└── requirements.txt      # 依赖包列表
+├── api/
+│   ├── api_launcher.py      # 主入口：注册全部蓝图与静态前端
+│   ├── health_api.py        # GET /api/health、/api/health/db
+│   ├── auth_api.py
+│   ├── vocabulary_api.py
+│   ├── learning_api.py
+│   ├── recommendation_api.py
+│   ├── plans_api.py
+│   ├── evaluation_api.py
+│   ├── levels_api.py
+│   └── api_router_backup.py # 旧版单文件路由备份（已弃用）
+├── core/
+│   ├── auth/
+│   ├── learning/
+│   ├── vocabulary/
+│   ├── forgetting_curve/
+│   ├── evaluation/
+│   └── recommendation/
+├── tools/
+│   ├── database.py
+│   ├── migrate_db.py        # 数据库建表/升级迁移辅助
+│   ├── base_crud.py
+│   └── *_crud.py
+├── frontend/
+│   ├── index.html
+│   ├── styles.css
+│   ├── main.js              # 应用入口（ES module）
+│   └── js/
+│       └── api-client.js    # API 请求封装
+├── tests/
+│   ├── conftest.py
+│   └── test_health.py       # 健康检查（需 pip install -r requirements.txt）
+├── automation/              # 自动化自检脚本（可选，可整体删除）
+│   ├── README.md
+│   └── smoke_check.py
+├── 文档/
+│   ├── 数据库建表脚本.sql
+│   ├── 数据库升级迁移脚本.sql
+│   └── 开发与部署说明.md
+├── config.py                # APP_CONFIG、学习参数；支持环境变量与 LOG_LEVEL
+├── wsgi.py                  # Gunicorn 入口：`gunicorn wsgi:app`
+├── Dockerfile               # 生产镜像（Gunicorn + APP_ENV=production）
+├── docker-compose.yml       # MySQL + 应用（需配置 SECRET_KEY、DB_* 等）
+├── .env.example             # 环境变量示例（复制为 .env）
+├── main.py                  # 开发启动：configure_logging + 数据库检查 + API
+└── requirements.txt
 ```
+
+## 环境变量
+
+复制 [.env.example](.env.example) 为 `.env` 并按需修改：
+
+| 变量 | 说明 |
+|------|------|
+| `APP_HOST` / `APP_PORT` / `APP_DEBUG` | 服务监听与调试 |
+| `APP_ENV` / `APP_PRODUCTION` | `production`/`staging` 等表示生产模式（收紧默认行为） |
+| `SECRET_KEY` | Flask 会话等签名；**生产必须**设置强随机值 |
+| `LOG_LEVEL` | `DEBUG` / `INFO` / `WARNING` 等 |
+| `CORS_ORIGINS` | 逗号分隔的前端 Origin；生产勿用 `*` |
+| `EXPOSE_ERROR_DETAILS` | API 是否返回异常详情（生产建议 `false`） |
+| `MAX_CONTENT_LENGTH_MB` | 请求体大小上限（默认 16） |
+| `ENABLE_HSTS` | 全站 HTTPS 时在反向代理后可选启用 HSTS |
+| `DB_HOST` / `DB_USER` / `DB_PASSWORD` / `DB_NAME` | MySQL（与 `tools/database.py` 一致） |
 
 ## 安装与运行
 
 ### 环境要求
 - Python 3.8+
 - MySQL 5.7+
-- 推荐使用虚拟环境
 
-### 安装步骤
+### 步骤
 
-1. **克隆项目**
-```bash
-git clone https://gitee.com/your-username/SmartVocab.git
-cd SmartVocab
-```
-
-2. **安装依赖**
+1. **安装依赖**
 ```bash
 pip install -r requirements.txt
 ```
 
-3. **配置数据库**
-- 创建MySQL数据库
-- 修改`config.py`中的数据库配置
-- 运行数据库初始化脚本
+2. **数据库**
+- 创建数据库（如 `smartvocab`）
+- 执行 `文档/数据库建表脚本.sql` 与 `文档/数据库升级迁移脚本.sql`，或使用 `python tools/migrate_db.py`（若项目已提供）
 
-4. **启动服务**
+3. **配置**
+- 使用 `.env` 配置数据库与日志（见上表）
+
+4. **启动**
 ```bash
 python main.py
 ```
 
-5. **访问系统**
-- 打开浏览器访问：http://localhost:5000
-- 注册新用户或使用测试账号登录
+5. **访问**
+- 浏览器打开 `http://localhost:5000`（端口以 `APP_PORT` 为准）
 
-## 使用说明
+### 生产环境（Gunicorn）
 
-### 用户注册与登录
-1. 访问系统首页，点击"注册"按钮
-2. 填写用户名、邮箱（可选）、密码
-3. 注册成功后自动登录
+安装依赖后使用 `wsgi.py` 作为入口（见 `requirements.txt` 中的 `gunicorn`）：
 
-### 开始学习
-1. 在首页选择"新词学习"
-2. 设置难度等级和单词数量
-3. 选择题型（选择题、翻译题或混合）
-4. 点击"开始学习"进入学习界面
+```bash
+set APP_ENV=production
+set SECRET_KEY=你的强随机密钥
+gunicorn -w 4 -b 0.0.0.0:5000 --timeout 120 wsgi:app
+```
 
-### 智能推荐
-1. 系统会根据用户学习历史自动推荐适合的单词
-2. 推荐算法结合用户掌握程度和学习偏好
-3. 支持手动刷新推荐内容
+（Linux/macOS 可用 `export` 设置环境变量。）建议在反向代理（Nginx 等）后终止 **HTTPS**，并配置 `CORS_ORIGINS` 为实际前端域名。
 
-### 复习模式
-1. 点击"复习模式"开始复习
-2. 系统基于遗忘曲线自动安排复习计划
-3. 优先复习掌握程度较低的单词
+### Docker Compose
 
-### 学习统计
-1. 在统计页面查看学习进度
-2. 支持查看不同时间段的学习数据
-3. 可视化展示学习效果和进步情况
+1. 复制 `.env.example` 为 `.env`，设置 `SECRET_KEY`、`DB_*`（与 `docker-compose.yml` 中 MySQL 一致）。
+2. **先**在数据库中执行建表与迁移脚本（见下文「数据库」），或使用已初始化的 MySQL 数据卷。
+3. 在项目根目录执行：`docker compose up -d --build`
 
-## 核心算法说明
+更完整的上线自检见 [文档/生产部署与商用检查清单.md](文档/生产部署与商用检查清单.md)。
 
-### 双塔神经网络模型
-- **单词特征编码器**：处理单词的难度、词频、词性等特征
-- **用户特征编码器**：处理用户的学习历史、偏好等特征
-- **特征融合层**：将两个编码器的输出进行融合，预测掌握程度
+## 开发说明
 
-### 个性化推荐算法
-1. **特征提取**：从用户学习记录中提取多维特征
-2. **模型训练**：使用深度学习模型训练推荐算法
-3. **实时推荐**：根据用户当前状态生成个性化推荐
-
-### 遗忘曲线复习计划
-1. **掌握程度评估**：基于答题正确率和题型难度评估掌握程度
-2. **复习间隔计算**：根据艾宾浩斯遗忘曲线计算复习间隔
-3. **优先级排序**：综合考虑掌握程度和时间因素确定复习优先级
-
-## 性能指标
-
-- **推荐准确率**：85%+
-- **系统响应时间**：<200ms
-- **并发用户支持**：1000+
-- **用户学习效率提升**：35%
-- **词汇掌握率提升**：40%
-
-## 开发团队
-
-- **项目负责人**：[您的姓名]
-- **开发时间**：2024年6月-2024年9月
-- **技术栈**：Python, PyTorch, Flask, MySQL, JavaScript
+- **日志**：`main.py` 启动时调用 `configure_logging()`，业务代码请使用 `logging.getLogger(__name__)`，避免随意 `print`。
+- **旧路由**：`api_router_backup.py` 仅作历史参考，新接口以 `api_launcher` 注册的 Blueprint 为准。
+- **测试**：安装依赖后执行 `python -m pytest tests/ -v`（需已安装 Flask 等依赖）。
+- **自动化自检**（可选）：`python automation/smoke_check.py --quick`（全量自检去掉 `--quick`，并含智能推荐模块自检）；不需要时删除 `automation/` 文件夹即可。若 `pip install` 后 `test_client` 报错，请确认已安装 `requirements.txt` 中的 `werkzeug<3`。
+- **详细文档**：见 [文档/开发与部署说明.md](文档/开发与部署说明.md)、[文档/生产部署与商用检查清单.md](文档/生产部署与商用检查清单.md)。
+- **功能与论文对照**：[文档/系统功能与实现对照.md](文档/系统功能与实现对照.md)（系统性与答辩口径说明）。
 
 ## 许可证
 
-本项目采用 MIT 许可证 - 查看 [LICENSE](LICENSE) 文件了解详情
-
-## 贡献指南
-
-欢迎提交 Issue 和 Pull Request 来改进项目！
-
-## 联系方式
-
-如有问题或建议，请通过以下方式联系：
-- 邮箱：[your-email@example.com]
-- GitHub：[your-github-username]
-
----
-
-**注意**：本项目仅用于学习和研究目的，请勿用于商业用途。
+本项目仅用于学习与研究目的时，请遵守相应许可与学校规定。

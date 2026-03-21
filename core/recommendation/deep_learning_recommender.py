@@ -5,6 +5,8 @@
 
 import sys
 import os
+import logging
+
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 import numpy as np
@@ -32,6 +34,14 @@ from tools.recommendations_crud import RecommendationsCRUD
 
 # 导入配置常量
 from config import LEARNING_PARAMS
+
+logger = logging.getLogger(__name__)
+
+
+def _skip_heavy_dl_init() -> bool:
+    """自动化自检或单元测试时可设 SMARTVOCAB_SKIP_DL_INIT=1，跳过模型加载与自动训练（避免耗时）。"""
+    return os.environ.get("SMARTVOCAB_SKIP_DL_INIT", "").strip().lower() in ("1", "true", "yes", "on")
+
 
 # 训练参数常量
 MIN_TRAINING_RECORDS = LEARNING_PARAMS["min_training_records"]
@@ -152,13 +162,15 @@ class DeepLearningRecommendationEngine:
             self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
             print(f"使用设备: {self.device}")
             
-            # 启动时只加载通用模型
-            self._try_load_model()
-            
-            # 如果没有已训练的模型，尝试自动训练
-            if not self.is_trained:
-                print("未找到已训练的模型，尝试自动训练...")
-                self._auto_train_model()
+            if _skip_heavy_dl_init():
+                logger.info("SMARTVOCAB_SKIP_DL_INIT 已启用：跳过深度学习模型加载与自动训练（推荐将回退传统策略）")
+            else:
+                # 启动时只加载通用模型
+                self._try_load_model()
+                # 如果没有已训练的模型，尝试自动训练
+                if not self.is_trained:
+                    print("未找到已训练的模型，尝试自动训练...")
+                    self._auto_train_model()
         else:
             print("使用传统推荐算法")
         
@@ -193,22 +205,22 @@ class DeepLearningRecommendationEngine:
         for i, model_path in enumerate(model_paths, 1):
             try:
                 if os.path.exists(model_path):
-                    print(f"✓ 找到模型文件: {model_path}")
+                    print(f"[OK] 找到模型文件: {model_path}")
                     success = self.load_model(model_path)
                     if success:
                         model_type = "用户特定" if user_id and f"user_{user_id}" in model_path else "通用"
-                        print(f"✓ 成功加载{model_type}模型: {model_path}")
+                        print(f"[OK] 成功加载{model_type}模型: {model_path}")
                         print(f"=== 模型加载完成 ===")
                         return True
                     else:
-                        print(f"✗ 模型文件存在但加载失败: {model_path}")
+                        print(f"[FAIL] 模型文件存在但加载失败: {model_path}")
                 else:
-                    print(f"✗ 模型文件不存在: {model_path}")
+                    print(f"[FAIL] 模型文件不存在: {model_path}")
             except Exception as e:
-                print(f"✗ 加载模型异常 {model_path}: {str(e)}")
+                print(f"[FAIL] 加载模型异常 {model_path}: {str(e)}")
                 continue
         
-        print(f"✗ 所有模型路径都加载失败")
+        print("[FAIL] 所有模型路径都加载失败")
         print(f"=== 模型加载结束 ===")
         return False
     
@@ -803,7 +815,11 @@ class DeepLearningRecommendationEngine:
             return False
         
         try:
-            checkpoint = torch.load(filepath, map_location=self.device)
+            # PyTorch 2.6+ 默认 weights_only=True，旧 checkpoint 需显式关闭（本地可信模型文件）
+            try:
+                checkpoint = torch.load(filepath, map_location=self.device, weights_only=False)
+            except TypeError:
+                checkpoint = torch.load(filepath, map_location=self.device)
             
             self.word_features = checkpoint['word_features']
             self.user_features = checkpoint['user_features']
@@ -840,7 +856,7 @@ def main():
     
     # 检查PyTorch是否可用
     if not TORCH_AVAILABLE:
-        print("❌ PyTorch未安装，请安装: pip install torch")
+        print("[FAIL] PyTorch未安装，请安装: pip install torch")
         print("将使用传统推荐算法")
         return
     

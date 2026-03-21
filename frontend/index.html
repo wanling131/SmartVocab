@@ -54,20 +54,29 @@
         </div>
     </div>
 
-    <!-- 主控制台页面 -->
-    <div id="dashboard-page" class="page">
-        <nav class="navbar">
+    <!-- 全局主导航（除登录页、学习页外共用） -->
+    <nav id="app-navbar" class="navbar app-navbar hidden" aria-label="主导航">
+        <div class="nav-brand-row">
             <div class="nav-brand">SmartVocab</div>
+            <button type="button" id="nav-menu-toggle" class="nav-menu-toggle" aria-expanded="false" aria-controls="app-nav-menu" aria-label="打开菜单"></button>
+        </div>
+        <div id="app-nav-menu" class="nav-menu-wrap">
             <div class="nav-menu">
                 <a href="#" class="nav-link active" data-page="dashboard">首页</a>
+                <a href="#" class="nav-link" data-page="plans">学习计划</a>
+                <a href="#" class="nav-link" data-page="levels">闯关模式</a>
+                <a href="#" class="nav-link" data-page="evaluation">等级测试</a>
                 <a href="#" class="nav-link" data-page="statistics">统计</a>
             </div>
             <div class="nav-user">
                 <span id="username-display"></span>
-                <button id="logout-btn" class="btn btn-secondary">退出</button>
+                <button type="button" id="logout-btn" class="btn btn-secondary">退出</button>
             </div>
-        </nav>
+        </div>
+    </nav>
 
+    <!-- 主控制台页面 -->
+    <div id="dashboard-page" class="page">
         <div class="container">
             <section class="progress-section">
                 <h2>学习进度</h2>
@@ -137,6 +146,7 @@
                                 <option value="mixed">混合题型（选择题+翻译题）</option>
                                 <option value="choice">仅选择题</option>
                                 <option value="translation">仅翻译题</option>
+                                <option value="spelling">仅拼写题</option>
                             </select>
                         </div>
                         <button id="start-learning-btn" class="btn btn-primary">开始学习</button>
@@ -195,6 +205,18 @@
                         </div>
                     </div>
 
+                    <!-- 拼写题界面 -->
+                    <div id="spelling-section" class="spelling-section hidden">
+                        <div class="spelling-prompt">
+                            <p id="spelling-question-text"></p>
+                            <p id="spelling-phonetic-hint" class="phonetic-hint"></p>
+                        </div>
+                        <div class="answer-section">
+                            <input type="text" id="spelling-answer-input" placeholder="请输入英文单词" autocomplete="off">
+                            <button id="spelling-submit-btn" class="btn btn-primary">提交答案</button>
+                        </div>
+                    </div>
+
                     <div id="feedback-section" class="feedback-section hidden">
                         <div id="feedback-message" class="feedback-message"></div>
                         <div id="correct-answer" class="correct-answer"></div>
@@ -215,18 +237,6 @@
     </div>
 
     <div id="statistics-page" class="page">
-        <nav class="navbar">
-            <div class="nav-brand">SmartVocab</div>
-            <div class="nav-menu">
-                <a href="#" class="nav-link" data-page="dashboard">首页</a>
-                <a href="#" class="nav-link active" data-page="statistics">统计</a>
-            </div>
-            <div class="nav-user">
-                <span id="username-display-stats"></span>
-                <button id="logout-btn-stats" class="btn btn-secondary">退出</button>
-            </div>
-        </nav>
-
         <div class="container">
             <h2>学习统计</h2>
             
@@ -265,6 +275,77 @@
         </div>
     </div>
 
-    <script src="app.js"></script>
+    <!-- 学习计划页面 -->
+    <div id="plans-page" class="page">
+        <div class="container">
+            <h2>学习计划</h2>
+            <div class="option-card">
+                <h3>当前生效计划</h3>
+                <div id="active-plan-display">加载中...</div>
+            </div>
+            <div class="option-card">
+                <h3>创建/修改计划</h3>
+                <div class="form-group">
+                    <label>词库</label>
+                    <select id="plan-dataset">
+                        <option value="cet4">CET4</option>
+                        <option value="cet6">CET6</option>
+                        <option value="toefl">托福</option>
+                        <option value="ielts">雅思</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>每日新学</label>
+                    <input type="number" id="plan-daily-new" value="20" min="5" max="100">
+                </div>
+                <div class="form-group">
+                    <label>每日复习</label>
+                    <input type="number" id="plan-daily-review" value="20" min="5" max="100">
+                </div>
+                <button id="create-plan-btn" class="btn btn-primary">创建计划</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 闯关模式页面 -->
+    <div id="levels-page" class="page">
+        <div class="container">
+            <h2>闯关模式</h2>
+            <div id="levels-gates-list" class="recommendations-grid">
+                加载中...
+            </div>
+        </div>
+    </div>
+
+    <!-- 等级测试页面 -->
+    <div id="evaluation-page" class="page">
+        <div class="container">
+            <h2>等级测试</h2>
+            <div id="evaluation-start" class="option-card">
+                <p>测试你的词汇水平，获得个性化学习建议</p>
+                <div class="form-group">
+                    <label>题目数量</label>
+                    <input type="number" id="eval-question-count" value="10" min="5" max="30">
+                </div>
+                <button id="start-eval-btn" class="btn btn-primary">开始测试</button>
+            </div>
+            <div id="evaluation-test" class="hidden">
+                <div class="learning-container">
+                    <div id="eval-progress">0/0</div>
+                    <div id="eval-questions-container"></div>
+                    <button id="submit-eval-btn" class="btn btn-primary">提交答卷</button>
+                </div>
+            </div>
+            <div id="evaluation-result" class="hidden option-card">
+                <h3>测试结果</h3>
+                <p>得分: <span id="eval-score">0</span>%</p>
+                <p>正确: <span id="eval-correct">0</span>/<span id="eval-total">0</span></p>
+                <p>评测水平: <span id="eval-level">-</span></p>
+                <button id="eval-again-btn" class="btn btn-primary">再次测试</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="main.js"></script>
 </body>
 </html>
