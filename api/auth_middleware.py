@@ -11,10 +11,12 @@ from flask import request, jsonify
 
 import jwt
 
+from config import APP_CONFIG
+
 logger = logging.getLogger(__name__)
 
 # JWT 配置
-JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY', 'smartvocab-jwt-secret-key-change-in-production')
+JWT_SECRET_KEY = (os.getenv('JWT_SECRET_KEY') or 'smartvocab-jwt-secret-key-change-in-production').strip()
 JWT_EXPIRATION_HOURS = int(os.getenv('JWT_EXPIRATION_HOURS', '24'))
 JWT_ALGORITHM = 'HS256'
 
@@ -25,9 +27,8 @@ WEAK_KEYS = {
     'secret', 'jwt-secret', 'test', 'dev', 'development'
 }
 
-# 生产环境校验
-APP_ENV = os.getenv('APP_ENV', 'development')
-if APP_ENV == 'production':
+# 与 config.APP_CONFIG 一致：production / staging 等均视为生产模式，禁止弱 JWT 密钥
+if APP_CONFIG.get('production'):
     if not JWT_SECRET_KEY or JWT_SECRET_KEY in WEAK_KEYS or len(JWT_SECRET_KEY) < 32:
         raise ValueError(
             "生产环境必须设置安全的 JWT_SECRET_KEY 环境变量 "

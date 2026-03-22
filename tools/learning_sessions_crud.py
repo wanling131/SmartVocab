@@ -127,6 +127,21 @@ class LearningSessionsCRUD(BaseCRUD):
             finally:
                 cursor.close()
     
+    def get_by_id(self, session_id: int):
+        """
+        按主键读取会话（用于校验 session 归属）。
+        """
+        query = "SELECT * FROM learning_sessions WHERE id = %s"
+        row = self.execute_query(query, (session_id,), fetch_one=True)
+        if not row:
+            return None
+        if isinstance(row.get('session_data'), str):
+            try:
+                row['session_data'] = json.loads(row['session_data'])
+            except json.JSONDecodeError:
+                row['session_data'] = {}
+        return row
+
     def get_active_session(self, user_id, session_type="learning"):
         """
         获取用户的活跃会话

@@ -125,6 +125,15 @@ def _check_get_api(resp, name: str) -> tuple[bool, str]:
     return False, f"{name} success!=True: {data!r}"
 
 
+def _check_protected_get(resp, name: str) -> tuple[bool, str]:
+    """
+    需 JWT 的接口：未带 Token 时返回 401 视为正常（路由存在且已保护）。
+    """
+    if resp.status_code == 401:
+        return True, f"{name} OK (需登录)"
+    return _check_get_api(resp, name)
+
+
 def run_checks(quick: bool, allow_db_fail: bool) -> tuple[list[str], list[str]]:
     """返回 (passed_messages, failed_messages)。"""
     client = _make_client()
@@ -171,27 +180,32 @@ def run_checks(quick: bool, allow_db_fail: bool) -> tuple[list[str], list[str]]:
 
     uid = 1
 
-    checks: list[tuple[str, Callable]] = [
-        ("GET /api/levels/gates", lambda: client.get("/api/levels/gates")),
-        (f"GET /api/recommendations/{uid}", lambda: client.get(f"/api/recommendations/{uid}")),
-        (f"GET /api/learning/progress/{uid}", lambda: client.get(f"/api/learning/progress/{uid}")),
-        (f"GET /api/learning/statistics/{uid}", lambda: client.get(f"/api/learning/statistics/{uid}")),
-        (f"GET /api/learning/records/{uid}", lambda: client.get(f"/api/learning/records/{uid}")),
+    # (名称, 请求, 是否需登录) — 公开接口用 _check_get_api，其余允许 401
+    checks: list[tuple[str, Callable, bool]] = [
+        ("GET /api/levels/gates", lambda: client.get("/api/levels/gates"), False),
+        (f"GET /api/recommendations/{uid}", lambda: client.get(f"/api/recommendations/{uid}"), True),
+        (f"GET /api/learning/progress/{uid}", lambda: client.get(f"/api/learning/progress/{uid}"), True),
+        (f"GET /api/learning/statistics/{uid}", lambda: client.get(f"/api/learning/statistics/{uid}"), True),
+        (f"GET /api/learning/records/{uid}", lambda: client.get(f"/api/learning/records/{uid}"), True),
         (
             f"GET /api/learning/forgetting-curve/{uid}",
             lambda: client.get(f"/api/learning/forgetting-curve/{uid}"),
+            True,
         ),
-        (f"GET /api/plans/{uid}", lambda: client.get(f"/api/plans/{uid}")),
-        (f"GET /api/plans/{uid}/active", lambda: client.get(f"/api/plans/{uid}/active")),
-        (f"GET /api/evaluation/history/{uid}", lambda: client.get(f"/api/evaluation/history/{uid}")),
-        (f"GET /api/levels/progress/{uid}", lambda: client.get(f"/api/levels/progress/{uid}")),
-        ("GET /api/vocabulary/export", lambda: client.get("/api/vocabulary/export?format=json&limit=5")),
+        (f"GET /api/plans/{uid}", lambda: client.get(f"/api/plans/{uid}"), True),
+        (f"GET /api/plans/{uid}/active", lambda: client.get(f"/api/plans/{uid}/active"), True),
+        (f"GET /api/evaluation/history/{uid}", lambda: client.get(f"/api/evaluation/history/{uid}"), True),
+        (f"GET /api/levels/progress/{uid}", lambda: client.get(f"/api/levels/progress/{uid}"), True),
+        ("GET /api/vocabulary/export", lambda: client.get("/api/vocabulary/export?format=json&limit=5"), True),
     ]
 
-    for name, fn in checks:
+    for name, fn, need_auth in checks:
         try:
             resp = fn()
-            o, msg = _check_get_api(resp, name)
+            if need_auth:
+                o, msg = _check_protected_get(resp, name)
+            else:
+                o, msg = _check_get_api(resp, name)
             if o:
                 ok(msg)
             else:

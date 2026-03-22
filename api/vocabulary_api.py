@@ -11,6 +11,7 @@ from core.vocabulary.vocabulary_learning_manager import VocabularyLearningManage
 from tools.words_crud import WordsCRUD
 from config import LEARNING_PARAMS
 from .utils import APIResponse, handle_api_error
+from .auth_middleware import require_auth, get_current_user
 
 # 创建蓝图
 vocabulary_bp = Blueprint('vocabulary', __name__, url_prefix='/api/vocabulary')
@@ -19,8 +20,28 @@ vocabulary_bp = Blueprint('vocabulary', __name__, url_prefix='/api/vocabulary')
 vocabulary_manager = VocabularyLearningManager()
 words_crud = WordsCRUD()
 
+
+def _check_user_access(user_id) -> bool:
+    """当前登录用户与请求中的 user_id 是否一致。"""
+    current = get_current_user()
+    if not current:
+        return False
+    try:
+        return int(current.get('user_id')) == int(user_id)
+    except (TypeError, ValueError):
+        return False
+
+
+def _session_info_matches_user(session_info) -> bool:
+    """会话 JSON 中的 user_id 是否与当前登录用户一致。"""
+    if not session_info or not isinstance(session_info, dict):
+        return False
+    return _check_user_access(session_info.get('user_id'))
+
+
 @vocabulary_bp.route('/start-session', methods=['POST'])
 @handle_api_error
+@require_auth
 def start_learning_session():
     """开始学习会话"""
     data = request.get_json()
@@ -31,7 +52,9 @@ def start_learning_session():
     
     if not user_id:
         return APIResponse.error('用户ID不能为空', 400)
-    
+    if not _check_user_access(user_id):
+        return APIResponse.error('无权访问', 403)
+
     result = vocabulary_manager.start_learning_session(user_id, difficulty_level, word_count, question_type)
     if result['success']:
         return APIResponse.success(result.get('session_info'), result['message'])
@@ -40,6 +63,7 @@ def start_learning_session():
 
 @vocabulary_bp.route('/current-word', methods=['POST'])
 @handle_api_error
+@require_auth
 def get_current_word():
     """获取当前学习的单词"""
     data = request.get_json()
@@ -47,7 +71,9 @@ def get_current_word():
     
     if not session_info:
         return APIResponse.error('会话信息不能为空', 400)
-    
+    if not _session_info_matches_user(session_info):
+        return APIResponse.error('无权访问该会话', 403)
+
     word_info = vocabulary_manager.get_current_word(session_info)
     if word_info:
         return APIResponse.success(word_info, "获取单词成功")
@@ -56,6 +82,7 @@ def get_current_word():
 
 @vocabulary_bp.route('/submit-answer', methods=['POST'])
 @handle_api_error
+@require_auth
 def submit_answer():
     """提交答案"""
     data = request.get_json()
@@ -70,7 +97,11 @@ def submit_answer():
     
     if not all([user_id, word_id, user_answer, correct_answer]):
         return APIResponse.error('所有字段都不能为空', 400)
-    
+    if not _check_user_access(user_id):
+        return APIResponse.error('无权访问', 403)
+    if session_info and not _session_info_matches_user(session_info):
+        return APIResponse.error('无权访问该会话', 403)
+
     result = vocabulary_manager.submit_answer(
         user_id, word_id, user_answer, correct_answer, response_time, question_type, mastery_override, session_info
     )
@@ -81,10 +112,13 @@ def submit_answer():
 
 @vocabulary_bp.route('/active-session/<int:user_id>', methods=['GET'])
 @handle_api_error
+@require_auth
 def get_active_session(user_id):
     """获取用户的活跃学习会话"""
+    if not _check_user_access(user_id):
+        return APIResponse.error('无权访问', 403)
     session_type = request.args.get('session_type', 'learning')
-    
+
     result = vocabulary_manager.get_active_session(user_id, session_type)
     if result['success']:
         return APIResponse.success(result['session_info'], result['message'])
@@ -93,6 +127,7 @@ def get_active_session(user_id):
 
 @vocabulary_bp.route('/finish-session', methods=['POST'])
 @handle_api_error
+@require_auth
 def finish_session():
     """完成学习会话"""
     data = request.get_json()
@@ -100,8 +135,18 @@ def finish_session():
     
     if not session_id:
         return APIResponse.error('会话ID不能为空', 400)
-    
-    success = vocabulary_manager.finish_session(session_id)
+    try:
+        sid = int(session_id)
+    except (TypeError, ValueError):
+        return APIResponse.error('会话ID无效', 400)
+
+    row = vocabulary_manager.learning_sessions_crud.get_by_id(sid)
+    if not row:
+        return APIResponse.error('会话不存在', 404)
+    if not _check_user_access(row.get('user_id')):
+        return APIResponse.error('无权访问', 403)
+
+    success = vocabulary_manager.finish_session(sid)
     if success:
         return APIResponse.success(None, "会话已完成")
     else:
@@ -109,6 +154,7 @@ def finish_session():
 
 @vocabulary_bp.route('/start-review-session', methods=['POST'])
 @handle_api_error
+@require_auth
 def start_review_session():
     data = request.get_json()
     user_id = data.get('user_id')
@@ -116,7 +162,9 @@ def start_review_session():
     
     if not user_id:
         return APIResponse.error('用户ID不能为空', 400)
-    
+    if not _check_user_access(user_id):
+        return APIResponse.error('无权访问', 403)
+
     result = vocabulary_manager.start_review_session(user_id, word_count)
     if result['success']:
         return APIResponse.success(result.get('session_info'), result['message'])
@@ -126,6 +174,7 @@ def start_review_session():
 
 @vocabulary_bp.route('/import', methods=['POST'])
 @handle_api_error
+@require_auth
 def import_words():
     """批量导入词库（JSON body）"""
     data = request.get_json()
@@ -160,6 +209,7 @@ def import_words():
 
 @vocabulary_bp.route('/export', methods=['GET'])
 @handle_api_error
+@require_auth
 def export_words():
     """导出词库"""
     dataset_type = request.args.get('dataset_type')
