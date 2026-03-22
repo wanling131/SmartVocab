@@ -8,6 +8,19 @@ export const API_BASE_URL = (() => {
   return `http://${window.location.hostname}:5000/api`
 })()
 
+// Token 管理
+export function getToken() {
+  return localStorage.getItem("auth_token")
+}
+
+export function setToken(token) {
+  localStorage.setItem("auth_token", token)
+}
+
+export function clearToken() {
+  localStorage.removeItem("auth_token")
+}
+
 function checkNetworkStatus() {
   if (!navigator.onLine) {
     return false
@@ -23,12 +36,19 @@ export async function apiRequest(endpoint, options = {}) {
   try {
     const url = `${API_BASE_URL}${endpoint}`
 
+    // 自动添加 Authorization header
+    const token = getToken()
+    const headers = {
+      "Content-Type": "application/json",
+      ...options.headers,
+    }
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`
+    }
+
     const response = await fetch(url, {
       ...options,
-      headers: {
-        "Content-Type": "application/json",
-        ...options.headers,
-      },
+      headers,
     })
 
     const contentType = response.headers.get("content-type") || ""
@@ -39,6 +59,15 @@ export async function apiRequest(endpoint, options = {}) {
       } catch {
         payload = null
       }
+    }
+
+    // 处理 401 未授权响应
+    if (response.status === 401) {
+      clearToken()
+      localStorage.removeItem("currentUser")
+      // 触发全局登出事件
+      window.dispatchEvent(new CustomEvent('auth:logout', { detail: { reason: 'token_expired' } }))
+      return { success: false, message: "登录已过期，请重新登录", error: "unauthorized" }
     }
 
     if (!response.ok) {

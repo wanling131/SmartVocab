@@ -6,6 +6,7 @@
 from flask import Blueprint, request
 from core.auth.user_auth import UserAuth
 from .utils import APIResponse, handle_api_error
+from .auth_middleware import generate_token, require_auth, get_current_user
 
 # 创建蓝图
 auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
@@ -21,13 +22,19 @@ def register():
     username = data.get('username')
     password = data.get('password')
     email = data.get('email')
-    
+
     if not username or not password:
         return APIResponse.error('用户名和密码不能为空', 400)
-    
+
     result = user_auth.register(username, password, email)
     if result['success']:
-        return APIResponse.success(result.get('user_id'), result['message'])
+        # 注册成功后自动生成 token
+        token = generate_token(result.get('user_id'), username)
+        return APIResponse.success({
+            'user_id': result.get('user_id'),
+            'username': username,
+            'token': token
+        }, result['message'])
     else:
         return APIResponse.error(result['message'], 400)
 
@@ -38,24 +45,45 @@ def login():
     data = request.get_json()
     username = data.get('username')
     password = data.get('password')
-    
+
     if not username or not password:
         return APIResponse.error('用户名和密码不能为空', 400)
-    
+
     result = user_auth.login(username, password)
     if result['success']:
+        # 生成 JWT token
+        token = generate_token(result.get('user_id'), username)
         return APIResponse.success({
             'user_id': result.get('user_id'),
-            'username': username
+            'username': username,
+            'token': token
         }, result['message'])
     else:
         return APIResponse.error(result['message'], 401)
 
 
+@auth_bp.route('/verify', methods=['GET'])
+@handle_api_error
+@require_auth
+def verify_token():
+    """验证 Token 是否有效"""
+    user = get_current_user()
+    return APIResponse.success({
+        'user_id': user['user_id'],
+        'username': user['username']
+    }, "Token 有效")
+
+
 @auth_bp.route('/profile/<int:user_id>', methods=['GET'])
 @handle_api_error
+@require_auth
 def get_profile(user_id):
     """查询个人信息"""
+    # 验证当前用户只能查看自己的信息
+    current_user = get_current_user()
+    if current_user['user_id'] != user_id:
+        return APIResponse.error('无权访问', 403)
+
     info = user_auth.get_user_info(user_id)
     if not info:
         return APIResponse.error('用户不存在', 404)
@@ -66,8 +94,14 @@ def get_profile(user_id):
 
 @auth_bp.route('/profile/<int:user_id>', methods=['PUT'])
 @handle_api_error
+@require_auth
 def update_profile(user_id):
     """更新个人信息"""
+    # 验证当前用户只能修改自己的信息
+    current_user = get_current_user()
+    if current_user['user_id'] != user_id:
+        return APIResponse.error('无权修改', 403)
+
     from tools.users_crud import UsersCRUD
     data = request.get_json()
     crud = UsersCRUD()

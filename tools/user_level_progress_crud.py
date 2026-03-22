@@ -94,6 +94,32 @@ class UserLevelProgressCRUD(BaseCRUD):
         progress = self.get_by_user_gate(user_id, level_gate_id)
         if progress:
             return progress
-        pid = self.create(user_id, level_gate_id, mastered_count=0, 
+        pid = self.create(user_id, level_gate_id, mastered_count=0,
                           is_unlocked=False, is_completed=False)
         return self.read(pid) if pid else None
+
+    def update_progress_by_user_gate(self, user_id: int, level_gate_id: int,
+                                      mastered_count: int = None,
+                                      is_completed: bool = None) -> bool:
+        """
+        通过 user_id 和 level_gate_id 更新进度
+        """
+        progress = self.get_by_user_gate(user_id, level_gate_id)
+        if not progress:
+            return False
+
+        fields = {}
+        if mastered_count is not None:
+            fields['mastered_count'] = mastered_count
+        if is_completed is not None:
+            fields['is_completed'] = int(is_completed)
+            if is_completed:
+                from datetime import datetime
+                fields['completed_at'] = datetime.now()
+
+        if not fields:
+            return True
+
+        query, params = self.build_update_query(fields)
+        result = self.execute_update(query, params + (progress['id'],))
+        return result > 0

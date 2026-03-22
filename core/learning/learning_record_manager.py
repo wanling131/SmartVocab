@@ -363,42 +363,47 @@ class LearningRecordManager:
     def get_learning_statistics(self, user_id, days=7):
         """
         获取学习统计
-        
+
         Args:
             user_id (int): 用户ID
             days (int): 统计天数
-            
+
         Returns:
             dict: 学习统计数据
         """
         # 获取用户所有学习记录
         all_records = self.learning_records_crud.get_by_user(user_id)
-        
+
         # 计算时间范围
         end_date = datetime.now()
         start_date = end_date - timedelta(days=days)
-        
+
         # 筛选时间范围内的记录
         recent_records = []
+        active_dates = set()  # 记录有学习活动的日期
+
         for record in all_records:
             last_reviewed = record['last_reviewed_at']
             if isinstance(last_reviewed, str):
                 last_reviewed = datetime.fromisoformat(last_reviewed.replace('Z', '+00:00'))
-            
+
             if start_date <= last_reviewed <= end_date:
                 recent_records.append(record)
-        
+                # 记录学习日期
+                active_dates.add(last_reviewed.date())
+
         # 统计学习数据
         total_reviews = sum(record['review_count'] for record in recent_records)
         new_words = len([r for r in recent_records if r['review_count'] == 1])
         learned_words = len([r for r in recent_records if r['is_mastered']])
-        
+
         return {
             "period_days": days,
             "total_reviews": total_reviews,
             "new_words": new_words,
             "learned_words": learned_words,
-            "average_reviews_per_day": round(total_reviews / days, 2)
+            "average_reviews_per_day": round(total_reviews / days, 2),
+            "active_days": len(active_dates)  # 活跃学习天数
         }
     
     def close(self):

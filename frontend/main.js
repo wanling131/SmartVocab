@@ -1,4 +1,4 @@
-import { apiRequest } from "./js/api-client.js"
+import { apiRequest, setToken, getToken, clearToken } from "./js/api-client.js"
 
 // 全局状态
 let currentUser = null
@@ -104,6 +104,18 @@ let recommendationCache = {
 // 推荐缓存持续时间（5分钟）
 const CACHE_DURATION = 5 * 60 * 1000
 
+// 清除推荐缓存（学习完成后调用）
+function clearRecommendationCache() {
+  recommendationCache = {
+    data: [],
+    timestamp: 0,
+    algorithm: '',
+    totalAvailable: 0,
+    displayedCount: 0
+  }
+  console.log("推荐缓存已清除")
+}
+
 
 
 function showPage(pageName) {
@@ -168,8 +180,12 @@ function initAuth() {
         body: JSON.stringify({ username, password }),
       })
       hideLoading()
-      
+
       if (result.success) {
+        // 存储 JWT token
+        if (result.data.token) {
+          setToken(result.data.token)
+        }
         currentUser = { id: result.data.user_id, username: result.data.username }
         localStorage.setItem("currentUser", JSON.stringify(currentUser))
         showToast("登录成功！")
@@ -197,11 +213,21 @@ function initAuth() {
         body: JSON.stringify({ username, password, email }),
       })
       hideLoading()
-      
+
       if (result.success) {
-        showToast("注册成功！请登录")
-        document.querySelector('[data-tab="login"]').click()
-        registerForm.reset()
+        // 注册成功后自动登录
+        if (result.data.token) {
+          setToken(result.data.token)
+          currentUser = { id: result.data.user_id, username: result.data.username }
+          localStorage.setItem("currentUser", JSON.stringify(currentUser))
+          showToast("注册成功！")
+          showPage("dashboard")
+          loadDashboard()
+        } else {
+          showToast("注册成功！请登录")
+          document.querySelector('[data-tab="login"]').click()
+          registerForm.reset()
+        }
       } else {
         showToast(result.message || "注册失败", "error")
       }
@@ -590,19 +616,22 @@ function showBrowseComplete() {
   document.getElementById("word-card").classList.add("hidden")
   const completeSection = document.getElementById("session-complete")
   completeSection.classList.remove("hidden")
-  
+
   // 隐藏正确率和用时元素，显示友好提示
   const accuracyContainer = document.getElementById("session-accuracy").parentElement
   const timeContainer = document.getElementById("session-time").parentElement
   accuracyContainer.style.display = "none"
   timeContainer.style.display = "none"
-  
+
   // 修改完成提示
   const title = completeSection.querySelector("h2")
   if (title) {
     title.textContent = "浏览完成！"
   }
-  
+
+  // 清除浏览模式缓存
+  clearRecommendationCache()
+
   showToast("浏览学习完成！可以继续浏览更多单词", "success")
 }
 
@@ -1014,6 +1043,12 @@ async function submitSpellingAnswer() {
 }
 
 async function submitAnswer() {
+  // 如果是闯关模式
+  if (currentGate && gateSession) {
+    submitGateTranslationAnswer()
+    return
+  }
+
   const userAnswer = document.getElementById("answer-input").value.trim()
   if (!userAnswer) {
     handleError("请输入答案", "答案验证")
@@ -1101,6 +1136,12 @@ async function submitAnswer() {
 }
 
 function nextWord() {
+  // 如果是闯关模式
+  if (currentGate && gateSession) {
+    nextGateWord()
+    return
+  }
+
   // 如果是浏览模式，使用浏览模式的下一个
   if (browseMode) {
     nextBrowseWord()
@@ -1173,12 +1214,21 @@ function showSessionComplete() {
 }
 
 function finishSession() {
+  // 如果是闯关模式
+  if (currentGate && gateSession) {
+    showGateComplete()
+    return
+  }
+
   // 如果是浏览模式，使用浏览模式的完成
   if (browseMode) {
     finishBrowse()
     return
   }
-  
+
+  // 清除推荐缓存（学习完成后）
+  clearRecommendationCache()
+
   // 完成学习会话
   finishLearningSession()
   
@@ -1298,24 +1348,234 @@ async function loadForgettingCurve() {
 // 学习计划页
 async function loadPlansPage() {
   if (!currentUser?.id) return
+
+  // 加载当前生效计划
   const activeEl = document.getElementById("active-plan-display")
+
   try {
     const r = await apiRequest(`/plans/${currentUser.id}/active`)
     if (r.success && r.data) {
       activeEl.innerHTML = `
-        <p>词库: ${r.data.dataset_type}</p>
-        <p>每日新学: ${r.data.daily_new_count}</p>
-        <p>每日复习: ${r.data.daily_review_count}</p>
+        <div class="plan-card active">
+          <div class="plan-card-header">
+            <h3>${r.data.plan_name || r.data.dataset_type.toUpperCase() + ' 学习计划'}</h3>
+            <span class="badge badge-success">生效中</span>
+          </div>
+          <div class="plan-card-body">
+            <div class="plan-stat">
+              <div class="plan-stat-value">${r.data.dataset_type.toUpperCase()}</div>
+              <div class="plan-stat-label">词库</div>
+            </div>
+            <div class="plan-stat">
+              <div class="plan-stat-value">${r.data.daily_new_count}</div>
+              <div class="plan-stat-label">每日新学</div>
+            </div>
+            <div class="plan-stat">
+              <div class="plan-stat-value">${r.data.daily_review_count}</div>
+              <div class="plan-stat-label">每日复习</div>
+            </div>
+          </div>
+          <div class="plan-actions">
+            <button class="btn btn-secondary btn-sm" onclick="deactivatePlan(${r.data.id})">停用计划</button>
+          </div>
+        </div>
       `
     } else {
-      activeEl.innerHTML = "<p>暂无生效计划，请创建</p>"
+      activeEl.innerHTML = `
+        <div class="empty-state">
+          <p>暂无生效计划，请创建一个新计划</p>
+        </div>
+      `
     }
+
+    // 加载历史计划列表
+    await loadPlansList()
   } catch (e) {
     activeEl.innerHTML = `<p>加载失败: ${e.message}</p>`
   }
 }
 
+async function loadPlansList() {
+  const listEl = document.getElementById("plans-list")
+
+  try {
+    const r = await apiRequest(`/plans/${currentUser.id}?limit=10`)
+    if (r.success && r.data && r.data.length > 0) {
+      listEl.innerHTML = r.data.map(plan => `
+        <div class="plan-card ${plan.is_active ? 'active' : ''}">
+          <div class="plan-card-header">
+            <h3>${plan.plan_name || plan.dataset_type.toUpperCase() + ' 计划'}</h3>
+            ${plan.is_active ? '<span class="badge badge-success">生效中</span>' : '<span class="badge badge-secondary">已停用</span>'}
+          </div>
+          <div class="plan-card-body">
+            <div class="plan-stat">
+              <div class="plan-stat-value">${plan.dataset_type.toUpperCase()}</div>
+              <div class="plan-stat-label">词库</div>
+            </div>
+            <div class="plan-stat">
+              <div class="plan-stat-value">${plan.daily_new_count}</div>
+              <div class="plan-stat-label">每日新学</div>
+            </div>
+            <div class="plan-stat">
+              <div class="plan-stat-value">${plan.daily_review_count}</div>
+              <div class="plan-stat-label">每日复习</div>
+            </div>
+          </div>
+          <div class="plan-actions">
+            ${!plan.is_active ? `<button class="btn btn-primary btn-sm" onclick="activatePlan(${plan.id})">启用</button>` : ''}
+            <button class="btn btn-secondary btn-sm" onclick="deletePlan(${plan.id})">删除</button>
+          </div>
+        </div>
+      `).join("")
+    } else {
+      listEl.innerHTML = `
+        <div class="empty-state">
+          <p>暂无历史计划</p>
+        </div>
+      `
+    }
+  } catch (e) {
+    listEl.innerHTML = `<p>加载失败: ${e.message}</p>`
+  }
+}
+
+async function activatePlan(planId) {
+  showLoading()
+  const r = await apiRequest(`/plans/${planId}`, {
+    method: "PUT",
+    body: JSON.stringify({ is_active: true })
+  })
+  hideLoading()
+
+  if (r.success) {
+    showToast("计划已启用")
+    loadPlansPage()
+  } else {
+    showToast(r.message || "启用失败", "error")
+  }
+}
+
+async function deactivatePlan(planId) {
+  showLoading()
+  const r = await apiRequest(`/plans/${planId}`, {
+    method: "PUT",
+    body: JSON.stringify({ is_active: false })
+  })
+  hideLoading()
+
+  if (r.success) {
+    showToast("计划已停用")
+    loadPlansPage()
+  } else {
+    showToast(r.message || "停用失败", "error")
+  }
+}
+
+async function deletePlan(planId) {
+  if (!confirm("确定要删除这个计划吗？")) return
+
+  showLoading()
+  const r = await apiRequest(`/plans/${planId}`, {
+    method: "DELETE"
+  })
+  hideLoading()
+
+  if (r.success) {
+    showToast("计划已删除")
+    loadPlansPage()
+  } else {
+    showToast(r.message || "删除失败", "error")
+  }
+}
+
+// 个人中心页面
+async function loadProfilePage() {
+  if (!currentUser?.id) return
+
+  showLoading()
+
+  try {
+    // 加载用户信息
+    const profileRes = await apiRequest(`/auth/profile/${currentUser.id}`)
+    if (profileRes.success && profileRes.data) {
+      const profile = profileRes.data
+
+      // 更新头像
+      const avatar = document.getElementById("profile-avatar")
+      if (avatar) {
+        avatar.textContent = profile.username ? profile.username[0].toUpperCase() : "U"
+      }
+
+      // 更新用户信息
+      document.getElementById("profile-username").textContent = profile.username || "-"
+      document.getElementById("profile-email").textContent = profile.email || "未设置邮箱"
+
+      // 填充编辑表单
+      document.getElementById("edit-username").value = profile.username || ""
+      document.getElementById("edit-email").value = profile.email || ""
+      document.getElementById("edit-realname").value = profile.real_name || ""
+      document.getElementById("edit-studentno").value = profile.student_no || ""
+    }
+
+    // 加载学习统计
+    const progressRes = await apiRequest(`/learning/progress/${currentUser.id}`)
+    if (progressRes.success && progressRes.data) {
+      document.getElementById("profile-total-words").textContent = progressRes.data.total_words || 0
+      document.getElementById("profile-mastered-words").textContent = progressRes.data.learned_words || 0
+    }
+
+    // 加载连续学习天数（从统计接口获取）
+    const statsRes = await apiRequest(`/learning/statistics/${currentUser.id}?days=30`)
+    if (statsRes.success && statsRes.data) {
+      // 简化计算：有学习记录的天数
+      document.getElementById("profile-streak-days").textContent = statsRes.data.active_days || 0
+    }
+
+  } catch (e) {
+    showToast("加载个人信息失败: " + e.message, "error")
+  } finally {
+    hideLoading()
+  }
+}
+
+async function saveProfile() {
+  if (!currentUser?.id) return
+
+  const email = document.getElementById("edit-email").value.trim()
+  const realName = document.getElementById("edit-realname").value.trim()
+  const studentNo = document.getElementById("edit-studentno").value.trim()
+
+  showLoading()
+
+  try {
+    const r = await apiRequest(`/auth/profile/${currentUser.id}`, {
+      method: "PUT",
+      body: JSON.stringify({
+        email: email || null,
+        real_name: realName || null,
+        student_no: studentNo || null
+      })
+    })
+    hideLoading()
+
+    if (r.success) {
+      showToast("保存成功")
+      loadProfilePage()
+    } else {
+      showToast(r.message || "保存失败", "error")
+    }
+  } catch (e) {
+    hideLoading()
+    showToast("保存失败: " + e.message, "error")
+  }
+}
+
 // 闯关模式页
+let currentGate = null
+let gateSession = null
+let gateCorrectCount = 0
+let gateStartTime = null
+
 async function loadLevelsPage() {
   if (!currentUser?.id) return
   const listEl = document.getElementById("levels-gates-list")
@@ -1328,32 +1588,336 @@ async function loadLevelsPage() {
     const progress = progressRes.success ? progressRes.data : []
     const progMap = {}
     progress.forEach(p => { progMap[p.level_gate_id] = p })
+
     if (gates.length === 0) {
       listEl.innerHTML = `
         <div class="empty-state">
-          <p>暂无关卡，请先运行数据库迁移并初始化 level_gates 表</p>
+          <p>暂无关卡，请先运行数据库迁移</p>
         </div>
       `
       return
     }
+
     listEl.innerHTML = gates.map(g => {
       const p = progMap[g.id] || {}
-      const locked = !p.is_unlocked && g.gate_order > 1
+      const isUnlocked = p.is_unlocked || g.gate_order === 1
+      const isCompleted = p.is_completed
+      const masteredCount = p.mastered_count || 0
+
       return `
-        <div class="recommendation-card ${locked ? 'locked' : ''}">
+        <div class="recommendation-card ${!isUnlocked ? 'locked' : ''} ${isCompleted ? 'completed' : ''}">
           <h3>${g.gate_name || '关卡' + g.gate_order}</h3>
           <p>难度 ${g.difficulty_level} · ${g.word_count} 词</p>
-          <p>${p.mastered_count || 0}/${g.word_count} 已掌握</p>
-          ${locked ? '<span>需完成上一关</span>' : '<button class="btn btn-primary btn-sm" data-gate-id="' + g.id + '">进入</button>'}
+          <p>已掌握: ${masteredCount}/${g.word_count}</p>
+          ${isCompleted ? '<span class="badge badge-success">已通关 ✓</span>' : ''}
+          ${!isUnlocked && g.gate_order > 1 ? '<span class="badge badge-secondary">需完成上一关</span>' : ''}
+          ${isUnlocked && !isCompleted ? `<button class="btn btn-primary btn-sm" data-gate-id="${g.id}">开始闯关</button>` : ''}
+          ${isCompleted && isUnlocked ? `<button class="btn btn-secondary btn-sm" data-gate-id="${g.id}">再次挑战</button>` : ''}
         </div>
       `
     }).join("")
+
+    // 绑定闯关按钮事件
     listEl.querySelectorAll("[data-gate-id]").forEach(btn => {
-      btn.addEventListener("click", () => showToast("闯关学习功能请从首页「新词学习」选择难度进入", "info"))
+      btn.addEventListener("click", () => startGateLearning(parseInt(btn.dataset.gateId)))
     })
   } catch (e) {
     listEl.innerHTML = `<div class="empty-state"><p>加载失败: ${e.message}</p></div>`
   }
+}
+
+async function startGateLearning(gateId) {
+  if (!currentUser?.id) return
+  showLoading()
+
+  try {
+    const result = await apiRequest(`/levels/start/${gateId}`, {
+      method: "POST",
+      body: JSON.stringify({ user_id: currentUser.id })
+    })
+    hideLoading()
+
+    if (result.success) {
+      currentGate = result.data.gate
+      gateSession = result.data.session_info
+      gateCorrectCount = 0
+      gateStartTime = Date.now()
+      browseMode = false
+
+      showPage("learning")
+      loadGateWord()
+      showToast(`开始闯关：${currentGate.gate_name}`, "success")
+    } else {
+      showToast(result.message || "启动失败", "error")
+    }
+  } catch (e) {
+    hideLoading()
+    showToast(e.message || "启动失败", "error")
+  }
+}
+
+function loadGateWord() {
+  if (!gateSession || gateSession.current_word_index >= gateSession.total_count) {
+    showGateComplete()
+    return
+  }
+
+  const word = gateSession.words[gateSession.current_word_index]
+
+  // 显示进度
+  const progressBar = document.getElementById("learning-progress")
+  const statsContainer = document.querySelector(".learning-stats")
+  if (progressBar) {
+    progressBar.style.display = "block"
+    const progress = (gateSession.current_word_index / gateSession.total_count) * 100
+    progressBar.style.width = progress + "%"
+  }
+  if (statsContainer) statsContainer.style.display = "block"
+
+  document.getElementById("current-word-index").textContent = gateSession.current_word_index + 1
+  document.getElementById("total-word-count").textContent = gateSession.total_count
+
+  // 记录开始时间
+  wordStartTime = Date.now()
+
+  // 显示单词
+  document.getElementById("current-word").textContent = word.word
+  document.getElementById("word-phonetic").textContent = word.phonetic || ""
+
+  // 根据阶段显示题目
+  const stage = gateSession.word_stages?.[String(word.id)] || "choice"
+  if (stage === "choice") {
+    showGateChoiceQuestion(word)
+  } else {
+    showGateTranslationQuestion(word)
+  }
+
+  document.getElementById("feedback-section").classList.add("hidden")
+}
+
+async function showGateChoiceQuestion(word) {
+  // 获取选择题数据
+  document.getElementById("choice-section").classList.remove("hidden")
+  document.getElementById("translation-section").classList.add("hidden")
+  const spellingSection = document.getElementById("spelling-section")
+  if (spellingSection) spellingSection.classList.add("hidden")
+
+  // 显示题目
+  document.getElementById("choice-question").textContent = `请选择单词 '${word.word}' 的正确释义：`
+
+  // 简化翻译用于选择题
+  const correctAnswer = simplifyTranslation(word.translation)
+
+  // 生成选项（正确答案 + 3个干扰项）
+  const options = await generateChoiceOptions(word, correctAnswer)
+
+  const optionsContainer = document.getElementById("choice-options")
+  optionsContainer.innerHTML = ""
+  options.forEach(option => {
+    const button = document.createElement("button")
+    button.className = "choice-option"
+    button.textContent = option
+    button.onclick = () => submitGateChoiceAnswer(option, { ...word, correct_answer: correctAnswer })
+    optionsContainer.appendChild(button)
+  })
+
+  // 缓存当前单词信息
+  gateSession.currentWordCache = { ...word, correct_answer: correctAnswer }
+}
+
+function simplifyTranslation(translation) {
+  if (!translation) return ""
+  // 提取第一个主要意思
+  const lines = translation.split('\n')
+  if (lines.length > 0) {
+    const firstLine = lines[0].trim()
+    // 提取第一个逗号前的内容
+    if (firstLine.includes(',')) {
+      return firstLine.split(',')[0].trim()
+    }
+    return firstLine
+  }
+  return translation.trim()
+}
+
+async function generateChoiceOptions(word, correctAnswer) {
+  // 尝试从推荐中获取其他单词作为干扰项
+  const otherWords = gateSession.words.filter(w => w.id !== word.id).slice(0, 10)
+
+  if (otherWords.length >= 3) {
+    // 随机选择3个作为干扰项
+    const shuffled = otherWords.sort(() => Math.random() - 0.5)
+    const wrongOptions = shuffled.slice(0, 3).map(w => simplifyTranslation(w.translation))
+
+    // 合并并打乱
+    const allOptions = [correctAnswer, ...wrongOptions]
+    return allOptions.sort(() => Math.random() - 0.5)
+  } else {
+    // 使用备用干扰项
+    const fallbackOptions = ["n. 时间", "v. 过程", "adj. 重要的", "n. 方法", "v. 开始"]
+    const wrongOptions = fallbackOptions.filter(o => o !== correctAnswer).slice(0, 3)
+    const allOptions = [correctAnswer, ...wrongOptions]
+    return allOptions.sort(() => Math.random() - 0.5)
+  }
+}
+
+async function submitGateChoiceAnswer(selectedOption, wordData) {
+  const responseTime = (Date.now() - wordStartTime) / 1000
+
+  const result = await apiRequest("/vocabulary/submit-answer", {
+    method: "POST",
+    body: JSON.stringify({
+      user_id: currentUser.id,
+      word_id: wordData.id || wordData.word_id,
+      user_answer: selectedOption,
+      correct_answer: wordData.correct_answer,
+      response_time: responseTime,
+      question_type: "choice",
+      session_info: gateSession
+    })
+  })
+
+  if (result.success) {
+    if (result.is_correct) {
+      gateCorrectCount++
+    }
+    showGateFeedback(result, wordData)
+  }
+}
+
+function showGateTranslationQuestion(word) {
+  document.getElementById("choice-section").classList.add("hidden")
+  document.getElementById("translation-section").classList.remove("hidden")
+  const spellingSection = document.getElementById("spelling-section")
+  if (spellingSection) spellingSection.classList.add("hidden")
+
+  const answerInput = document.getElementById("answer-input")
+  answerInput.value = ""
+  answerInput.disabled = false
+  answerInput.dataset.showedAnswer = "false"
+  document.getElementById("submit-answer-btn").disabled = false
+  answerInput.focus()
+}
+
+async function submitGateTranslationAnswer() {
+  const userAnswer = document.getElementById("answer-input").value.trim()
+  if (!userAnswer) {
+    showToast("请输入答案", "error")
+    return
+  }
+
+  const word = gateSession.words[gateSession.current_word_index]
+  const responseTime = (Date.now() - wordStartTime) / 1000
+
+  const result = await apiRequest("/vocabulary/submit-answer", {
+    method: "POST",
+    body: JSON.stringify({
+      user_id: currentUser.id,
+      word_id: word.id,
+      user_answer: userAnswer,
+      correct_answer: word.translation,
+      response_time: responseTime,
+      question_type: "translation",
+      session_info: gateSession
+    })
+  })
+
+  if (result.success) {
+    if (result.is_correct) {
+      gateCorrectCount++
+    }
+    showGateFeedback(result, { ...word, correct_answer: word.translation })
+  }
+}
+
+function showGateFeedback(result, wordData) {
+  const feedbackSection = document.getElementById("feedback-section")
+  const feedbackMessage = document.getElementById("feedback-message")
+  const correctAnswerDiv = document.getElementById("correct-answer")
+
+  feedbackMessage.textContent = result.message
+  feedbackMessage.className = "feedback-message " + (result.is_correct ? "correct" : "incorrect")
+  correctAnswerDiv.textContent = result.is_correct ? "" : `正确答案: ${wordData.correct_answer}`
+
+  feedbackSection.classList.remove("hidden")
+
+  // 禁用输入
+  const answerInput = document.getElementById("answer-input")
+  if (answerInput) answerInput.disabled = true
+  document.getElementById("submit-answer-btn").disabled = true
+
+  // 高亮选择题选项
+  const options = document.querySelectorAll(".choice-option")
+  options.forEach(option => {
+    option.disabled = true
+    if (option.textContent === wordData.correct_answer) {
+      option.classList.add("correct-answer")
+    }
+    if (!result.is_correct && option.classList.contains("selected")) {
+      option.classList.add("wrong-answer")
+    }
+  })
+
+  setTimeout(() => {
+    document.getElementById("next-word-btn").classList.remove("hidden")
+  }, 1500)
+}
+
+function nextGateWord() {
+  // 清理
+  const answerInput = document.getElementById("answer-input")
+  if (answerInput) {
+    answerInput.value = ""
+    answerInput.disabled = false
+    answerInput.dataset.showedAnswer = "false"
+  }
+  document.getElementById("submit-answer-btn").disabled = false
+  document.getElementById("feedback-section").classList.add("hidden")
+  document.getElementById("next-word-btn").classList.add("hidden")
+  document.getElementById("choice-section").classList.add("hidden")
+  document.getElementById("translation-section").classList.remove("hidden")
+
+  gateSession.current_word_index++
+
+  if (gateSession.current_word_index >= gateSession.total_count) {
+    showGateComplete()
+  } else {
+    loadGateWord()
+  }
+}
+
+async function showGateComplete() {
+  // 提交关卡完成
+  const result = await apiRequest(`/levels/complete/${currentGate.id}`, {
+    method: "POST",
+    body: JSON.stringify({
+      user_id: currentUser.id,
+      correct_count: gateCorrectCount,
+      total_count: gateSession.total_count
+    })
+  })
+
+  const accuracy = gateSession.total_count > 0 ? (gateCorrectCount / gateSession.total_count * 100).toFixed(1) : 0
+  const timeSpent = Math.floor((Date.now() - gateStartTime) / 1000)
+
+  document.getElementById("word-card").classList.add("hidden")
+  const completeSection = document.getElementById("session-complete")
+  completeSection.classList.remove("hidden")
+
+  document.getElementById("session-accuracy").textContent = accuracy + "%"
+  document.getElementById("session-time").textContent = timeSpent
+
+  const title = completeSection.querySelector("h2")
+  if (title) {
+    title.textContent = result.data?.is_completed ? "🎉 通关成功！" : "继续努力！"
+  }
+
+  // 清理状态
+  currentGate = null
+  gateSession = null
+  gateCorrectCount = 0
+
+  showToast(result.data?.is_completed ? "恭喜通关！已解锁下一关" : "再接再厉！", result.data?.is_completed ? "success" : "info")
 }
 
 // 等级测试
@@ -1500,10 +2064,20 @@ function formatLearningTime(timeString) {
 // 通用退出登录函数
 function logout() {
   currentUser = null
+  currentSession = null
+  clearToken()
   localStorage.removeItem("currentUser")
   showPage("auth")
   showToast("已退出登录")
 }
+
+// 监听认证过期事件
+window.addEventListener('auth:logout', (event) => {
+  currentUser = null
+  currentSession = null
+  showPage("auth")
+  showToast("登录已过期，请重新登录", "error")
+})
 
 // 事件监听器
 function initEventListeners() {
@@ -1531,6 +2105,8 @@ function initEventListeners() {
         loadLevelsPage()
       } else if (page === "evaluation") {
         loadEvaluationStart()
+      } else if (page === "profile") {
+        loadProfilePage()
       }
       // learning页面只能通过功能按钮进入，不能通过导航进入
     }
@@ -1569,6 +2145,8 @@ function initEventListeners() {
       const dataset = document.getElementById("plan-dataset").value
       const dailyNew = parseInt(document.getElementById("plan-daily-new").value) || 20
       const dailyReview = parseInt(document.getElementById("plan-daily-review").value) || 20
+      const planName = document.getElementById("plan-name")?.value || ""
+
       showLoading()
       const r = await apiRequest("/plans", {
         method: "POST",
@@ -1576,16 +2154,28 @@ function initEventListeners() {
           user_id: currentUser.id,
           dataset_type: dataset,
           daily_new_count: dailyNew,
-          daily_review_count: dailyReview
+          daily_review_count: dailyReview,
+          plan_name: planName || `${dataset.toUpperCase()} 学习计划`
         })
       })
       hideLoading()
       if (r.success) {
         showToast("计划创建成功")
+        // 清空表单
+        document.getElementById("plan-name").value = ""
         loadPlansPage()
       } else {
         showToast(r.message || "创建失败", "error")
       }
+    })
+  }
+
+  // 刷新计划列表按钮
+  const refreshPlansBtn = document.getElementById("refresh-plans-btn")
+  if (refreshPlansBtn) {
+    refreshPlansBtn.addEventListener("click", () => {
+      loadPlansPage()
+      showToast("已刷新")
     })
   }
 
@@ -1600,6 +2190,41 @@ function initEventListeners() {
     loadEvaluationStart()
     document.getElementById("evaluation-start").classList.remove("hidden")
   })
+
+  // 个人中心页面
+  const saveProfileBtn = document.getElementById("save-profile-btn")
+  if (saveProfileBtn) {
+    saveProfileBtn.addEventListener("click", async () => {
+      if (!currentUser?.id) return
+
+      const email = document.getElementById("edit-email").value
+      const realName = document.getElementById("edit-realname").value
+      const studentNo = document.getElementById("edit-studentno").value
+
+      showLoading()
+      const r = await apiRequest(`/auth/profile/${currentUser.id}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          email: email || null,
+          real_name: realName || null,
+          student_no: studentNo || null
+        })
+      })
+      hideLoading()
+
+      if (r.success) {
+        showToast("保存成功")
+        loadProfilePage()
+      } else {
+        showToast(r.message || "保存失败", "error")
+      }
+    })
+  }
+
+  const profileLogoutBtn = document.getElementById("profile-logout-btn")
+  if (profileLogoutBtn) {
+    profileLogoutBtn.addEventListener("click", logout)
+  }
 
   // 学习页面
   document.getElementById("submit-answer-btn").addEventListener("click", submitAnswer)

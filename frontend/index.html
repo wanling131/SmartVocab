@@ -67,6 +67,7 @@
                 <a href="#" class="nav-link" data-page="levels">闯关模式</a>
                 <a href="#" class="nav-link" data-page="evaluation">等级测试</a>
                 <a href="#" class="nav-link" data-page="statistics">统计</a>
+                <a href="#" class="nav-link" data-page="profile">个人中心</a>
             </div>
             <div class="nav-user">
                 <span id="username-display"></span>
@@ -279,12 +280,25 @@
     <div id="plans-page" class="page">
         <div class="container">
             <h2>学习计划</h2>
+
+            <!-- 当前生效计划 -->
             <div class="option-card">
                 <h3>当前生效计划</h3>
                 <div id="active-plan-display">加载中...</div>
             </div>
+
+            <!-- 历史计划列表 -->
             <div class="option-card">
-                <h3>创建/修改计划</h3>
+                <div class="section-header">
+                    <h3>历史计划</h3>
+                    <button id="refresh-plans-btn" class="btn btn-secondary">刷新</button>
+                </div>
+                <div id="plans-list">加载中...</div>
+            </div>
+
+            <!-- 创建新计划 -->
+            <div class="option-card">
+                <h3>创建新计划</h3>
                 <div class="form-group">
                     <label>词库</label>
                     <select id="plan-dataset">
@@ -301,6 +315,10 @@
                 <div class="form-group">
                     <label>每日复习</label>
                     <input type="number" id="plan-daily-review" value="20" min="5" max="100">
+                </div>
+                <div class="form-group">
+                    <label>计划名称（可选）</label>
+                    <input type="text" id="plan-name" placeholder="例如：考研英语计划">
                 </div>
                 <button id="create-plan-btn" class="btn btn-primary">创建计划</button>
             </div>
@@ -342,6 +360,72 @@
                 <p>正确: <span id="eval-correct">0</span>/<span id="eval-total">0</span></p>
                 <p>评测水平: <span id="eval-level">-</span></p>
                 <button id="eval-again-btn" class="btn btn-primary">再次测试</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 个人中心页面 -->
+    <div id="profile-page" class="page">
+        <div class="container">
+            <h2>个人中心</h2>
+
+            <!-- 用户信息 -->
+            <div class="profile-section">
+                <div class="profile-header">
+                    <div class="profile-avatar" id="profile-avatar">U</div>
+                    <div class="profile-info">
+                        <h2 id="profile-username">加载中...</h2>
+                        <p id="profile-email">-</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 学习统计 -->
+            <div class="profile-section">
+                <h3>学习统计</h3>
+                <div class="profile-stats">
+                    <div class="profile-stat">
+                        <div class="profile-stat-value" id="profile-total-words">0</div>
+                        <div class="profile-stat-label">已学单词</div>
+                    </div>
+                    <div class="profile-stat">
+                        <div class="profile-stat-value" id="profile-mastered-words">0</div>
+                        <div class="profile-stat-label">已掌握</div>
+                    </div>
+                    <div class="profile-stat">
+                        <div class="profile-stat-value" id="profile-streak-days">0</div>
+                        <div class="profile-stat-label">连续学习天数</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 编辑个人信息 -->
+            <div class="option-card">
+                <h3>编辑个人信息</h3>
+                <div class="form-group">
+                    <label>用户名</label>
+                    <input type="text" id="edit-username" disabled>
+                </div>
+                <div class="form-group">
+                    <label>邮箱</label>
+                    <input type="email" id="edit-email" placeholder="请输入邮箱">
+                </div>
+                <div class="form-group">
+                    <label>真实姓名</label>
+                    <input type="text" id="edit-realname" placeholder="请输入真实姓名">
+                </div>
+                <div class="form-group">
+                    <label>学号</label>
+                    <input type="text" id="edit-studentno" placeholder="请输入学号">
+                </div>
+                <button id="save-profile-btn" class="btn btn-primary">保存修改</button>
+            </div>
+
+            <!-- 账号操作 -->
+            <div class="option-card">
+                <h3>账号操作</h3>
+                <p style="color: var(--text-secondary); margin-bottom: 16px;">退出登录将清除本地登录状态</p>
+                <button id="profile-logout-btn" class="btn btn-secondary">退出登录</button>
             </div>
         </div>
     </div>
