@@ -140,3 +140,7 @@ logs/
 
 # Local test scripts (not for cloud)
 automation/local_tests/
+
+# Claude Code local settings
+skills/
+**/.claude/

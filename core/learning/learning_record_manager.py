@@ -131,8 +131,7 @@ class LearningRecordManager:
                     'created_at': record['last_reviewed_at']
                 }
                 enriched_records.append(enriched_record)
-        
-        # print(f"DEBUG LearningRecordManager.get_user_learning_records: 返回{len(enriched_records)}条增强记录")
+
         return enriched_records
     
     def get_word_learning_record(self, user_id, word_id):
@@ -342,8 +341,6 @@ class LearningRecordManager:
             
             # 检查是否是50的倍数
             if total_records > 0 and total_records % LEARNING_PARAMS["min_training_records"] == 0:
-                # print(f"用户 {user_id} 已学习 {total_records} 个单词，触发模型训练...")
-                
                 # 导入推荐引擎并触发模型训练
                 from core.recommendation.recommendation_engine import RecommendationEngine
                 recommendation_engine = RecommendationEngine()

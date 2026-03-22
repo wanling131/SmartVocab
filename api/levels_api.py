@@ -25,24 +25,36 @@ learning_sessions_crud = LearningSessionsCRUD()
 vocabulary_manager = VocabularyLearningManager()
 
 
+def _check_user_access(user_id):
+    """检查当前用户是否有权访问指定用户的数据"""
+    current_user = get_current_user()
+    if not current_user or current_user.get('user_id') != user_id:
+        return False
+    return True
+
+
 @levels_bp.route('/gates', methods=['GET'])
 @handle_api_error
 def get_gates():
-    """获取关卡列表"""
+    """获取关卡列表（公开）"""
     gates = gates_crud.list_all()
     return APIResponse.success(gates, "获取关卡列表成功")
 
 
 @levels_bp.route('/progress/<int:user_id>', methods=['GET'])
 @handle_api_error
+@require_auth
 def get_progress(user_id):
     """获取用户关卡进度"""
+    if not _check_user_access(user_id):
+        return APIResponse.error('无权访问', 403)
     progress = progress_crud.get_by_user(user_id)
     return APIResponse.success(progress, "获取关卡进度成功")
 
 
 @levels_bp.route('/unlock', methods=['POST'])
 @handle_api_error
+@require_auth
 def unlock_gate():
     """解锁下一关（满足条件时）"""
     data = request.get_json()
@@ -51,6 +63,10 @@ def unlock_gate():
 
     if not user_id or not level_gate_id:
         return APIResponse.error('user_id 和 level_gate_id 不能为空', 400)
+
+    # 验证用户身份
+    if not _check_user_access(user_id):
+        return APIResponse.error('无权操作', 403)
 
     gate = gates_crud.read(level_gate_id)
     if not gate:
@@ -78,6 +94,7 @@ def unlock_gate():
 
 @levels_bp.route('/start/<int:gate_id>', methods=['POST'])
 @handle_api_error
+@require_auth
 def start_gate_session(gate_id):
     """开始闯关学习会话"""
     data = request.get_json()
@@ -85,6 +102,10 @@ def start_gate_session(gate_id):
 
     if not user_id:
         return APIResponse.error('user_id 不能为空', 400)
+
+    # 验证用户身份
+    if not _check_user_access(user_id):
+        return APIResponse.error('无权操作', 403)
 
     # 获取关卡信息
     gate = gates_crud.read(gate_id)
@@ -155,6 +176,7 @@ def start_gate_session(gate_id):
 
 @levels_bp.route('/complete/<int:gate_id>', methods=['POST'])
 @handle_api_error
+@require_auth
 def complete_gate(gate_id):
     """完成关卡并更新进度"""
     data = request.get_json()
@@ -164,6 +186,10 @@ def complete_gate(gate_id):
 
     if not user_id:
         return APIResponse.error('user_id 不能为空', 400)
+
+    # 验证用户身份
+    if not _check_user_access(user_id):
+        return APIResponse.error('无权操作', 403)
 
     # 计算正确率
     accuracy = correct_count / total_count if total_count > 0 else 0

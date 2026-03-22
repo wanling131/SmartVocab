@@ -7,14 +7,24 @@ from core.evaluation.evaluation_manager import EvaluationManager
 from tools.evaluation_results_crud import EvaluationResultsCRUD
 from config import LEARNING_PARAMS
 from .utils import APIResponse, handle_api_error
+from .auth_middleware import require_auth, get_current_user
 
 evaluation_bp = Blueprint('evaluation', __name__, url_prefix='/api/evaluation')
 evaluation_manager = EvaluationManager()
 results_crud = EvaluationResultsCRUD()
 
 
+def _check_user_access(user_id):
+    """检查当前用户是否有权访问指定用户的数据"""
+    current_user = get_current_user()
+    if not current_user or current_user.get('user_id') != user_id:
+        return False
+    return True
+
+
 @evaluation_bp.route('/start', methods=['POST'])
 @handle_api_error
+@require_auth
 def start_evaluation():
     """开始等级测试"""
     data = request.get_json()
@@ -22,10 +32,14 @@ def start_evaluation():
     question_count = data.get('question_count', LEARNING_PARAMS.get("default_test_word_count", 10))
     difficulty_level = data.get('difficulty_level')
     dataset_type = data.get('dataset_type')
-    
+
     if not user_id:
         return APIResponse.error('user_id 不能为空', 400)
-    
+
+    # 验证用户身份
+    if not _check_user_access(user_id):
+        return APIResponse.error('无权操作', 403)
+
     result = evaluation_manager.start_level_test(
         user_id=user_id,
         question_count=question_count,
@@ -43,6 +57,7 @@ def start_evaluation():
 
 @evaluation_bp.route('/submit', methods=['POST'])
 @handle_api_error
+@require_auth
 def submit_evaluation():
     """提交等级测试"""
     data = request.get_json()
@@ -50,10 +65,14 @@ def submit_evaluation():
     paper_id = data.get('paper_id')
     answers = data.get('answers', [])
     duration_seconds = data.get('duration_seconds', 0)
-    
+
     if not user_id or not paper_id:
         return APIResponse.error('user_id 和 paper_id 不能为空', 400)
-    
+
+    # 验证用户身份
+    if not _check_user_access(user_id):
+        return APIResponse.error('无权操作', 403)
+
     result = evaluation_manager.submit_level_test(
         user_id=user_id,
         paper_id=paper_id,
@@ -67,8 +86,11 @@ def submit_evaluation():
 
 @evaluation_bp.route('/history/<int:user_id>', methods=['GET'])
 @handle_api_error
+@require_auth
 def get_history(user_id):
     """获取评测历史"""
+    if not _check_user_access(user_id):
+        return APIResponse.error('无权访问', 403)
     limit = request.args.get('limit', 50, type=int)
     history = results_crud.get_by_user(user_id, limit)
     return APIResponse.success(history, "获取评测历史成功")

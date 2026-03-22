@@ -18,6 +18,23 @@ JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY', 'smartvocab-jwt-secret-key-change-i
 JWT_EXPIRATION_HOURS = int(os.getenv('JWT_EXPIRATION_HOURS', '24'))
 JWT_ALGORITHM = 'HS256'
 
+# 弱密钥列表（生产环境禁止使用）
+WEAK_KEYS = {
+    'smartvocab-jwt-secret-key-change-in-production',
+    'please-change-this-jwt-secret-in-production',
+    'secret', 'jwt-secret', 'test', 'dev', 'development'
+}
+
+# 生产环境校验
+APP_ENV = os.getenv('APP_ENV', 'development')
+if APP_ENV == 'production':
+    if not JWT_SECRET_KEY or JWT_SECRET_KEY in WEAK_KEYS or len(JWT_SECRET_KEY) < 32:
+        raise ValueError(
+            "生产环境必须设置安全的 JWT_SECRET_KEY 环境变量 "
+            "(建议使用 openssl rand -hex 32 生成，至少32字符)"
+        )
+    logger.info("JWT 生产环境配置校验通过")
+
 
 def generate_token(user_id: int, username: str) -> str:
     """

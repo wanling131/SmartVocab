@@ -3,8 +3,11 @@ API接口模块（历史备份 / 已弃用）
 
 说明：当前生产入口请使用 ``api_launcher.APILauncher``（见 ``main.py``），
 本文件保留为旧版单文件路由参考，**不再随新接口维护**。
-遗忘曲线、评测、学习计划等接口已迁移至各 Blueprint（learning_api、evaluation_api、plans_api 等）。
-"""
+遗忘曲线、评测、学习计划等接口已迁移至各 Blueprint（learning_api、evaluation_api、plans_api 等）"""
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 # 导入配置常量
 from config import LEARNING_PARAMS
@@ -279,23 +282,20 @@ class APIRouter:
     
     def close(self):
         """关闭所有数据库连接"""
-        try:
-            print("所有数据库连接已关闭（连接池自动管理）")
-        except Exception as e:
-            print(f"关闭数据库连接时出错: {e}")
+        logger.info("所有数据库连接已关闭（连接池自动管理）")
 
 def main():
     """主函数 - 启动API服务"""
-    print("=== SmartVocab API服务 ===")
-    
+    logger.info("=== SmartVocab API服务 ===")
+
     # 创建API路由器
     api_router = APIRouter()
-    
+
     try:
         # 启动服务
         api_router.run(host='0.0.0.0', port=5000, debug=True)
     except KeyboardInterrupt:
-        print("\n正在关闭服务...")
+        logger.info("正在关闭服务...")
     finally:
         # 关闭所有连接
         api_router.close()
