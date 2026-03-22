@@ -21,7 +21,7 @@ DATABASE_CONFIG = {
     'charset': 'utf8mb4',
     'autocommit': True,
     'pool_name': 'smart_vocab_pool',
-    'pool_size': 10,
+    'pool_size': int(os.getenv('DB_POOL_SIZE', '10')),
 }
 
 class DatabaseManager:

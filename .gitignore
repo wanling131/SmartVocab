@@ -137,3 +137,6 @@ logs/
 # Temporary files
 *.tmp
 *.temp
+
+# Local test scripts (not for cloud)
+automation/local_tests/
