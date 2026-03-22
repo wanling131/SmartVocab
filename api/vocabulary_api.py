@@ -6,6 +6,7 @@
 import csv
 import io
 import json
+import os
 from flask import Blueprint, request, jsonify, Response
 from core.vocabulary.vocabulary_learning_manager import VocabularyLearningManager
 from tools.words_crud import WordsCRUD
@@ -19,6 +20,10 @@ vocabulary_bp = Blueprint('vocabulary', __name__, url_prefix='/api/vocabulary')
 # 初始化
 vocabulary_manager = VocabularyLearningManager()
 words_crud = WordsCRUD()
+
+# 管理员配置：通过环境变量 ADMIN_USERS 指定，逗号分隔的用户名列表
+# 示例：ADMIN_USERS=admin,root,teacher
+ADMIN_USERS = set(u.strip() for u in os.getenv('ADMIN_USERS', '').split(',') if u.strip())
 
 
 def _check_user_access(user_id) -> bool:
@@ -37,6 +42,17 @@ def _session_info_matches_user(session_info) -> bool:
     if not session_info or not isinstance(session_info, dict):
         return False
     return _check_user_access(session_info.get('user_id'))
+
+
+def _is_admin() -> bool:
+    """检查当前用户是否为管理员。"""
+    if not ADMIN_USERS:
+        # 未配置 ADMIN_USERS 时，允许所有登录用户访问（向后兼容）
+        return True
+    current = get_current_user()
+    if not current:
+        return False
+    return current.get('username') in ADMIN_USERS
 
 
 @vocabulary_bp.route('/start-session', methods=['POST'])
@@ -176,7 +192,10 @@ def start_review_session():
 @handle_api_error
 @require_auth
 def import_words():
-    """批量导入词库（JSON body）"""
+    """批量导入词库（仅管理员）"""
+    if not _is_admin():
+        return APIResponse.error('无权操作，仅管理员可导入词库', 403)
+
     data = request.get_json()
     if not data:
         return APIResponse.error('请提供 JSON 数据', 400)
@@ -211,7 +230,10 @@ def import_words():
 @handle_api_error
 @require_auth
 def export_words():
-    """导出词库"""
+    """导出词库（仅管理员）"""
+    if not _is_admin():
+        return APIResponse.error('无权操作，仅管理员可导出词库', 403)
+
     dataset_type = request.args.get('dataset_type')
     format_type = request.args.get('format', 'json')
     limit = request.args.get('limit', 10000, type=int)

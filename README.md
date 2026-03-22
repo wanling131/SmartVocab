@@ -47,7 +47,7 @@ SmartVocab/
 │   ├── plans_api.py
 │   ├── evaluation_api.py
 │   ├── levels_api.py
-│   └── api_router_backup.py # 旧版单文件路由备份（已弃用）
+│   └── levels_api.py
 ├── core/
 │   ├── auth/
 │   ├── learning/
@@ -152,7 +152,7 @@ gunicorn -w 4 -b 0.0.0.0:5000 --timeout 120 wsgi:app
 ## 开发说明
 
 - **日志**：`main.py` 启动时调用 `configure_logging()`，业务代码请使用 `logging.getLogger(__name__)`，避免随意 `print`。
-- **旧路由**：`api_router_backup.py` 仅作历史参考，新接口以 `api_launcher` 注册的 Blueprint 为准。
+- **API 路由**：所有接口以 `api_launcher.py` 注册的 Blueprint 为准。
 - **测试**：安装依赖后执行 `python -m pytest tests/ -v`（需已安装 Flask 等依赖）。
 - **自动化自检**（可选）：`python automation/smoke_check.py --quick`（全量自检去掉 `--quick`，并含智能推荐模块自检）；不需要时删除 `automation/` 文件夹即可。若 `pip install` 后 `test_client` 报错，请确认已安装 `requirements.txt` 中的 `werkzeug<3`。
 - **详细文档**：见 [文档/开发与部署说明.md](文档/开发与部署说明.md)、[文档/生产部署与商用检查清单.md](文档/生产部署与商用检查清单.md)。

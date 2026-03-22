@@ -5,7 +5,7 @@ JWT 认证工具模块
 
 import os
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from functools import wraps
 from flask import request, jsonify
 
@@ -48,11 +48,12 @@ def generate_token(user_id: int, username: str) -> str:
     Returns:
         JWT Token 字符串
     """
+    now = datetime.now(timezone.utc)
     payload = {
         'user_id': user_id,
         'username': username,
-        'exp': datetime.utcnow() + timedelta(hours=JWT_EXPIRATION_HOURS),
-        'iat': datetime.utcnow()
+        'exp': now + timedelta(hours=JWT_EXPIRATION_HOURS),
+        'iat': now
     }
     return jwt.encode(payload, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
 
