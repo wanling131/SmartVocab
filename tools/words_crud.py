@@ -1,14 +1,22 @@
 """
-词汇表CRUD操作
+词汇表CRUD操作（带缓存优化）
 """
 
 import json
+import logging
 from .base_crud import BaseCRUD
 from typing import Optional, List, Dict, Any
+from .memory_cache import (
+    word_cache, word_list_cache,
+    make_word_key, make_word_list_key, invalidate_word_cache
+)
+
+logger = logging.getLogger(__name__)
+
 
 class WordsCRUD(BaseCRUD):
-    """词汇表CRUD操作类"""
-    
+    """词汇表CRUD操作类（带缓存优化）"""
+
     def __init__(self):
         super().__init__("words")
     
@@ -134,65 +142,80 @@ class WordsCRUD(BaseCRUD):
     
     def read(self, word_id: int) -> Optional[Dict[str, Any]]:
         """
-        根据ID读取单词
-        
+        根据ID读取单词（带缓存）
+
         Args:
             word_id (int): 单词ID
-            
+
         Returns:
             Optional[Dict[str, Any]]: 单词信息，如果不存在返回None
         """
+        # 尝试从缓存获取
+        cache_key = make_word_key(word_id)
+        cached = word_cache.get(cache_key)
+        if cached is not None:
+            return cached
+
         self.log_operation("读取单词", word_id=word_id)
-        
+
         query = "SELECT * FROM words WHERE id = %s"
         result = self.execute_query(query, (word_id,), fetch_one=True)
-        
+
         if result:
             result = self._parse_domain_field([result])[0]
             self.logger.info("找到单词")
+            # 缓存结果
+            word_cache.set(cache_key, result)
         else:
             self.logger.info("单词不存在")
-        
+
         return result
     
     def update(self, word_id: int, **kwargs) -> int:
         """
-        更新单词
-        
+        更新单词（同时更新缓存）
+
         Args:
             word_id (int): 单词ID
             **kwargs: 要更新的字段和值
-            
+
         Returns:
             int: 受影响的行数
         """
         self.log_operation("更新单词", word_id=word_id, kwargs=kwargs)
-        
+
         if not kwargs:
             self.logger.warning("没有要更新的字段")
             return 0
-        
+
         # 过滤允许更新的字段
-        allowed_fields = ['word', 'translation', 'difficulty_level', 'frequency_rank', 
+        allowed_fields = ['word', 'translation', 'difficulty_level', 'frequency_rank',
                          'domain', 'phonetic', 'pos', 'tag', 'cefr_standard',
                          'definition_en', 'example_sentence', 'dataset_type']
-        
+
         fields = {}
         for field, value in kwargs.items():
             if field in allowed_fields:
                 if field == 'domain' and isinstance(value, dict):
                     value = json.dumps(value, ensure_ascii=False)
                 fields[field] = value
-        
+
         if not fields:
             self.logger.warning("没有有效的更新字段")
             return 0
-        
+
         query, params = self.build_update_query(fields, "id = %s")
         params = params + (word_id,)
-        
+
         affected_rows = self.execute_update(query, params)
         self.logger.info(f"更新了{affected_rows}行")
+
+        # 使缓存失效
+        if affected_rows > 0:
+            word_cache.delete(make_word_key(word_id))
+            # 清除列表缓存（因为列表数据可能变化）
+            word_list_cache.clear()
+
         return affected_rows
     
     def delete(self, word_id: int) -> int:
@@ -215,40 +238,48 @@ class WordsCRUD(BaseCRUD):
     
     def get_by_difficulty(self, difficulty_level: int, limit: Optional[int] = None, offset: int = 0) -> List[Dict[str, Any]]:
         """
-        根据难度等级获取单词
-        
+        根据难度等级获取单词（带缓存）
+
         Args:
             difficulty_level (int): 难度等级（1-6）
             limit (Optional[int]): 限制返回数量
             offset (int): 偏移量
-            
+
         Returns:
             List[Dict[str, Any]]: 指定难度等级的单词记录列表
         """
+        # 尝试从缓存获取
+        cache_key = make_word_list_key(difficulty=difficulty_level, limit=limit, offset=offset)
+        cached = word_list_cache.get(cache_key)
+        if cached is not None:
+            return cached
+
         self.log_operation("根据难度获取单词", difficulty_level=difficulty_level, limit=limit, offset=offset)
-        
+
         query = "SELECT * FROM words WHERE difficulty_level = %s"
         params = [difficulty_level]
-        
+
         if limit is not None:
             query += " LIMIT %s"
             params.append(limit)
-        
+
         if offset > 0:
             query += " OFFSET %s"
             params.append(offset)
-        
+
         results = self.execute_query(query, tuple(params), fetch_all=True)
 
         if results:
             results = self._parse_domain_field(results)
             self.logger.info(f"找到{len(results)}个难度{difficulty_level}的单词")
+            # 缓存结果
+            word_list_cache.set(cache_key, results)
 
         return results or []
 
     def get_by_dataset_type(self, dataset_type: str, limit: Optional[int] = None, offset: int = 0) -> List[Dict[str, Any]]:
         """
-        根据词库类型获取单词
+        根据词库类型获取单词（带缓存）
 
         Args:
             dataset_type (str): 词库类型（cet4, cet6, toefl, ielts等）
@@ -258,6 +289,12 @@ class WordsCRUD(BaseCRUD):
         Returns:
             List[Dict[str, Any]]: 指定词库类型的单词记录列表
         """
+        # 尝试从缓存获取
+        cache_key = make_word_list_key(dataset_type=dataset_type, limit=limit, offset=offset)
+        cached = word_list_cache.get(cache_key)
+        if cached is not None:
+            return cached
+
         self.log_operation("根据词库类型获取单词", dataset_type=dataset_type, limit=limit, offset=offset)
 
         query = "SELECT * FROM words WHERE dataset_type = %s ORDER BY frequency_rank ASC"
@@ -276,6 +313,8 @@ class WordsCRUD(BaseCRUD):
         if results:
             results = self._parse_domain_field(results)
             self.logger.info(f"找到{len(results)}个{dataset_type}词库的单词")
+            # 缓存结果
+            word_list_cache.set(cache_key, results)
 
         return results or []
 

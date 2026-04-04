@@ -12,7 +12,7 @@ SmartVocab is an intelligent English vocabulary learning system with deep learni
 # Install dependencies
 pip install -r requirements.txt
 
-# Run tests (all tests)
+# Run all unit tests (112 tests)
 python -m pytest tests/ -v
 
 # Run specific test file
@@ -23,6 +23,12 @@ python -m pytest tests/test_auth.py::TestJWTToken::test_generate_token -v
 
 # Run tests without loading DL model (faster)
 SMARTVOCAB_SKIP_DL_INIT=1 python -m pytest tests/ -v
+
+# Run E2E tests (Playwright)
+cd tests/e2e && npx playwright test
+
+# Run E2E tests with UI (headed mode)
+cd tests/e2e && npx playwright test --headed
 
 # Start development server
 python main.py
@@ -69,9 +75,9 @@ python -c "from tools.database import test_connection; test_connection()"
 
 - **`frontend/`**: Single-page application
   - `index.html`: All pages (auth, dashboard, learning, statistics, plans, levels, evaluation, profile)
-  - `main.js`: ES module with all page logic
+  - `main.js`: ES module with all page logic (includes `escapeHtml` for XSS prevention)
   - `js/api-client.js`: API request wrapper with JWT handling
-  - `styles.css`: Global styles
+  - `styles.css`: Global styles with CSS animations
 
 ### Database
 
@@ -99,9 +105,11 @@ python -c "from tools.database import test_connection; test_connection()"
 4. Backend uses `@require_auth` decorator to validate
 
 ### Recommendation System
-- 5 algorithms with weights: difficulty(25%), frequency(20%), history(20%), deep_learning(25%), random(10%)
+- Multi-algorithm with dynamic weights: difficulty_based, frequency_based, learning_history, deep_learning, collaborative, random_exploration
+- Weights are normalized and adjusted based on user history
 - PyTorch dual-tower neural network (falls back to traditional if unavailable)
 - User-specific models trained after 50 learning records
+- Cold-start handling for new users
 
 ### Learning Session Flow
 1. `POST /api/vocabulary/start-session` creates session
@@ -125,9 +133,24 @@ Required in `.env`:
 Optional:
 - `SMARTVOCAB_SKIP_DL_INIT=1`: Skip PyTorch model loading during tests (faster startup)
 
-## Important Notes
+## Code Standards
 
+### Security
+- **XSS Prevention**: Use `escapeHtml()` function in `frontend/main.js` for all user-displayed content
+- **SQL Injection**: Use parameterized queries via `execute_query(query, params)`; whitelist validation for dynamic column names
+- **Authentication**: All sensitive endpoints must use `@require_auth` decorator
+- **Input Validation**: Empty answers return `False` in answer checking
+
+### Logging
 - Use `logging.getLogger(__name__)` for logging, never `print()`
 - Database uses connection pool - no manual connection management needed
+
+### Testing
+- Unit tests in `tests/` directory (pytest)
+- E2E tests in `tests/e2e/specs/` (Playwright)
+- Test user: `e2e_tester` / `TestPass123`
 - Production mode (`APP_ENV=production`) enforces strong JWT/secret keys
-- Frontend `api-client.js` handles 401 by clearing token and redirecting
+
+### Frontend
+- `api-client.js` handles 401 by clearing token and dispatching `auth:logout` event
+- All dynamic content must be HTML-escaped before insertion

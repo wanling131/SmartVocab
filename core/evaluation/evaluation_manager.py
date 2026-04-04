@@ -222,6 +222,11 @@ class EvaluationManager:
         """检查答案"""
         u = (user_answer or '').strip().lower()
         c = (correct_answer or '').strip().lower()
+
+        # 空答案直接返回False
+        if not u or not c:
+            return False
+
         if question_type == 'choice':
             return u == c
         if question_type == 'spelling':

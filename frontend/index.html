@@ -4,19 +4,26 @@
     <!-- 页面基础配置 -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="SmartVocab - 智能英语词汇学习平台，基于深度学习的个性化推荐系统">
+    <meta name="theme-color" content="#8b5cf6">
     <title>SmartVocab - 智能英语学习平台</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%238b5cf6'/><text x='16' y='20' font-family='Arial' font-size='18' font-weight='bold' fill='white' text-anchor='middle'>S</text></svg>">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+    <!-- 全局加载遮罩 -->
+    <div id="global-loading" class="loading-overlay" style="display: none;">
+        <div class="loading-spinner"></div>
+    </div>
+
     <!-- 用户认证页面 -->
     <div id="auth-page" class="page active">
         <div class="auth-container">
             <div class="auth-header">
                 <h1>SmartVocab</h1>
-                <p>智能推荐 · 高效学习</p>
+                <p>智能推荐 · 高效学习 · 科学记忆</p>
             </div>
-            
+
             <div class="auth-tabs">
                 <button class="tab-btn active" data-tab="login">登录</button>
                 <button class="tab-btn" data-tab="register">注册</button>
@@ -25,30 +32,34 @@
             <form id="login-form" class="auth-form active">
                 <div class="form-group">
                     <label for="login-username">用户名</label>
-                    <input type="text" id="login-username" required>
+                    <input type="text" id="login-username" required placeholder="请输入用户名" autocomplete="username">
                 </div>
                 <div class="form-group">
                     <label for="login-password">密码</label>
-                    <input type="password" id="login-password" required>
+                    <input type="password" id="login-password" required placeholder="请输入密码" autocomplete="current-password">
                 </div>
-                <button type="submit" class="btn btn-primary">登录</button>
+                <button type="submit" class="btn btn-primary">
+                    <span class="btn-text">登录</span>
+                </button>
                 <div class="error-message" id="login-error"></div>
             </form>
 
             <form id="register-form" class="auth-form">
                 <div class="form-group">
                     <label for="register-username">用户名</label>
-                    <input type="text" id="register-username" required minlength="3" maxlength="16">
+                    <input type="text" id="register-username" required minlength="3" maxlength="16" placeholder="3-16个字符" autocomplete="username">
                 </div>
                 <div class="form-group">
                     <label for="register-email">邮箱（可选）</label>
-                    <input type="email" id="register-email">
+                    <input type="email" id="register-email" placeholder="用于找回密码" autocomplete="email">
                 </div>
                 <div class="form-group">
                     <label for="register-password">密码</label>
-                    <input type="password" id="register-password" required minlength="6">
+                    <input type="password" id="register-password" required minlength="6" placeholder="至少6个字符" autocomplete="new-password">
                 </div>
-                <button type="submit" class="btn btn-primary">注册</button>
+                <button type="submit" class="btn btn-primary">
+                    <span class="btn-text">创建账号</span>
+                </button>
                 <div class="error-message" id="register-error"></div>
             </form>
         </div>
@@ -62,16 +73,34 @@
         </div>
         <div id="app-nav-menu" class="nav-menu-wrap">
             <div class="nav-menu">
-                <a href="#" class="nav-link active" data-page="dashboard">首页</a>
-                <a href="#" class="nav-link" data-page="plans">学习计划</a>
-                <a href="#" class="nav-link" data-page="levels">闯关模式</a>
-                <a href="#" class="nav-link" data-page="evaluation">等级测试</a>
-                <a href="#" class="nav-link" data-page="statistics">统计</a>
-                <a href="#" class="nav-link" data-page="profile">个人中心</a>
+                <a href="#" class="nav-link active" data-page="dashboard">
+                    <span class="nav-icon">🏠</span>
+                    <span>首页</span>
+                </a>
+                <a href="#" class="nav-link" data-page="plans">
+                    <span class="nav-icon">📋</span>
+                    <span>学习计划</span>
+                </a>
+                <a href="#" class="nav-link" data-page="levels">
+                    <span class="nav-icon">🎮</span>
+                    <span>闯关模式</span>
+                </a>
+                <a href="#" class="nav-link" data-page="evaluation">
+                    <span class="nav-icon">📝</span>
+                    <span>等级测试</span>
+                </a>
+                <a href="#" class="nav-link" data-page="statistics">
+                    <span class="nav-icon">📊</span>
+                    <span>统计</span>
+                </a>
+                <a href="#" class="nav-link" data-page="profile">
+                    <span class="nav-icon">👤</span>
+                    <span>个人中心</span>
+                </a>
             </div>
             <div class="nav-user">
                 <span id="username-display"></span>
-                <button type="button" id="logout-btn" class="btn btn-secondary">退出</button>
+                <button type="button" id="logout-btn" class="btn btn-secondary btn-sm">退出</button>
             </div>
         </div>
     </nav>
@@ -82,28 +111,28 @@
             <section class="progress-section">
                 <h2>学习进度</h2>
                 <div class="stats-grid">
-                    <div class="stat-card">
+                    <div class="stat-card" data-aos="fade-up">
                         <div class="stat-icon">📚</div>
                         <div class="stat-info">
                             <div class="stat-value" id="total-words">0</div>
                             <div class="stat-label">总词汇量</div>
                         </div>
                     </div>
-                    <div class="stat-card">
+                    <div class="stat-card" data-aos="fade-up" data-aos-delay="100">
                         <div class="stat-icon">✅</div>
                         <div class="stat-info">
                             <div class="stat-value" id="learned-words">0</div>
                             <div class="stat-label">已掌握</div>
                         </div>
                     </div>
-                    <div class="stat-card">
+                    <div class="stat-card" data-aos="fade-up" data-aos-delay="200">
                         <div class="stat-icon">📖</div>
                         <div class="stat-info">
                             <div class="stat-value" id="learning-words">0</div>
                             <div class="stat-label">学习中</div>
                         </div>
                     </div>
-                    <div class="stat-card">
+                    <div class="stat-card" data-aos="fade-up" data-aos-delay="300">
                         <div class="stat-icon">🎯</div>
                         <div class="stat-info">
                             <div class="stat-value" id="mastery-rate">0%</div>
@@ -116,10 +145,12 @@
             <section class="recommendations-section">
                 <div class="section-header">
                     <h2>智能推荐</h2>
-                    <button id="refresh-recommendations" class="btn btn-secondary">刷新推荐</button>
+                    <button id="refresh-recommendations" class="btn btn-secondary">
+                        <span>🔄</span> 刷新推荐
+                    </button>
                 </div>
                 <div id="recommendations-grid" class="recommendations-grid">
-                     推荐内容将动态加载 
+                     <!-- 推荐内容将动态加载 -->
                 </div>
             </section>
 
@@ -127,14 +158,14 @@
                 <h2>深度学习</h2>
                 <div class="quick-start-options">
                     <div class="option-card">
-                        <h3>新词学习</h3>
-                        <p>学习新的词汇</p>
+                        <h3>🚀 新词学习</h3>
+                        <p>学习新的词汇，系统根据难度智能推荐</p>
                         <div class="form-group">
                             <label>难度等级</label>
                             <select id="difficulty-level">
-                                <option value="1">初级</option>
-                                <option value="2" selected>中级</option>
-                                <option value="3">高级</option>
+                                <option value="1">初级 (CET4基础)</option>
+                                <option value="2" selected>中级 (CET4/CET6)</option>
+                                <option value="3">高级 (考研/托福)</option>
                             </select>
                         </div>
                         <div class="form-group">
@@ -153,8 +184,14 @@
                         <button id="start-learning-btn" class="btn btn-primary">开始学习</button>
                     </div>
                     <div class="option-card">
-                        <h3>复习模式</h3>
-                        <p>复习已学词汇</p>
+                        <h3>🔄 复习模式</h3>
+                        <p>复习已学词汇，基于艾宾浩斯遗忘曲线</p>
+                        <div class="review-info">
+                            <div class="info-item">
+                                <span class="info-label">待复习词汇</span>
+                                <span class="info-value" id="review-count">--</span>
+                            </div>
+                        </div>
                         <button id="start-review-btn" class="btn btn-primary">开始复习</button>
                     </div>
                 </div>
@@ -164,16 +201,16 @@
 
     <!-- 学习页面 -->
     <div id="learning-page" class="page">
-        <nav class="navbar">
+        <nav class="navbar learning-nav">
             <div class="nav-brand">SmartVocab</div>
-            <button id="back-to-dashboard" class="btn btn-secondary">返回首页</button>
+            <button id="back-to-dashboard" class="btn btn-secondary btn-sm">← 返回首页</button>
         </nav>
 
         <div class="container">
             <div class="learning-container">
                 <div class="learning-header">
                     <div class="progress-bar">
-                        <div id="learning-progress" class="progress-fill"></div>
+                        <div id="learning-progress" class="progress-fill" style="width: 0%"></div>
                     </div>
                     <div class="learning-stats">
                         <span id="current-word-index">0</span> / <span id="total-word-count">0</span>
@@ -184,7 +221,6 @@
                     <div class="word-display">
                         <h1 id="current-word">Loading...</h1>
                         <p id="word-phonetic" class="phonetic"></p>
-                        <!-- <p id="word-pos" class="pos"></p> -->
                     </div>
 
                     <!-- 选择题界面 -->
@@ -221,12 +257,12 @@
                     <div id="feedback-section" class="feedback-section hidden">
                         <div id="feedback-message" class="feedback-message"></div>
                         <div id="correct-answer" class="correct-answer"></div>
-                        <button id="next-word-btn" class="btn btn-primary">下一个</button>
+                        <button id="next-word-btn" class="btn btn-primary">下一个 →</button>
                     </div>
                 </div>
 
                 <div id="session-complete" class="session-complete hidden">
-                    <h2>学习完成！</h2>
+                    <h2>🎉 学习完成！</h2>
                     <div class="session-stats">
                         <p>正确率: <span id="session-accuracy">0%</span></p>
                         <p>用时: <span id="session-time">0</span> 秒</p>
@@ -237,20 +273,21 @@
         </div>
     </div>
 
+    <!-- 统计页面 -->
     <div id="statistics-page" class="page">
         <div class="container">
             <h2>学习统计</h2>
-            
+
             <div class="stats-period">
                 <button class="period-btn active" data-days="7">最近7天</button>
                 <button class="period-btn" data-days="30">最近30天</button>
                 <button class="period-btn" data-days="90">最近90天</button>
-                <button id="refresh-statistics" class="btn btn-secondary">刷新数据</button>
+                <button id="refresh-statistics" class="btn btn-secondary btn-sm">🔄 刷新数据</button>
             </div>
 
             <div class="statistics-grid">
                 <div class="stat-card-large">
-                    <h3>学习概览</h3>
+                    <h3>📈 学习概览</h3>
                     <div class="stat-details">
                         <p>总复习次数: <span id="total-reviews">0</span></p>
                         <p>新学单词: <span id="new-words">0</span></p>
@@ -260,7 +297,7 @@
                 </div>
 
                 <div class="stat-card-large">
-                    <h3>复习计划</h3>
+                    <h3>📅 复习计划</h3>
                     <div id="forgetting-curve-chart" class="chart-container">
                         <canvas id="forgetting-curve-canvas"></canvas>
                     </div>
@@ -268,9 +305,9 @@
             </div>
 
             <div class="recent-records">
-                <h3>最近学习记录</h3>
+                <h3>📝 最近学习记录</h3>
                 <div id="records-list" class="records-list">
-                     学习记录将动态加载 
+                     <!-- 学习记录将动态加载 -->
                 </div>
             </div>
         </div>
@@ -283,29 +320,29 @@
 
             <!-- 当前生效计划 -->
             <div class="option-card">
-                <h3>当前生效计划</h3>
+                <h3>📌 当前生效计划</h3>
                 <div id="active-plan-display">加载中...</div>
             </div>
 
             <!-- 历史计划列表 -->
             <div class="option-card">
                 <div class="section-header">
-                    <h3>历史计划</h3>
-                    <button id="refresh-plans-btn" class="btn btn-secondary">刷新</button>
+                    <h3>📜 历史计划</h3>
+                    <button id="refresh-plans-btn" class="btn btn-secondary btn-sm">🔄 刷新</button>
                 </div>
                 <div id="plans-list">加载中...</div>
             </div>
 
             <!-- 创建新计划 -->
             <div class="option-card">
-                <h3>创建新计划</h3>
+                <h3>➕ 创建新计划</h3>
                 <div class="form-group">
                     <label>词库</label>
                     <select id="plan-dataset">
-                        <option value="cet4">CET4</option>
-                        <option value="cet6">CET6</option>
-                        <option value="toefl">托福</option>
-                        <option value="ielts">雅思</option>
+                        <option value="cet4">CET4 - 大学英语四级</option>
+                        <option value="cet6">CET6 - 大学英语六级</option>
+                        <option value="toefl">TOEFL - 托福</option>
+                        <option value="ielts">IELTS - 雅思</option>
                     </select>
                 </div>
                 <div class="form-group">
@@ -328,7 +365,8 @@
     <!-- 闯关模式页面 -->
     <div id="levels-page" class="page">
         <div class="container">
-            <h2>闯关模式</h2>
+            <h2>🎮 闯关模式</h2>
+            <p style="color: var(--text-secondary); margin-bottom: var(--space-5);">按顺序通关，解锁更多关卡！</p>
             <div id="levels-gates-list" class="recommendations-grid">
                 加载中...
             </div>
@@ -338,7 +376,7 @@
     <!-- 等级测试页面 -->
     <div id="evaluation-page" class="page">
         <div class="container">
-            <h2>等级测试</h2>
+            <h2>📝 等级测试</h2>
             <div id="evaluation-start" class="option-card">
                 <p>测试你的词汇水平，获得个性化学习建议</p>
                 <div class="form-group">
@@ -349,16 +387,18 @@
             </div>
             <div id="evaluation-test" class="hidden">
                 <div class="learning-container">
-                    <div id="eval-progress">0/0</div>
+                    <div class="eval-progress" id="eval-progress">0/0</div>
                     <div id="eval-questions-container"></div>
                     <button id="submit-eval-btn" class="btn btn-primary">提交答卷</button>
                 </div>
             </div>
             <div id="evaluation-result" class="hidden option-card">
-                <h3>测试结果</h3>
-                <p>得分: <span id="eval-score">0</span>%</p>
-                <p>正确: <span id="eval-correct">0</span>/<span id="eval-total">0</span></p>
-                <p>评测水平: <span id="eval-level">-</span></p>
+                <h3>🏆 测试结果</h3>
+                <div class="result-stats">
+                    <p>得分: <span id="eval-score">0</span>%</p>
+                    <p>正确: <span id="eval-correct">0</span>/<span id="eval-total">0</span></p>
+                    <p>评测水平: <span id="eval-level">-</span></p>
+                </div>
                 <button id="eval-again-btn" class="btn btn-primary">再次测试</button>
             </div>
         </div>
@@ -382,7 +422,7 @@
 
             <!-- 学习统计 -->
             <div class="profile-section">
-                <h3>学习统计</h3>
+                <h3>📊 学习统计</h3>
                 <div class="profile-stats">
                     <div class="profile-stat">
                         <div class="profile-stat-value" id="profile-total-words">0</div>
@@ -401,7 +441,7 @@
 
             <!-- 成就展示 -->
             <div class="profile-section">
-                <h3>我的成就</h3>
+                <h3>🏅 我的成就</h3>
                 <div id="achievements-grid" class="achievements-grid">
                     加载中...
                 </div>
@@ -409,7 +449,7 @@
 
             <!-- 编辑个人信息 -->
             <div class="option-card">
-                <h3>编辑个人信息</h3>
+                <h3>✏️ 编辑个人信息</h3>
                 <div class="form-group">
                     <label>用户名</label>
                     <input type="text" id="edit-username" disabled>
@@ -431,8 +471,8 @@
 
             <!-- 账号操作 -->
             <div class="option-card">
-                <h3>账号操作</h3>
-                <p style="color: var(--text-secondary); margin-bottom: 16px;">退出登录将清除本地登录状态</p>
+                <h3>🔐 账号操作</h3>
+                <p style="color: var(--text-secondary); margin-bottom: var(--space-4);">退出登录将清除本地登录状态</p>
                 <button id="profile-logout-btn" class="btn btn-secondary">退出登录</button>
             </div>
         </div>

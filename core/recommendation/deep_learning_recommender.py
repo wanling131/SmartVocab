@@ -33,7 +33,7 @@ from tools.words_crud import WordsCRUD
 from tools.recommendations_crud import RecommendationsCRUD
 
 # 导入配置常量
-from config import LEARNING_PARAMS
+from config import LEARNING_PARAMS, RECOMMENDATION_CONFIG
 
 logger = logging.getLogger(__name__)
 
@@ -48,30 +48,32 @@ MIN_TRAINING_RECORDS = LEARNING_PARAMS["min_training_records"]
 
 class VocabularyDataset(Dataset):
     """词汇学习数据集"""
-    def __init__(self, user_records, word_features, user_features):
+    def __init__(self, user_records, word_features, user_features, word_dim=25, user_dim=25):
         self.user_records = user_records
         self.word_features = word_features
         self.user_features = user_features
-        
+        self.word_dim = word_dim
+        self.user_dim = user_dim
+
     def __len__(self):
         return len(self.user_records)
-    
+
     def __getitem__(self, idx):
         record = self.user_records[idx]
         word_id = record['word_id']
         user_id = record['user_id']
-        
+
         # 安全获取特征，如果不存在则使用默认值
-        word_feature = self.word_features.get(word_id, [0.0] * 20)
-        user_feature = self.user_features.get(user_id, [0.0] * 15)
+        word_feature = self.word_features.get(word_id, [0.0] * self.word_dim)
+        user_feature = self.user_features.get(user_id, [0.0] * self.user_dim)
         label = record['mastery_level']
-        
+
         # 确保特征维度正确
-        if len(word_feature) != 20:
-            word_feature = word_feature[:20] + [0.0] * (20 - len(word_feature))
-        if len(user_feature) != 15:
-            user_feature = user_feature[:15] + [0.0] * (15 - len(user_feature))
-        
+        if len(word_feature) != self.word_dim:
+            word_feature = word_feature[:self.word_dim] + [0.0] * max(0, self.word_dim - len(word_feature))
+        if len(user_feature) != self.user_dim:
+            user_feature = user_feature[:self.user_dim] + [0.0] * max(0, self.user_dim - len(user_feature))
+
         return {
             'word_features': torch.FloatTensor(word_feature),
             'user_features': torch.FloatTensor(user_feature),
@@ -79,45 +81,121 @@ class VocabularyDataset(Dataset):
         }
 
 class DeepLearningRecommender(nn.Module):
-    """深度学习推荐模型"""
-    def __init__(self, word_feature_dim, user_feature_dim, hidden_dims=[128, 64, 32]):
+    """深度学习推荐模型 - 双塔架构 + 注意力机制"""
+    def __init__(self, word_feature_dim, user_feature_dim, hidden_dims=[128, 64, 32], use_attention=True):
         super(DeepLearningRecommender, self).__init__()
-        
-        # 单词特征编码器
+
+        self.use_attention = use_attention
+
+        # 单词特征编码器（使用 LayerNorm 替代 BatchNorm 以支持小批量）
         self.word_encoder = nn.Sequential(
             nn.Linear(word_feature_dim, hidden_dims[0]),
+            nn.LayerNorm(hidden_dims[0]),
             nn.ReLU(),
             nn.Dropout(0.2),
             nn.Linear(hidden_dims[0], hidden_dims[1]),
+            nn.LayerNorm(hidden_dims[1]),
             nn.ReLU(),
             nn.Dropout(0.2)
         )
-        
+
         # 用户特征编码器
         self.user_encoder = nn.Sequential(
             nn.Linear(user_feature_dim, hidden_dims[0]),
+            nn.LayerNorm(hidden_dims[0]),
             nn.ReLU(),
             nn.Dropout(0.2),
             nn.Linear(hidden_dims[0], hidden_dims[1]),
+            nn.LayerNorm(hidden_dims[1]),
             nn.ReLU(),
             nn.Dropout(0.2)
         )
-        
-        # 融合层
+
+        # 交叉注意力机制（用户对单词特征的注意力）
+        if use_attention:
+            self.attention = nn.MultiheadAttention(
+                embed_dim=hidden_dims[1],
+                num_heads=4,
+                dropout=0.1,
+                batch_first=True
+            )
+            # 上下文门控
+            self.context_gate = nn.Sequential(
+                nn.Linear(hidden_dims[1] * 3, hidden_dims[1]),
+                nn.Sigmoid()
+            )
+
+        # 融合层（考虑注意力后的维度变化）
+        fusion_input_dim = hidden_dims[1] * 3 if use_attention else hidden_dims[1] * 2
         self.fusion = nn.Sequential(
-            nn.Linear(hidden_dims[1] * 2, hidden_dims[2]),
+            nn.Linear(fusion_input_dim, hidden_dims[2]),
             nn.ReLU(),
             nn.Dropout(0.3),
             nn.Linear(hidden_dims[2], 1),
             nn.Sigmoid()
         )
-        
+
+        # 辅助输出头（用于多任务学习：预测难度匹配度）
+        self.aux_head = nn.Sequential(
+            nn.Linear(hidden_dims[2], 16),
+            nn.ReLU(),
+            nn.Linear(16, 1),
+            nn.Sigmoid()
+        )
+
     def forward(self, word_features, user_features):
+        batch_size = word_features.size(0)
+
+        # 编码
+        word_encoded = self.word_encoder(word_features)  # [batch, hidden_dims[1]]
+        user_encoded = self.user_encoder(user_features)  # [batch, hidden_dims[1]]
+
+        if self.use_attention:
+            # 为注意力机制准备输入 (seq_len=1)
+            word_seq = word_encoded.unsqueeze(1)  # [batch, 1, hidden]
+            user_seq = user_encoded.unsqueeze(1)  # [batch, 1, hidden]
+
+            # 用户对单词的注意力
+            attended_word, _ = self.attention(
+                query=user_seq,
+                key=word_seq,
+                value=word_seq
+            )  # [batch, 1, hidden]
+            attended_word = attended_word.squeeze(1)  # [batch, hidden]
+
+            # 单词对用户的注意力
+            attended_user, _ = self.attention(
+                query=word_seq,
+                key=user_seq,
+                value=user_seq
+            )  # [batch, 1, hidden]
+            attended_user = attended_user.squeeze(1)  # [batch, hidden]
+
+            # 门控融合
+            gate_input = torch.cat([word_encoded, user_encoded, attended_word * attended_user], dim=1)
+            gate = self.context_gate(gate_input)
+
+            # 融合所有特征
+            combined = torch.cat([
+                word_encoded * gate,
+                user_encoded * gate,
+                attended_word * attended_user
+            ], dim=1)
+        else:
+            combined = torch.cat([word_encoded, user_encoded], dim=1)
+
+        # 主输出
+        output = self.fusion(combined)
+
+        return output
+
+    def get_embeddings(self, word_features, user_features):
+        """
+        获取单词和用户的嵌入向量（用于相似度计算）
+        """
         word_encoded = self.word_encoder(word_features)
         user_encoded = self.user_encoder(user_features)
-        combined = torch.cat([word_encoded, user_encoded], dim=1)
-        output = self.fusion(combined)
-        return output
+        return word_encoded, user_encoded
 
 class DeepLearningRecommendationEngine:
     """
@@ -153,10 +231,12 @@ class DeepLearningRecommendationEngine:
         self.word_id_to_index = {}
         self.user_id_to_index = {}
         self.is_trained = False
-        
-        # 特征维度
-        self.word_feature_dim = 20  # 单词特征维度
-        self.user_feature_dim = 15  # 用户特征维度
+
+        # 特征维度（增强版）- 从配置读取
+        dl_config = RECOMMENDATION_CONFIG.get("deep_learning_enhanced", {})
+        self.word_feature_dim = dl_config.get("word_feature_dim", 25)  # 单词特征维度（增强）
+        self.user_feature_dim = dl_config.get("user_feature_dim", 25)  # 用户特征维度（增强）
+        self.use_attention = dl_config.get("attention_enabled", True)  # 注意力机制
         
         if TORCH_AVAILABLE:
             self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -246,26 +326,31 @@ class DeepLearningRecommendationEngine:
     
     def extract_word_features(self, word_data):
         """
-        提取单词特征
-        
+        提取单词特征（增强版：25维特征向量）
+
         Args:
             word_data (dict): 单词数据
-            
+
         Returns:
             list: 单词特征向量
         """
         features = []
-        
-        # 基础特征
-        features.append(word_data.get('difficulty_level', 3) / 6.0)  # 难度等级 (0-1)
-        features.append(word_data.get('frequency_rank', 1000) / 10000.0)  # 词频排名 (0-1)
-        
-        # CEFR标准编码
+
+        # === 基础特征 (8维) ===
+        # 难度等级 (归一化)
+        features.append(word_data.get('difficulty_level', 3) / 6.0)
+
+        # 词频排名 (对数归一化)
+        freq_rank = word_data.get('frequency_rank', 1000)
+        features.append(min(1.0, math.log(freq_rank + 1) / 10))
+
+        # CEFR标准编码 (one-hot)
         cefr_mapping = {'A1': 0, 'A2': 1, 'B1': 2, 'B2': 3, 'C1': 4, 'C2': 5}
         cefr_level = cefr_mapping.get(word_data.get('cefr_standard', 'B1'), 2)
-        features.append(cefr_level / 5.0)
-        
-        # 词性编码 (one-hot)
+        cefr_one_hot = [1 if i == cefr_level else 0 for i in range(6)]
+        features.extend(cefr_one_hot)
+
+        # 词性编码 (one-hot, 5维)
         pos_mapping = {
             'n': [1, 0, 0, 0, 0], 'v': [0, 1, 0, 0, 0], 'adj': [0, 0, 1, 0, 0],
             'adv': [0, 0, 0, 1, 0], 'other': [0, 0, 0, 0, 1]
@@ -273,8 +358,8 @@ class DeepLearningRecommendationEngine:
         pos = word_data.get('pos', 'other')
         pos_features = pos_mapping.get(pos, [0, 0, 0, 0, 1])
         features.extend(pos_features)
-        
-        # 领域特征 (从domain字段解析)
+
+        # === 领域特征 (3维) ===
         domain_data = word_data.get('domain', '{}')
         if isinstance(domain_data, str):
             try:
@@ -282,94 +367,244 @@ class DeepLearningRecommendationEngine:
             except:
                 domain_data = {}
         elif isinstance(domain_data, list):
-            # 如果是列表，转换为字典
             domain_data = {}
-        
-        features.append(domain_data.get('spoken_ratio', 0.5))  # 口语使用频率
-        features.append(domain_data.get('academic_ratio', 0.5))  # 学术使用频率
-        
-        # 单词长度特征
-        word_length = len(word_data.get('word', ''))
-        features.append(min(word_length / LEARNING_PARAMS["max_word_length"], 1.0))  # 标准化长度
-        
-        # 翻译长度特征
-        translation_length = len(word_data.get('translation', ''))
-        features.append(min(translation_length / LEARNING_PARAMS["max_translation_length"], 1.0))  # 标准化翻译长度
-        
-        # 音标特征
+
+        features.append(domain_data.get('spoken_ratio', 0.5))
+        features.append(domain_data.get('academic_ratio', 0.5))
+        # 商业使用频率（新增）
+        features.append(domain_data.get('business_ratio', 0.5))
+
+        # === 词汇结构特征 (4维) ===
+        word_text = word_data.get('word', '')
+        # 单词长度（归一化）
+        features.append(min(len(word_text) / LEARNING_PARAMS["max_word_length"], 1.0))
+        # 音节数估计（基于元音数量）
+        vowel_count = sum(1 for c in word_text.lower() if c in 'aeiou')
+        features.append(min(vowel_count / 5, 1.0))
+        # 是否有音标
         phonetic = word_data.get('phonetic', '')
-        features.append(1.0 if phonetic else 0.0)  # 是否有音标
-        
+        features.append(1.0 if phonetic else 0.0)
+        # 是否是复合词（包含连字符或空格）
+        features.append(1.0 if '-' in word_text or ' ' in word_text else 0.0)
+
+        # === 语义特征 (5维) ===
+        translation = word_data.get('translation', '')
+        # 翻译长度（归一化）
+        features.append(min(len(translation) / LEARNING_PARAMS["max_translation_length"], 1.0))
+        # 翻译中的逗号数量（多义词指标）
+        comma_count = translation.count('，') + translation.count(',')
+        features.append(min(comma_count / 3, 1.0))
+
+        # 标签特征（考试类型）
+        tag = word_data.get('tag', '')
+        features.append(1.0 if 'CET4' in tag or '四级' in tag else 0.0)
+        features.append(1.0 if 'CET6' in tag or '六级' in tag else 0.0)
+        features.append(1.0 if 'IELTS' in tag or 'TOEFL' in tag or 'GRE' in tag else 0.0)
+
         # 补充特征到固定维度
         while len(features) < self.word_feature_dim:
             features.append(0.0)
-        
+
         return features[:self.word_feature_dim]
     
     def extract_user_features(self, user_id, user_records):
         """
-        提取用户特征
-        
+        提取用户特征（增强版：25维特征向量，包含实时性和多样性特征）
+
         Args:
             user_id (int): 用户ID
             user_records (list): 用户学习记录
-            
+
         Returns:
             list: 用户特征向量
         """
         features = []
-        
+
         if not user_records:
             return [0.0] * self.user_feature_dim
-        
-        # 学习统计特征
+
+        now = datetime.now()
         total_words = len(user_records)
+
+        # === 学习统计特征 (7维) ===
         mastered_words = sum(1 for r in user_records if r.get('is_mastered', False))
         avg_mastery = sum(r.get('mastery_level', 0) for r in user_records) / total_words
         total_reviews = sum(r.get('review_count', 0) for r in user_records)
-        
+
         features.append(total_words / 1000.0)  # 学习单词数 (标准化)
         features.append(mastered_words / max(total_words, 1))  # 掌握率
         features.append(avg_mastery)  # 平均掌握程度
         features.append(min(total_reviews / 1000.0, 1.0))  # 总复习次数 (标准化)
-        
+        features.append(min(total_reviews / max(total_words, 1) / 10.0, 1.0))  # 平均复习深度
+
         # 学习速度特征
         if user_records:
-            first_learned = min(r.get('created_at', datetime.now()) for r in user_records)
-            days_learning = (datetime.now() - first_learned).days
-            learning_speed = total_words / max(days_learning, 1)
-            features.append(min(learning_speed / LEARNING_PARAMS["max_learning_speed"], 1.0))  # 学习速度 (标准化)
+            first_learned = min(r.get('created_at', now) for r in user_records)
+            days_learning = max((now - first_learned).days, 1)
+            learning_speed = total_words / days_learning
+            features.append(min(learning_speed / LEARNING_PARAMS["max_learning_speed"], 1.0))
         else:
             features.append(0.0)
-        
-        # 难度偏好特征
+
+        # 连续学习天数
+        streak_days = self._calculate_streak(user_records)
+        features.append(min(streak_days / 30.0, 1.0))  # 30天归一化
+
+        # === 难度偏好特征 (4维) ===
         difficulty_levels = [r.get('difficulty_level', 3) for r in user_records if 'difficulty_level' in r]
         if difficulty_levels:
             avg_difficulty = sum(difficulty_levels) / len(difficulty_levels)
             features.append(avg_difficulty / 6.0)  # 平均难度偏好
+
+            # 难度分布 (低/中/高)
+            low_ratio = sum(1 for d in difficulty_levels if d <= 2) / len(difficulty_levels)
+            mid_ratio = sum(1 for d in difficulty_levels if 3 <= d <= 4) / len(difficulty_levels)
+            high_ratio = sum(1 for d in difficulty_levels if d >= 5) / len(difficulty_levels)
+            features.extend([low_ratio, mid_ratio, high_ratio])
+        else:
+            features.extend([0.5, 0.3, 0.4, 0.3])  # 默认值
+
+        # === 学习模式特征 (4维) ===
+        # 近期活跃度（7天内）
+        recent_records = [r for r in user_records
+                         if r.get('last_reviewed_at') and
+                         (now - r['last_reviewed_at']).days <= 7]
+        recent_activity = len(recent_records) / max(total_words, 1)
+        features.append(recent_activity)
+
+        # 学习一致性（复习次数标准差的倒数）
+        review_counts = [r.get('review_count', 0) for r in user_records]
+        if review_counts and len(review_counts) > 1:
+            review_std = np.std(review_counts)
+            consistency = 1 / (1 + review_std / 5)  # 归一化
+            features.append(consistency)
         else:
             features.append(0.5)
-        
-        # 学习模式特征
-        recent_records = [r for r in user_records 
-                         if r.get('last_reviewed_at') and 
-                         (datetime.now() - r['last_reviewed_at']).days <= 7]
-        recent_activity = len(recent_records) / max(total_words, 1)
-        features.append(recent_activity)  # 近期活跃度
-        
-        # 学习一致性特征
-        review_counts = [r.get('review_count', 0) for r in user_records]
-        if review_counts:
-            review_std = np.std(review_counts)
-            features.append(min(review_std / LEARNING_PARAMS["max_review_std"], 1.0))  # 学习一致性
+
+        # 学习时段偏好（简化：上午/下午/晚上）
+        hour_distribution = [0, 0, 0]  # 0-8, 8-16, 16-24
+        for r in user_records:
+            if r.get('last_reviewed_at'):
+                hour = r['last_reviewed_at'].hour
+                if hour < 8:
+                    hour_distribution[0] += 1
+                elif hour < 16:
+                    hour_distribution[1] += 1
+                else:
+                    hour_distribution[2] += 1
+
+        total_time_slots = sum(hour_distribution) or 1
+        features.extend([h / total_time_slots for h in hour_distribution])
+
+        # === 实时表现特征 (4维) ===
+        # 近7天正确率趋势
+        recent_correct = sum(1 for r in recent_records if r.get('mastery_level', 0) > 0.5)
+        recent_accuracy = recent_correct / len(recent_records) if recent_records else 0.5
+        features.append(recent_accuracy)
+
+        # 掌握速度（首次学习到掌握的平均时间）
+        mastered_records = [r for r in user_records if r.get('is_mastered')]
+        if mastered_records:
+            mastery_speeds = []
+            for r in mastered_records:
+                if r.get('first_learned_at') and r.get('last_reviewed_at'):
+                    days = (r['last_reviewed_at'] - r['first_learned_at']).days
+                    mastery_speeds.append(days)
+            avg_mastery_days = sum(mastery_speeds) / len(mastery_speeds) if mastery_speeds else 7
+            features.append(max(0, 1 - avg_mastery_days / 30))  # 30天归一化
+        else:
+            features.append(0.5)
+
+        # 遗忘率估计（基于复习间隔和掌握度变化）
+        forgetting_estimate = self._estimate_forgetting_rate(user_records)
+        features.append(forgetting_estimate)
+
+        # 学习强度（近期学习密度）
+        learning_intensity = len(recent_records) / 7.0  # 每天学习数
+        features.append(min(learning_intensity / 10.0, 1.0))  # 10词/天归一化
+
+        # === 多样性偏好特征 (4维) ===
+        # 词性多样性
+        pos_set = set()
+        for r in user_records:
+            if r.get('pos'):
+                pos_set.add(r['pos'])
+        pos_diversity = len(pos_set) / 5.0  # 5种词性归一化
+        features.append(pos_diversity)
+
+        # 领域多样性（基于tag）
+        tag_set = set()
+        for r in user_records:
+            if r.get('tag'):
+                tags = r['tag'].split(',')
+                tag_set.update(tags)
+        tag_diversity = min(len(tag_set) / 10.0, 1.0)  # 10种标签归一化
+        features.append(tag_diversity)
+
+        # 难度跨度（学过的最高难度 - 最低难度）
+        if difficulty_levels:
+            difficulty_spread = (max(difficulty_levels) - min(difficulty_levels)) / 5.0
+            features.append(difficulty_spread)
         else:
             features.append(0.0)
-        
+
+        # 新词探索意愿（最近学习的词中，低频词比例）
+        low_freq_count = sum(1 for r in recent_records if r.get('frequency_rank', 1000) > 2000)
+        exploration_will = low_freq_count / len(recent_records) if recent_records else 0
+        features.append(exploration_will)
+
         # 补充特征到固定维度
         while len(features) < self.user_feature_dim:
             features.append(0.0)
-        
+
         return features[:self.user_feature_dim]
+
+    def _calculate_streak(self, user_records: List[Dict]) -> int:
+        """
+        计算用户连续学习天数
+        """
+        if not user_records:
+            return 0
+
+        # 收集所有学习日期
+        dates = set()
+        for r in user_records:
+            if r.get('last_reviewed_at'):
+                dates.add(r['last_reviewed_at'].date())
+
+        if not dates:
+            return 0
+
+        # 计算连续天数
+        sorted_dates = sorted(dates, reverse=True)
+        today = datetime.now().date()
+        streak = 0
+
+        for i, date in enumerate(sorted_dates):
+            expected_date = today - timedelta(days=i)
+            if date == expected_date:
+                streak += 1
+            else:
+                break
+
+        return streak
+
+    def _estimate_forgetting_rate(self, user_records: List[Dict]) -> float:
+        """
+        估计用户的遗忘率（基于艾宾浩斯曲线）
+        """
+        # 简化估计：基于复习次数和掌握度的关系
+        if not user_records:
+            return 0.5
+
+        # 找出需要多次复习才能掌握的词的比例
+        high_review_low_mastery = sum(
+            1 for r in user_records
+            if r.get('review_count', 0) > 3 and r.get('mastery_level', 0) < 0.5
+        )
+        total = len(user_records)
+
+        return high_review_low_mastery / total if total > 0 else 0.5
     
     def prepare_training_data(self):
         """

@@ -106,7 +106,68 @@ LEARNING_PARAMS = {
 # 推荐算法配置
 RECOMMENDATION_CONFIG = {
     "max_recommendations": 50,          # 最大推荐数量
-    "min_score_threshold": 0.3          # 最小推荐分数阈值
+    "min_score_threshold": 0.3,         # 最小推荐分数阈值
+
+    # 动态权重调整参数
+    "dynamic_weights": {
+        "enabled": True,                 # 是否启用动态权重
+        "min_records_for_personalization": 20,  # 个性化权重所需最少记录
+        "weight_adaptation_rate": 0.1,   # 权重适应速率
+        "exploration_decay_rate": 0.05,  # 探索衰减率
+    },
+
+    # 冷启动策略
+    "cold_start": {
+        "use_popularity": True,          # 使用热门词
+        "use_collaborative_fallback": True,  # 协同过滤回退
+        "min_similarity_users": 3,       # 协同过滤最少相似用户数
+        "default_difficulty_range": [1, 2],  # 新用户默认难度范围
+    },
+
+    # 探索与利用平衡
+    "exploration_exploitation": {
+        "epsilon_start": 0.3,            # 初始探索率
+        "epsilon_end": 0.05,             # 最终探索率
+        "epsilon_decay_episodes": 100,   # 探索衰减周期
+        "ucb_alpha": 0.1,                # UCB算法置信度参数
+        "thompson_sampling_enabled": True,  # 是否启用Thompson采样
+    },
+
+    # 多样性控制
+    "diversity": {
+        "enabled": True,                 # 是否启用多样性控制
+        "mmr_lambda": 0.7,               # MMR平衡参数 (0-1, 越大越重相关性)
+        "category_penalty": 0.3,         # 同类别惩罚系数
+        "difficulty_spread": 2,          # 推荐难度跨度
+        "max_same_pos_ratio": 0.3,       # 同词性最大比例
+    },
+
+    # 协同过滤配置
+    "collaborative_filtering": {
+        "enabled": True,                 # 是否启用协同过滤
+        "min_common_items": 3,           # 最小共同学习词数
+        "similarity_threshold": 0.3,     # 用户相似度阈值
+        "neighbor_count": 10,            # 邻居用户数量
+        "item_based_enabled": True,      # 是否启用基于物品的协同过滤
+    },
+
+    # 实时个性化
+    "realtime_personalization": {
+        "enabled": True,                 # 是否启用实时个性化
+        "recency_window_days": 7,        # 近期行为时间窗口
+        "recency_weight": 0.4,           # 近期行为权重
+        "session_weight": 0.3,           # 当前会话权重
+        "feedback_integration_rate": 0.2,  # 反馈整合速率
+    },
+
+    # 深度学习增强
+    "deep_learning_enhanced": {
+        "user_feature_dim": 25,          # 增强用户特征维度
+        "word_feature_dim": 25,          # 增强单词特征维度
+        "attention_enabled": True,       # 是否启用注意力机制
+        "online_learning_rate": 0.01,    # 在线学习率
+        "model_update_frequency": 50,    # 模型更新频率（学习记录数）
+    }
 }
 
 # 遗忘曲线配置

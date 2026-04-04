@@ -1,5 +1,34 @@
 import { apiRequest, setToken, getToken, clearToken } from "./js/api-client.js"
 
+// ==================== 安全工具函数 ====================
+
+/**
+ * HTML转义函数，防止XSS攻击
+ * @param {string} str - 需要转义的字符串
+ * @returns {string} - 转义后的安全字符串
+ */
+function escapeHtml(str) {
+  if (str === null || str === undefined) return ''
+  const div = document.createElement('div')
+  div.textContent = String(str)
+  return div.innerHTML
+}
+
+/**
+ * 安全地设置元素的innerHTML，自动转义所有变量
+ * @param {HTMLElement} element - 目标元素
+ * @param {string} html - HTML模板字符串
+ * @param {Object} vars - 需要转义的变量对象
+ */
+function safeHtml(element, html, vars = {}) {
+  let result = html
+  for (const [key, value] of Object.entries(vars)) {
+    const placeholder = new RegExp(`\\$\\{\\s*${key}\\s*\\}`, 'g')
+    result = result.replace(placeholder, escapeHtml(value))
+  }
+  element.innerHTML = result
+}
+
 // 全局状态
 let currentUser = null
 let currentSession = null
@@ -12,10 +41,17 @@ let currentBrowseIndex = 0  // 当前浏览索引
 let wordStartTime = 0
 
 function showLoading() {
+  const existing = document.getElementById("loading-overlay")
+  if (existing) return
   const overlay = document.createElement("div")
   overlay.className = "loading-overlay"
   overlay.id = "loading-overlay"
-  overlay.innerHTML = '<div class="loading-spinner"></div>'
+  overlay.innerHTML = `
+    <div class="loading-content">
+      <div class="loading-spinner"></div>
+      <div class="loading-text">加载中...</div>
+    </div>
+  `
   document.body.appendChild(overlay)
 }
 
@@ -48,14 +84,19 @@ function showToast(message, type = "success") {
   const toast = document.createElement("div")
   toast.className = `toast ${type}`
   toast.textContent = message
-  
+
   // 添加到页面
   document.body.appendChild(toast)
-  
+
   // 自动移除
   setTimeout(() => {
     if (toast.parentNode) {
-      toast.parentNode.removeChild(toast)
+      toast.style.animation = "toastSlide 0.3s ease reverse"
+      setTimeout(() => {
+        if (toast.parentNode) {
+          toast.parentNode.removeChild(toast)
+        }
+      }, 300)
     }
   }, 3000)
 }
@@ -384,15 +425,16 @@ function displayRecommendations(recommendations) {
     recommendations.forEach((word) => {
       const card = document.createElement("div")
       card.className = "recommendation-card"
+      // 使用 escapeHtml 防止 XSS
       card.innerHTML = `
-                <h3>${word.word}</h3>
-                <div class="translation">${word.translation}</div>
-                <div class="recommendation-reason">${word.reason || '智能推荐'}</div>
+                <h3>${escapeHtml(word.word)}</h3>
+                <div class="translation">${escapeHtml(word.translation)}</div>
+                <div class="recommendation-reason">${escapeHtml(word.reason || '智能推荐')}</div>
                 <div class="meta">
-                    <span class="difficulty-badge difficulty-${word.difficulty_level}">
-                        难度 ${word.difficulty_level}
+                    <span class="difficulty-badge difficulty-${escapeHtml(String(word.difficulty_level))}">
+                        难度 ${escapeHtml(String(word.difficulty_level))}
                     </span>
-                    <span>推荐度: ${(word.recommendation_score * 100).toFixed(0)}%</span>
+                    <span>推荐度: ${escapeHtml((word.recommendation_score * 100).toFixed(0))}%</span>
                 </div>
             `
       card.addEventListener("click", () => {
