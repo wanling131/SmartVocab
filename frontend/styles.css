@@ -1,57 +1,57 @@
 /* ========================================
-   SmartVocab 现代化美化样式
+   SmartVocab 温暖人性化设计
    ======================================== */
 
-/* === CSS 变量系统 === */
+/* === CSS 变量系统 - 温暖友好风格 === */
 :root {
-  /* 主色调 - 紫色渐变系 */
-  --primary: #8b5cf6;
-  --primary-dark: #7c3aed;
-  --primary-light: #a78bfa;
-  --primary-glow: rgba(139, 92, 246, 0.4);
+  /* 主色调 - 温暖蓝绿色，更自然 */
+  --primary: #0ea5e9;
+  --primary-dark: #0284c7;
+  --primary-light: #38bdf8;
+  --primary-glow: rgba(14, 165, 233, 0.2);
 
-  /* 辅助色 */
-  --secondary: #6366f1;
-  --secondary-dark: #4f46e5;
-  --secondary-light: #818cf8;
+  /* 辅助色 - 温暖的橙色 */
+  --secondary: #f97316;
+  --secondary-dark: #ea580c;
+  --secondary-light: #fb923c;
 
-  /* 语义色 */
-  --success: #10b981;
-  --success-light: rgba(16, 185, 129, 0.15);
-  --success-dark: #059669;
+  /* 语义色 - 更柔和 */
+  --success: #22c55e;
+  --success-light: rgba(34, 197, 94, 0.12);
+  --success-dark: #16a34a;
   --error: #ef4444;
-  --error-light: rgba(239, 68, 68, 0.15);
+  --error-light: rgba(239, 68, 68, 0.12);
   --error-dark: #dc2626;
-  --warning: #f59e0b;
-  --warning-light: rgba(245, 158, 11, 0.15);
-  --info: #3b82f6;
-  --info-light: rgba(59, 130, 246, 0.15);
+  --warning: #eab308;
+  --warning-light: rgba(234, 179, 8, 0.12);
+  --info: #0ea5e9;
+  --info-light: rgba(14, 165, 233, 0.12);
 
-  /* 背景色系 */
-  --background: #0a0a12;
-  --background-alt: #0f0f1a;
-  --surface: #141422;
-  --surface-light: #1e1e32;
-  --surface-lighter: #282840;
-  --surface-hover: #2a2a45;
+  /* 背景色系 - 浅色温暖 */
+  --background: #fafafa;
+  --background-alt: #f5f5f5;
+  --surface: #ffffff;
+  --surface-light: #f8fafc;
+  --surface-lighter: #f1f5f9;
+  --surface-hover: #e2e8f0;
 
-  /* 文字色 */
-  --text: #f4f4f5;
-  --text-secondary: #a1a1aa;
-  --text-muted: #71717a;
-  --text-inverse: #0a0a12;
+  /* 文字色 - 柔和对比 */
+  --text: #1e293b;
+  --text-secondary: #64748b;
+  --text-muted: #94a3b8;
+  --text-inverse: #ffffff;
 
-  /* 边框 */
-  --border: #2d2d44;
-  --border-light: #3d3d5c;
+  /* 边框 - 轻盈 */
+  --border: #e2e8f0;
+  --border-light: #f1f5f9;
   --border-focus: var(--primary);
 
-  /* 圆角系统 */
-  --radius-xs: 4px;
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-  --radius-xl: 24px;
+  /* 圆角系统 - 更圆润友好 */
+  --radius-xs: 6px;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
   --radius-full: 9999px;
 
   /* 间距系统 */
@@ -74,25 +74,25 @@
   --text-3xl: 30px;
   --text-4xl: 36px;
 
-  /* 阴影系统 */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
-  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.6);
-  --shadow-glow: 0 0 20px var(--primary-glow);
-  --shadow-inner: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+  /* 阴影系统 - 柔和 */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.15);
+  --shadow-glow: 0 0 0 3px var(--primary-glow);
+  --shadow-inner: inset 0 2px 4px rgba(0, 0, 0, 0.05);
 
-  /* 过渡时间 */
-  --transition-fast: 0.15s;
-  --transition-base: 0.25s;
-  --transition-slow: 0.4s;
+  /* 过渡时间 - 稍慢更自然 */
+  --transition-fast: 0.2s;
+  --transition-base: 0.3s;
+  --transition-slow: 0.5s;
 
-  /* 渐变 */
-  --gradient-primary: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+  /* 渐变 - 柔和自然 */
+  --gradient-primary: linear-gradient(135deg, var(--primary) 0%, #06b6d4 100%);
   --gradient-surface: linear-gradient(180deg, var(--surface) 0%, var(--surface-light) 100%);
-  --gradient-card: linear-gradient(145deg, var(--surface) 0%, rgba(139, 92, 246, 0.05) 100%);
-  --gradient-success: linear-gradient(135deg, var(--success) 0%, #14b8a6 100%);
-  --gradient-error: linear-gradient(135deg, var(--error) 0%, #f97316 100%);
+  --gradient-card: linear-gradient(145deg, var(--surface) 0%, var(--surface-light) 100%);
+  --gradient-success: linear-gradient(135deg, var(--success) 0%, #10b981 100%);
+  --gradient-error: linear-gradient(135deg, var(--error) 0%, #f87171 100%);
 }
 
 /* === 基础重置 === */
@@ -116,7 +116,7 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* 背景装饰 */
+/* 背景装饰 - 更柔和 */
 body::before {
   content: '';
   position: fixed;
@@ -125,9 +125,8 @@ body::before {
   right: 0;
   bottom: 0;
   background:
-    radial-gradient(ellipse at 20% 20%, rgba(139, 92, 246, 0.08) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 80%, rgba(99, 102, 241, 0.06) 0%, transparent 50%),
-    radial-gradient(ellipse at 50% 50%, rgba(139, 92, 246, 0.03) 0%, transparent 70%);
+    radial-gradient(ellipse at 20% 20%, rgba(14, 165, 233, 0.04) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 80%, rgba(249, 115, 22, 0.03) 0%, transparent 50%);
   pointer-events: none;
   z-index: -1;
 }
@@ -136,14 +135,14 @@ body::before {
 .page {
   display: none;
   opacity: 0;
-  transform: translateY(16px) scale(0.99);
-  transition: opacity var(--transition-slow) ease, transform var(--transition-slow) ease;
+  transform: translateY(12px);
+  transition: opacity var(--transition-base) ease, transform var(--transition-base) ease;
 }
 
 .page.active {
   display: block;
   opacity: 1;
-  transform: translateY(0) scale(1);
+  transform: translateY(0);
 }
 
 /* === 认证页面 === */
@@ -153,6 +152,7 @@ body::before {
   align-items: center;
   justify-content: center;
   padding: var(--space-5);
+  background: linear-gradient(135deg, #f0f9ff 0%, #fff7ed 100%);
 }
 
 #auth-page.active {
@@ -162,45 +162,25 @@ body::before {
 .auth-container {
   position: relative;
   width: 100%;
-  max-width: 420px;
-  padding: var(--space-8);
+  max-width: 400px;
+  padding: var(--space-7);
   background: var(--surface);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-lg);
   border: 1px solid var(--border);
-  box-shadow: var(--shadow-xl);
+  box-shadow: var(--shadow-lg);
   overflow: hidden;
 }
 
-/* 登录框背景光效 */
+/* 登录框顶部装饰 */
 .auth-container::before {
   content: '';
   position: absolute;
-  top: -100px;
-  left: -100px;
-  width: 300px;
-  height: 300px;
-  background: radial-gradient(circle, var(--primary-glow) 0%, transparent 70%);
-  opacity: 0.3;
-  animation: float 8s ease-in-out infinite;
-  pointer-events: none;
-}
-
-.auth-container::after {
-  content: '';
-  position: absolute;
-  bottom: -100px;
-  right: -100px;
-  width: 250px;
-  height: 250px;
-  background: radial-gradient(circle, rgba(99, 102, 241, 0.3) 0%, transparent 70%);
-  opacity: 0.3;
-  animation: float 10s ease-in-out infinite reverse;
-  pointer-events: none;
-}
-
-@keyframes float {
-  0%, 100% { transform: translate(0, 0); }
-  50% { transform: translate(20px, -20px); }
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: var(--gradient-primary);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
 }
 
 .auth-header {
@@ -210,14 +190,10 @@ body::before {
 }
 
 .auth-header h1 {
-  font-size: var(--text-4xl);
-  font-weight: 800;
-  background: var(--gradient-primary);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  font-size: var(--text-3xl);
+  font-weight: 700;
+  color: var(--text);
   margin-bottom: var(--space-2);
-  letter-spacing: -0.5px;
 }
 
 .auth-header p {
@@ -225,13 +201,13 @@ body::before {
   font-size: var(--text-sm);
 }
 
-/* 标签切换 */
+/* 标签切换 - 更自然 */
 .auth-tabs {
   display: flex;
-  gap: var(--space-1);
+  gap: var(--space-2);
   margin-bottom: var(--space-5);
   padding: var(--space-1);
-  background: var(--background);
+  background: var(--surface-lighter);
   border-radius: var(--radius-md);
 }
 
@@ -246,17 +222,17 @@ body::before {
   font-size: var(--text-sm);
   font-weight: 500;
   transition: all var(--transition-base) ease;
-  position: relative;
 }
 
 .tab-btn:hover {
-  color: var(--text-secondary);
+  color: var(--text);
+  background: var(--surface);
 }
 
 .tab-btn.active {
-  background: var(--gradient-primary);
-  color: white;
-  box-shadow: var(--shadow-glow);
+  background: var(--surface);
+  color: var(--primary);
+  box-shadow: var(--shadow-sm);
 }
 
 /* 表单样式 */
@@ -327,51 +303,30 @@ body::before {
   box-shadow: 0 0 0 4px var(--error-light);
 }
 
-/* === 按钮系统 === */
+/* === 按钮系统 - 更自然友好 === */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: var(--space-2);
-  padding: var(--space-4) var(--space-6);
+  padding: var(--space-3) var(--space-5);
   border: none;
   border-radius: var(--radius-md);
   font-size: var(--text-base);
   font-weight: 600;
   cursor: pointer;
-  transition: all var(--transition-base) ease;
-  position: relative;
-  overflow: hidden;
-}
-
-.btn::before {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 0;
-  height: 0;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 50%;
-  transform: translate(-50%, -50%);
-  transition: width 0.5s, height 0.5s;
-}
-
-.btn:active::before {
-  width: 300px;
-  height: 300px;
+  transition: all var(--transition-fast) ease;
 }
 
 .btn-primary {
   width: 100%;
-  background: var(--gradient-primary);
+  background: var(--primary);
   color: white;
-  box-shadow: var(--shadow-md);
 }
 
 .btn-primary:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-lg), var(--shadow-glow);
+  background: var(--primary-dark);
+  transform: translateY(-1px);
 }
 
 .btn-primary:active {
@@ -379,15 +334,14 @@ body::before {
 }
 
 .btn-secondary {
-  background: var(--surface-light);
+  background: var(--surface);
   color: var(--text);
   border: 1px solid var(--border);
 }
 
 .btn-secondary:hover {
   background: var(--surface-hover);
-  border-color: var(--border-light);
-  transform: translateY(-1px);
+  border-color: var(--primary);
 }
 
 .btn-sm {
@@ -399,7 +353,6 @@ body::before {
   opacity: 0.5;
   cursor: not-allowed;
   transform: none !important;
-  box-shadow: none !important;
 }
 
 /* 按钮加载状态 */
