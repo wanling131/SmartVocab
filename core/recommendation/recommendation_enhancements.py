@@ -706,15 +706,14 @@ class DiversityController:
 
         return similarity
 
-    def ensure_difficulty_spread(self, recommendations: List[Dict]) -> List[Dict]:
-        """
-        确保推荐结果的难度分布合理
+    def ensure_difficulty_spread(self, recommendations: List[Dict[str, any]]) -> List[Dict[str, any]]:
+        """确保推荐结果的难度分布合理。
 
         Args:
-            recommendations: 推荐列表
+            recommendations: 推荐列表。
 
         Returns:
-            List[Dict]: 调整后的推荐列表
+            List[Dict[str, any]]: 调整后的推荐列表。
         """
         if not self.config["enabled"]:
             return recommendations
@@ -739,15 +738,14 @@ class DiversityController:
 
         return result
 
-    def limit_same_pos_ratio(self, recommendations: List[Dict]) -> List[Dict]:
-        """
-        限制同一词性的比例
+    def limit_same_pos_ratio(self, recommendations: List[Dict[str, any]]) -> List[Dict[str, any]]:
+        """限制同一词性的比例。
 
         Args:
-            recommendations: 推荐列表
+            recommendations: 推荐列表。
 
         Returns:
-            List[Dict]: 调整后的推荐列表
+            List[Dict[str, any]]: 调整后的推荐列表。
         """
         if not self.config["enabled"]:
             return recommendations
@@ -768,33 +766,33 @@ class DiversityController:
 
 
 class ColdStartHandler:
-    """
-    冷启动处理器
-    为新用户提供智能的初始推荐策略
+    """冷启动处理器。
+
+    为新用户提供智能的初始推荐策略。
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
+        """初始化冷启动处理器。"""
         self.config = RECOMMENDATION_CONFIG["cold_start"]
         self.learning_records_crud = LearningRecordsCRUD()
         self.words_crud = WordsCRUD()
 
         # 热门词缓存
-        self._popular_words = None
+        self._popular_words: Optional[List[Dict[str, any]]] = None
 
     def get_cold_start_recommendations(
         self,
         user_id: int,
         limit: int = 20
-    ) -> List[Dict]:
-        """
-        为新用户生成冷启动推荐
+    ) -> List[Dict[str, any]]:
+        """为新用户生成冷启动推荐。
 
         Args:
-            user_id: 用户ID
-            limit: 返回数量
+            user_id: 用户ID。
+            limit: 返回数量。
 
         Returns:
-            List[Dict]: 推荐单词列表
+            List[Dict[str, any]]: 推荐单词列表。
         """
         recommendations = []
 
@@ -823,9 +821,14 @@ class ColdStartHandler:
 
         return unique_recommendations[:limit]
 
-    def _get_popular_words(self, limit: int) -> List[Dict]:
-        """
-        获取热门单词（被最多用户学习过的词）
+    def _get_popular_words(self, limit: int) -> List[Dict[str, any]]:
+        """获取热门单词（被最多用户学习过的词）。
+
+        Args:
+            limit: 返回数量。
+
+        Returns:
+            List[Dict[str, any]]: 热门单词列表。
         """
         if self._popular_words is not None:
             return self._popular_words[:limit]
@@ -870,9 +873,15 @@ class ColdStartHandler:
             logger.warning("获取热门词失败: %s", e)
             return []
 
-    def _get_basic_words(self, difficulty_range: List[int], limit: int) -> List[Dict]:
-        """
-        获取基础难度的单词
+    def _get_basic_words(self, difficulty_range: List[int], limit: int) -> List[Dict[str, any]]:
+        """获取基础难度的单词。
+
+        Args:
+            difficulty_range: 难度范围 [min, max]。
+            limit: 返回数量。
+
+        Returns:
+            List[Dict[str, any]]: 基础单词列表。
         """
         try:
             min_diff, max_diff = difficulty_range
@@ -899,9 +908,14 @@ class ColdStartHandler:
             logger.warning("获取基础词失败: %s", e)
             return []
 
-    def _generate_cold_start_reason(self, word: Dict) -> str:
-        """
-        生成冷启动推荐理由
+    def _generate_cold_start_reason(self, word: Dict[str, any]) -> str:
+        """生成冷启动推荐理由。
+
+        Args:
+            word: 单词信息。
+
+        Returns:
+            str: 推荐理由字符串。
         """
         difficulty = word.get('difficulty_level', 3)
         frequency = word.get('frequency_rank', 1000)
@@ -919,46 +933,51 @@ class ColdStartHandler:
             return "精选词汇：开启学习之旅"
 
     def is_cold_start_user(self, user_id: int, threshold: int = 10) -> bool:
-        """
-        判断用户是否为冷启动用户
+        """判断用户是否为冷启动用户。
 
         Args:
-            user_id: 用户ID
-            threshold: 学习记录阈值
+            user_id: 用户ID。
+            threshold: 学习记录阈值。
 
         Returns:
-            bool: 是否为冷启动用户
+            bool: 是否为冷启动用户。
         """
         records = self.learning_records_crud.get_by_user(user_id)
         return len(records) < threshold
 
 
 class RealtimePersonalizer:
-    """
-    实时个性化模块
-    根据用户当前会话行为实时调整推荐
+    """实时个性化模块。
+
+    根据用户当前会话行为实时调整推荐。
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
+        """初始化实时个性化模块。"""
         self.config = RECOMMENDATION_CONFIG["realtime_personalization"]
 
         # 会话缓存 {user_id: session_data}
-        self._session_cache = {}
+        self._session_cache: Dict[int, Dict[str, any]] = {}
 
         # 近期行为缓存
-        self._recent_behavior_cache = {}
+        self._recent_behavior_cache: Dict[int, Dict[str, any]] = {}
 
-    def update_session(self, user_id: int, word_id: int, is_correct: bool,
-                       response_time: float, difficulty: int):
-        """
-        更新用户会话数据
+    def update_session(
+        self,
+        user_id: int,
+        word_id: int,
+        is_correct: bool,
+        response_time: float,
+        difficulty: int
+    ) -> None:
+        """更新用户会话数据。
 
         Args:
-            user_id: 用户ID
-            word_id: 单词ID
-            is_correct: 是否正确
-            response_time: 响应时间
-            difficulty: 难度
+            user_id: 用户ID。
+            word_id: 单词ID。
+            is_correct: 是否正确。
+            response_time: 响应时间（秒）。
+            difficulty: 难度等级。
         """
         if user_id not in self._session_cache:
             self._session_cache[user_id] = {
@@ -982,14 +1001,13 @@ class RealtimePersonalizer:
         session['total_time'] += response_time
 
     def get_session_adjusted_difficulty(self, user_id: int) -> int:
-        """
-        根据会话表现动态调整推荐难度
+        """根据会话表现动态调整推荐难度。
 
         Args:
-            user_id: 用户ID
+            user_id: 用户ID。
 
         Returns:
-            int: 建议难度等级
+            int: 建议难度等级（1-6）。
         """
         if user_id not in self._session_cache:
             return 3  # 默认中等难度
@@ -1023,15 +1041,15 @@ class RealtimePersonalizer:
         else:
             return int(round(avg_difficulty))
 
-    def get_realtime_preferences(self, user_id: int) -> Dict:
-        """
-        获取用户实时偏好
+    def get_realtime_preferences(self, user_id: int) -> Dict[str, any]:
+        """获取用户实时偏好。
 
         Args:
-            user_id: 用户ID
+            user_id: 用户ID。
 
         Returns:
-            Dict: 偏好信息
+            Dict[str, any]: 偏好信息，包含 preferred_difficulty、performance_trend、
+                fatigue_level、engagement_level 等字段。
         """
         preferences = {
             'preferred_difficulty': 3,
@@ -1082,18 +1100,17 @@ class RealtimePersonalizer:
 
     def adjust_recommendation_score(
         self,
-        word: Dict,
+        word: Dict[str, any],
         user_id: int
     ) -> float:
-        """
-        根据实时偏好调整推荐分数
+        """根据实时偏好调整推荐分数。
 
         Args:
-            word: 单词信息
-            user_id: 用户ID
+            word: 单词信息。
+            user_id: 用户ID。
 
         Returns:
-            float: 调整后的分数
+            float: 调整后的分数，范围 [0, 1]。
         """
         base_score = word.get('recommendation_score', 0.5)
         preferences = self.get_realtime_preferences(user_id)
@@ -1116,22 +1133,23 @@ class RealtimePersonalizer:
 
         return min(1.0, base_score * adjustment)
 
-    def clear_session(self, user_id: int):
-        """
-        清除会话数据
+    def clear_session(self, user_id: int) -> None:
+        """清除会话数据。
+
+        Args:
+            user_id: 用户ID。
         """
         if user_id in self._session_cache:
             del self._session_cache[user_id]
 
-    def end_session_and_learn(self, user_id: int) -> Dict:
-        """
-        结束会话并返回学习摘要
+    def end_session_and_learn(self, user_id: int) -> Dict[str, any]:
+        """结束会话并返回学习摘要。
 
         Args:
-            user_id: 用户ID
+            user_id: 用户ID。
 
         Returns:
-            Dict: 会话摘要
+            Dict[str, any]: 会话摘要，包含 total_words、correct_count、accuracy 等字段。
         """
         if user_id not in self._session_cache:
             return {}

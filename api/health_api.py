@@ -34,3 +34,54 @@ def health_db():
     except Exception as e:
         logger.warning("健康检查数据库失败: %s", e)
         return APIResponse.error(f"数据库不可用: {e}", 503)
+
+
+@health_bp.route("/health/cache", methods=["GET"])
+@handle_api_error
+def health_cache():
+    """缓存状态检查。"""
+    try:
+        from tools.memory_cache import get_all_cache_stats
+        stats = get_all_cache_stats()
+
+        # 计算总体统计
+        total_hits = sum(s.get("hits", 0) for s in stats.values())
+        total_misses = sum(s.get("misses", 0) for s in stats.values())
+        total_requests = total_hits + total_misses
+        overall_hit_rate = (total_hits / total_requests * 100) if total_requests > 0 else 0
+
+        return APIResponse.success({
+            "status": "ok",
+            "caches": stats,
+            "summary": {
+                "total_hits": total_hits,
+                "total_misses": total_misses,
+                "overall_hit_rate": f"{overall_hit_rate:.2f}%"
+            }
+        }, "缓存状态正常")
+    except Exception as e:
+        logger.warning("缓存状态检查失败: %s", e)
+        return APIResponse.error(f"缓存不可用: {e}", 503)
+
+
+@health_bp.route("/health/cache/clear", methods=["POST"])
+@handle_api_error
+def clear_cache():
+    """清除所有缓存（仅用于测试/调试）。"""
+    try:
+        from tools.memory_cache import (
+            word_cache, word_list_cache, user_records_cache,
+            recommendation_cache, user_stats_cache, level_config_cache
+        )
+
+        word_cache.clear()
+        word_list_cache.clear()
+        user_records_cache.clear()
+        recommendation_cache.clear()
+        user_stats_cache.clear()
+        level_config_cache.clear()
+
+        return APIResponse.success({"status": "ok"}, "缓存已清除")
+    except Exception as e:
+        logger.warning("清除缓存失败: %s", e)
+        return APIResponse.error(f"清除缓存失败: {e}", 500)

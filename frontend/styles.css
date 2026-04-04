@@ -2252,6 +2252,172 @@ textarea:focus-visible {
   }
 }
 
+/* === 高级交互动画 === */
+
+/* 卡片3D悬浮效果 */
+.card-3d {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  will-change: transform;
+}
+
+.card-3d:hover {
+  box-shadow: 0 20px 40px rgba(139, 92, 246, 0.2);
+}
+
+/* 按钮脉冲动画 */
+@keyframes buttonPulse {
+  0%, 100% { box-shadow: 0 0 0 0 var(--primary-glow); }
+  50% { box-shadow: 0 0 0 10px transparent; }
+}
+
+.btn-pulse {
+  animation: buttonPulse 2s infinite;
+}
+
+/* 数字滚动效果 */
+@keyframes countUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.count-up-animate {
+  animation: countUp 0.5s ease-out;
+}
+
+/* 成功庆祝动画 */
+@keyframes celebrate {
+  0% { transform: scale(1); }
+  25% { transform: scale(1.1) rotate(-3deg); }
+  50% { transform: scale(1.1) rotate(3deg); }
+  75% { transform: scale(1.1) rotate(-3deg); }
+  100% { transform: scale(1); }
+}
+
+.celebrate {
+  animation: celebrate 0.6s ease-in-out;
+}
+
+/* 失败抖动动画 */
+@keyframes wiggle {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  50% { transform: translateX(5px); }
+  75% { transform: translateX(-5px); }
+}
+
+.wiggle {
+  animation: wiggle 0.4s ease-in-out;
+}
+
+/* 滑入动画 */
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-30px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(30px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slideInUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideInDown {
+  from { opacity: 0; transform: translateY(-30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.slide-in-left { animation: slideInLeft 0.4s ease-out; }
+.slide-in-right { animation: slideInRight 0.4s ease-out; }
+.slide-in-up { animation: slideInUp 0.4s ease-out; }
+.slide-in-down { animation: slideInDown 0.4s ease-out; }
+
+/* 缩放弹跳动画 */
+@keyframes scaleBounce {
+  0% { transform: scale(0); opacity: 0; }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.scale-bounce {
+  animation: scaleBounce 0.4s ease-out;
+}
+
+/* 进度条流动效果 */
+@keyframes progressFlow {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 100% 50%; }
+}
+
+.progress-flow {
+  background: linear-gradient(90deg, var(--primary), var(--secondary), var(--primary));
+  background-size: 200% 100%;
+  animation: progressFlow 2s linear infinite;
+}
+
+/* 闪烁高亮效果 */
+@keyframes highlightFlash {
+  0%, 100% { background-color: transparent; }
+  50% { background-color: rgba(139, 92, 246, 0.2); }
+}
+
+.highlight-flash {
+  animation: highlightFlash 0.6s ease-out;
+}
+
+/* 输入框聚焦发光 */
+@keyframes inputGlow {
+  0%, 100% { box-shadow: 0 0 5px var(--primary-glow); }
+  50% { box-shadow: 0 0 15px var(--primary-glow), 0 0 25px var(--primary-glow); }
+}
+
+.input-glow:focus {
+  animation: inputGlow 1.5s ease-in-out infinite;
+}
+
+/* 列表项依次出现 */
+.list-item-animate {
+  opacity: 0;
+  animation: slideInUp 0.3s ease-out forwards;
+}
+
+.list-item-animate:nth-child(1) { animation-delay: 0.05s; }
+.list-item-animate:nth-child(2) { animation-delay: 0.1s; }
+.list-item-animate:nth-child(3) { animation-delay: 0.15s; }
+.list-item-animate:nth-child(4) { animation-delay: 0.2s; }
+.list-item-animate:nth-child(5) { animation-delay: 0.25s; }
+.list-item-animate:nth-child(6) { animation-delay: 0.3s; }
+.list-item-animate:nth-child(7) { animation-delay: 0.35s; }
+.list-item-animate:nth-child(8) { animation-delay: 0.4s; }
+.list-item-animate:nth-child(9) { animation-delay: 0.45s; }
+.list-item-animate:nth-child(10) { animation-delay: 0.5s; }
+
+/* 打字机光标效果 */
+.typewriter-cursor::after {
+  content: '|';
+  animation: blink 1s step-end infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* 悬浮提示动画 */
+.tooltip-animate {
+  opacity: 0;
+  transform: translateY(5px);
+  transition: all 0.2s ease;
+}
+
+.tooltip-animate.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
 /* === 主色调发光变量 === */
 :root {
   --primary-glow: rgba(139, 92, 246, 0.4);

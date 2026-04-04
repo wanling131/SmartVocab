@@ -1,27 +1,35 @@
-"""
-评测模块
-等级测试：抽题组卷、自动计分
+"""评测模块。
+
+等级测试：抽题组卷、自动计分。
 """
 
 import logging
 import random
-from datetime import datetime
-from typing import Dict, Optional
-from tools.words_crud import WordsCRUD
-from tools.evaluation_papers_crud import EvaluationPapersCRUD
-from tools.evaluation_paper_items_crud import EvaluationPaperItemsCRUD
-from tools.evaluation_results_crud import EvaluationResultsCRUD
+from typing import Any, Dict, List, Optional
+
 from core.vocabulary.vocabulary_learning_manager import VocabularyLearningManager
-from config import LEARNING_PARAMS
+from tools.evaluation_paper_items_crud import EvaluationPaperItemsCRUD
+from tools.evaluation_papers_crud import EvaluationPapersCRUD
+from tools.evaluation_results_crud import EvaluationResultsCRUD
+from tools.words_crud import WordsCRUD
 
 logger = logging.getLogger(__name__)
 
 # CEFR/水平到难度映射
-LEVEL_TO_DIFFICULTY = {'A1': 1, 'A2': 1, 'B1': 2, 'B2': 3, 'C1': 4, 'C2': 5}
+LEVEL_TO_DIFFICULTY: Dict[str, int] = {'A1': 1, 'A2': 1, 'B1': 2, 'B2': 3, 'C1': 4, 'C2': 5}
 
 
-def _normalize_word_id(value) -> Optional[int]:
-    """将 word_id 规范为 int，避免 JSON/str 与 DB/int 键不一致导致漏判。"""
+def _normalize_word_id(value: Any) -> Optional[int]:
+    """将 word_id 规范为 int。
+
+    避免 JSON/str 与 DB/int 键不一致导致漏判。
+
+    Args:
+        value: 输入值，可以是 int、str 或其他类型。
+
+    Returns:
+        Optional[int]: 规范化后的整数 ID，转换失败返回 None。
+    """
     if value is None:
         return None
     try:
@@ -31,19 +39,36 @@ def _normalize_word_id(value) -> Optional[int]:
 
 
 class EvaluationManager:
-    """评测管理"""
-    
-    def __init__(self):
+    """评测管理器。
+
+    负责等级测试的抽题组卷、答案评分和结果记录。
+    """
+
+    def __init__(self) -> None:
+        """初始化评测管理器。"""
         self.words_crud = WordsCRUD()
         self.papers_crud = EvaluationPapersCRUD()
         self.items_crud = EvaluationPaperItemsCRUD()
         self.results_crud = EvaluationResultsCRUD()
         self.vocabulary_manager = VocabularyLearningManager()
     
-    def start_level_test(self, user_id: int, question_count: int = 10,
-                         difficulty_level: int = None, dataset_type: str = None) -> dict:
-        """
-        开始等级测试：抽题组卷
+    def start_level_test(
+        self,
+        user_id: int,
+        question_count: int = 10,
+        difficulty_level: Optional[int] = None,
+        dataset_type: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """开始等级测试：抽题组卷。
+
+        Args:
+            user_id: 用户ID。
+            question_count: 题目数量，默认10题。
+            difficulty_level: 指定难度等级（可选）。
+            dataset_type: 指定数据集类型（可选）。
+
+        Returns:
+            Dict[str, Any]: 包含 success、paper_id、questions、total_count 的结果字典。
         """
         # 抽题：按难度从 words 获取
         if difficulty_level:
@@ -121,10 +146,24 @@ class EvaluationManager:
             "total_count": actual
         }
     
-    def submit_level_test(self, user_id: int, paper_id: int, answers: list,
-                          duration_seconds: int = 0) -> dict:
-        """
-        提交等级测试：answers = [{"word_id": int, "user_answer": str, "correct_answer": str}, ...]
+    def submit_level_test(
+        self,
+        user_id: int,
+        paper_id: int,
+        answers: List[Dict[str, Any]],
+        duration_seconds: int = 0
+    ) -> Dict[str, Any]:
+        """提交等级测试并评分。
+
+        Args:
+            user_id: 用户ID。
+            paper_id: 试卷ID。
+            answers: 答案列表，格式为 [{"word_id": int, "user_answer": str, "correct_answer": str}, ...]。
+            duration_seconds: 答题耗时（秒）。
+
+        Returns:
+            Dict[str, Any]: 包含 success、score、correct_count、total_count、wrong_count、
+                answered_wrong_count、unanswered_count、assessed_level 的结果字典。
         """
         paper = self.papers_crud.read(paper_id)
         if not paper:
@@ -218,8 +257,22 @@ class EvaluationManager:
             "assessed_level": assessed_level,
         }
     
-    def _check_answer(self, user_answer: str, correct_answer: str, question_type: str) -> bool:
-        """检查答案"""
+    def _check_answer(
+        self,
+        user_answer: str,
+        correct_answer: str,
+        question_type: str
+    ) -> bool:
+        """检查答案是否正确。
+
+        Args:
+            user_answer: 用户提交的答案。
+            correct_answer: 正确答案。
+            question_type: 题目类型（choice/spelling/translation）。
+
+        Returns:
+            bool: 答案是否正确。
+        """
         u = (user_answer or '').strip().lower()
         c = (correct_answer or '').strip().lower()
 

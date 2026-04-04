@@ -1,14 +1,14 @@
 """
-智能推荐算法模块（增强版）
+智能推荐算法模块（增强版 + 性能优化）
 集成：协同过滤、动态权重、多样性控制、冷启动策略、实时个性化
 
 Author: SmartVocab Team
-Version: 2.0
+Version: 2.1 (Performance Optimized)
 """
 
 # 导入配置常量
 import logging
-from typing import Dict, List, Optional, Any, Tuple
+from typing import Dict, List, Optional, Any
 from config import LEARNING_PARAMS, RECOMMENDATION_CONFIG
 
 from tools.learning_records_crud import LearningRecordsCRUD
@@ -16,9 +16,12 @@ from tools.learning_records_crud import LearningRecordsCRUD
 logger = logging.getLogger(__name__)
 from tools.words_crud import WordsCRUD
 from tools.recommendations_crud import RecommendationsCRUD
-from datetime import datetime, timedelta
+from tools.memory_cache import (
+    recommendation_cache, word_cache, user_records_cache,
+    make_recommendation_key, invalidate_user_cache
+)
+from datetime import datetime
 import random
-import math
 import os
 
 # 尝试导入深度学习推荐器
@@ -105,7 +108,7 @@ class RecommendationEngine:
 
     def get_recommendations(self, user_id, limit=LEARNING_PARAMS["default_recommendation_limit"], algorithm="mixed"):
         """
-        获取用户推荐单词
+        获取用户推荐单词（带缓存优化）
 
         Args:
             user_id (int): 用户ID
@@ -115,6 +118,13 @@ class RecommendationEngine:
         Returns:
             list: 推荐单词列表
         """
+        # 尝试从缓存获取
+        cache_key = make_recommendation_key(user_id, algorithm, limit)
+        cached = recommendation_cache.get(cache_key)
+        if cached is not None:
+            logger.debug("从缓存获取推荐结果: user_id=%s", user_id)
+            return cached
+
         # 检查用户特定模型
         if self.deep_learning_recommender:
             user_model_path = f"models/deep_learning_recommender_user_{user_id}.pth"
@@ -131,6 +141,7 @@ class RecommendationEngine:
             logger.info("用户 %s 为冷启动用户，使用冷启动策略", user_id)
             cold_start_recs = self.cold_start_handler.get_cold_start_recommendations(user_id, limit)
             if cold_start_recs:
+                recommendation_cache.set(cache_key, cold_start_recs)
                 return cold_start_recs
 
         # 获取动态权重
@@ -175,7 +186,11 @@ class RecommendationEngine:
         # 保存推荐记录
         self._save_recommendations(user_id, recommendations[:limit])
 
-        return recommendations[:limit]
+        # 缓存结果
+        result = recommendations[:limit]
+        recommendation_cache.set(cache_key, result)
+
+        return result
 
     def _get_dynamic_weights(self, user_id: int, record_count: int) -> Dict[str, float]:
         """

@@ -1,10 +1,13 @@
 """
-学习记录表CRUD操作
+学习记录表CRUD操作（带缓存优化）
 """
 
 import logging
 import mysql.connector
 from .database import get_database_context
+from .memory_cache import (
+    user_records_cache, make_user_records_key, invalidate_user_cache
+)
 
 logger = logging.getLogger(__name__)
 
@@ -131,12 +134,12 @@ class LearningRecordsCRUD:
     
     def update(self, record_id, **kwargs):
         """
-        更新学习记录
-        
+        更新学习记录（同时更新缓存）
+
         Args:
             record_id (int): 记录ID
             **kwargs: 要更新的字段和值
-            
+
         Returns:
             int: 受影响的行数
         """
@@ -144,10 +147,10 @@ class LearningRecordsCRUD:
         if not kwargs:
             logger.debug("LearningRecordsCRUD.update: 没有要更新的字段")
             return 0
-        
+
         set_clauses = []
         values = []
-        
+
         # 允许更新的字段（含记忆曲线相关）
         allowed_map = {
             'is_learned': 'is_mastered', 'last_reviewed': 'last_reviewed_at',
@@ -161,13 +164,13 @@ class LearningRecordsCRUD:
                 db_field = allowed_map[field]
                 set_clauses.append(f"{db_field} = %s")
                 values.append(value)
-        
+
         if not set_clauses:
             logger.debug("LearningRecordsCRUD.update: 没有有效的更新字段")
             return 0
-        
+
         values.append(record_id)
-        
+
         with get_database_context() as connection:
             cursor = connection.cursor()
             query = f"UPDATE user_learning_records SET {', '.join(set_clauses)} WHERE id = %s"
@@ -176,6 +179,16 @@ class LearningRecordsCRUD:
             affected_rows = cursor.rowcount
             logger.debug("LearningRecordsCRUD.update: 更新了%s行", affected_rows)
             cursor.close()
+
+            # 使缓存失效 - 需要先查询记录获取user_id
+            if affected_rows > 0:
+                cursor2 = connection.cursor(dictionary=True)
+                cursor2.execute("SELECT user_id FROM user_learning_records WHERE id = %s", (record_id,))
+                row = cursor2.fetchone()
+                cursor2.close()
+                if row:
+                    invalidate_user_cache(row['user_id'])
+
             return affected_rows
     
     def delete(self, record_id):
@@ -206,16 +219,24 @@ class LearningRecordsCRUD:
     
     def get_by_user(self, user_id, limit=None, offset=0):
         """
-        获取指定用户的学习记录
-        
+        获取指定用户的学习记录（带缓存）
+
         Args:
             user_id (int): 用户ID
             limit (int): 限制数量
             offset (int): 偏移量
-            
+
         Returns:
             list: 该用户的学习记录列表
         """
+        # 尝试从缓存获取（仅对有limit的查询缓存）
+        if limit is not None:
+            cache_key = make_user_records_key(user_id, limit, offset)
+            cached = user_records_cache.get(cache_key)
+            if cached is not None:
+                logger.debug("LearningRecordsCRUD.get_by_user: 从缓存获取")
+                return cached
+
         logger.debug("LearningRecordsCRUD.get_by_user: user_id=%s, limit=%s, offset=%s", user_id, limit, offset)
         with get_database_context() as connection:
             cursor = connection.cursor(dictionary=True)
@@ -228,6 +249,11 @@ class LearningRecordsCRUD:
                     cursor.execute(query, (user_id,))
                 results = cursor.fetchall()
                 logger.debug("LearningRecordsCRUD.get_by_user: 找到%s条记录", len(results))
+
+                # 缓存结果（仅对有limit的查询）
+                if limit is not None:
+                    user_records_cache.set(cache_key, results)
+
                 return results
             except Exception as e:
                 logger.warning("LearningRecordsCRUD.get_by_user: 查询失败: %s", e)

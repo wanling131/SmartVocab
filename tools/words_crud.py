@@ -368,6 +368,81 @@ class WordsCRUD(BaseCRUD):
         result = self.execute_query(query, (dataset_type,), fetch_one=True)
         return result.get('cnt', 0) if result else 0
 
+    def get_by_ids(self, word_ids: List[int]) -> List[Dict[str, Any]]:
+        """
+        批量获取单词（解决N+1查询问题）
+
+        Args:
+            word_ids (List[int]): 单词ID列表
+
+        Returns:
+            List[Dict[str, Any]]: 单词列表
+        """
+        if not word_ids:
+            return []
+
+        # 尝试从缓存获取
+        results = []
+        uncached_ids = []
+        id_to_key = {}
+
+        for wid in word_ids:
+            key = make_word_key(wid)
+            id_to_key[wid] = key
+            cached = word_cache.get(key)
+            if cached is not None:
+                results.append(cached)
+            else:
+                uncached_ids.append(wid)
+
+        # 批量查询未缓存的单词
+        if uncached_ids:
+            placeholders = ','.join(['%s'] * len(uncached_ids))
+            query = f"SELECT * FROM words WHERE id IN ({placeholders})"
+            db_results = self.execute_query(query, tuple(uncached_ids), fetch_all=True)
+
+            if db_results:
+                db_results = self._parse_domain_field(db_results)
+                for word in db_results:
+                    # 缓存结果
+                    word_cache.set(id_to_key[word['id']], word)
+                    results.append(word)
+
+        # 按原始顺序返回
+        id_to_word = {w['id']: w for w in results}
+        return [id_to_word[wid] for wid in word_ids if wid in id_to_word]
+
+    def get_random_words(self, exclude_ids: List[int] = None, limit: int = 100,
+                        difficulty_range: tuple = (1, 6)) -> List[Dict[str, Any]]:
+        """
+        获取随机单词（用于生成错误选项等）
+
+        Args:
+            exclude_ids (List[int]): 要排除的单词ID
+            limit (int): 数量限制
+            difficulty_range (tuple): 难度范围 (min, max)
+
+        Returns:
+            List[Dict[str, Any]]: 随机单词列表
+        """
+        query = "SELECT * FROM words WHERE difficulty_level BETWEEN %s AND %s"
+        params = [difficulty_range[0], difficulty_range[1]]
+
+        if exclude_ids:
+            placeholders = ','.join(['%s'] * len(exclude_ids))
+            query += f" AND id NOT IN ({placeholders})"
+            params.extend(exclude_ids)
+
+        query += " ORDER BY RAND() LIMIT %s"
+        params.append(limit)
+
+        results = self.execute_query(query, tuple(params), fetch_all=True)
+
+        if results:
+            results = self._parse_domain_field(results)
+
+        return results or []
+
 
 def main():
     """

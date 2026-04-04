@@ -29,6 +29,132 @@ function safeHtml(element, html, vars = {}) {
   element.innerHTML = result
 }
 
+// ==================== 动画工具函数 ====================
+
+/**
+ * 数字递增动画
+ */
+function animateNumber(element, targetValue, duration = 1000) {
+  if (!element) return
+  const startValue = parseInt(element.textContent) || 0
+  const startTime = performance.now()
+
+  function update(currentTime) {
+    const elapsed = currentTime - startTime
+    const progress = Math.min(elapsed / duration, 1)
+    const easeProgress = 1 - Math.pow(1 - progress, 3)
+    const currentValue = Math.round(startValue + (targetValue - startValue) * easeProgress)
+    element.textContent = currentValue.toLocaleString()
+    if (progress < 1) requestAnimationFrame(update)
+  }
+  requestAnimationFrame(update)
+}
+
+/**
+ * 元素淡入动画
+ */
+function fadeIn(element, duration = 300) {
+  if (!element) return
+  element.style.opacity = '0'
+  element.style.display = 'block'
+  let start = null
+  function animate(timestamp) {
+    if (!start) start = timestamp
+    const opacity = Math.min((timestamp - start) / duration, 1)
+    element.style.opacity = opacity
+    if (opacity < 1) requestAnimationFrame(animate)
+  }
+  requestAnimationFrame(animate)
+}
+
+/**
+ * 元素淡出动画
+ */
+function fadeOut(element, duration = 300) {
+  return new Promise((resolve) => {
+    if (!element) { resolve(); return }
+    let start = null
+    function animate(timestamp) {
+      if (!start) start = timestamp
+      const opacity = 1 - Math.min((timestamp - start) / duration, 1)
+      element.style.opacity = opacity
+      if (opacity > 0) {
+        requestAnimationFrame(animate)
+      } else {
+        element.style.display = 'none'
+        resolve()
+      }
+    }
+    requestAnimationFrame(animate)
+  })
+}
+
+/**
+ * 涟漪点击效果
+ */
+function createRipple(event) {
+  const button = event.currentTarget
+  const rect = button.getBoundingClientRect()
+  const ripple = document.createElement('span')
+  const diameter = Math.max(rect.width, rect.height)
+  ripple.style.cssText = `
+    width: ${diameter}px; height: ${diameter}px;
+    left: ${event.clientX - rect.left - diameter/2}px;
+    top: ${event.clientY - rect.top - diameter/2}px;
+  `
+  ripple.className = 'ripple-effect'
+  button.querySelector('.ripple-effect')?.remove()
+  button.appendChild(ripple)
+  setTimeout(() => ripple.remove(), 600)
+}
+
+/**
+ * 进度条平滑动画
+ */
+function animateProgress(progressBar, targetPercent, duration = 500) {
+  if (!progressBar) return
+  const currentWidth = parseFloat(progressBar.style.width) || 0
+  const startTime = performance.now()
+  function update(currentTime) {
+    const progress = Math.min((currentTime - startTime) / duration, 1)
+    const easeProgress = 1 - Math.pow(1 - progress, 2)
+    progressBar.style.width = `${currentWidth + (targetPercent - currentWidth) * easeProgress}%`
+    if (progress < 1) requestAnimationFrame(update)
+  }
+  requestAnimationFrame(update)
+}
+
+/**
+ * 打字机效果
+ */
+function typeWriter(element, text, speed = 50) {
+  return new Promise((resolve) => {
+    if (!element) { resolve(); return }
+    element.textContent = ''
+    let i = 0
+    function type() {
+      if (i < text.length) {
+        element.textContent += text.charAt(i++)
+        setTimeout(type, speed)
+      } else resolve()
+    }
+    type()
+  })
+}
+
+/**
+ * 初始化所有动画效果
+ */
+function initAnimations() {
+  document.querySelectorAll('.btn, button:not(.ripple-initialized)').forEach(btn => {
+    btn.classList.add('ripple-initialized')
+    btn.addEventListener('click', createRipple)
+  })
+}
+
+// DOM加载完成后初始化
+document.addEventListener('DOMContentLoaded', initAnimations)
+
 // 全局状态
 let currentUser = null
 let currentSession = null
@@ -142,6 +268,59 @@ let recommendationCache = {
 
 // 推荐缓存持续时间（5分钟）
 const CACHE_DURATION = 5 * 60 * 1000
+
+// 通用 API 缓存
+const apiCache = new Map()
+const API_CACHE_TTL = 2 * 60 * 1000 // 2分钟
+
+// 缓存工具函数
+function getCachedApi(key) {
+  const cached = apiCache.get(key)
+  if (cached && Date.now() - cached.timestamp < API_CACHE_TTL) {
+    return cached.data
+  }
+  return null
+}
+
+function setCachedApi(key, data) {
+  apiCache.set(key, { data, timestamp: Date.now() })
+}
+
+function invalidateUserCache(userId) {
+  // 清除与用户相关的缓存
+  for (const key of apiCache.keys()) {
+    if (key.includes(`/learning/${userId}`) ||
+        key.includes(`/recommendations/${userId}`) ||
+        key.includes(`/statistics/${userId}`)) {
+      apiCache.delete(key)
+    }
+  }
+}
+
+// 防抖函数
+function debounce(func, wait) {
+  let timeout
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout)
+      func(...args)
+    }
+    clearTimeout(timeout)
+    timeout = setTimeout(later, wait)
+  }
+}
+
+// 节流函数
+function throttle(func, limit) {
+  let inThrottle
+  return function(...args) {
+    if (!inThrottle) {
+      func.apply(this, args)
+      inThrottle = true
+      setTimeout(() => inThrottle = false, limit)
+    }
+  }
+}
 
 // 清除推荐缓存（学习完成后调用）
 function clearRecommendationCache() {

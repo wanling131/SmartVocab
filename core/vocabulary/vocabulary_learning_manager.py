@@ -1,5 +1,5 @@
 """
-词汇学习核心模块
+词汇学习核心模块（性能优化版）
 负责词汇学习、测试、练习等核心功能
 """
 
@@ -14,6 +14,7 @@ from core.learning.learning_record_manager import LearningRecordManager
 from core.forgetting_curve.forgetting_curve_manager import ForgettingCurveManager
 from core.recommendation.recommendation_engine import RecommendationEngine
 from config import LEARNING_PARAMS
+from tools.memory_cache import invalidate_user_cache
 
 logger = logging.getLogger(__name__)
 
@@ -200,7 +201,7 @@ class VocabularyLearningManager:
     def submit_answer(self, user_id, word_id, user_answer, correct_answer, response_time, question_type="translation", mastery_override=None, session_info=None):
         """
         提交答案
-        
+
         Args:
             user_id (int): 用户ID
             word_id (int): 单词ID
@@ -210,7 +211,7 @@ class VocabularyLearningManager:
             question_type (str): 题目类型
             mastery_override (float): 强制设置掌握程度
             session_info (dict): 学习会话信息
-            
+
         Returns:
             dict: 答题结果
         """
@@ -218,20 +219,20 @@ class VocabularyLearningManager:
             logger.debug(
                 "提交答案 - user_id=%s, word_id=%s, user_answer=%r, correct_answer=%r, question_type=%s",
                 user_id, word_id, user_answer, correct_answer, question_type)
-            
+
             # 判断答案是否正确
             is_correct = self._check_answer(user_answer, correct_answer, question_type)
             logger.debug("答案检查结果 - is_correct=%s", is_correct)
-            
+
             # 获取或创建学习记录
             existing_record = self.learning_record_manager.get_word_learning_record(user_id, word_id)
             logger.debug("现有记录 - %s", existing_record)
-            
+
             if existing_record:
                 # 更新现有记录
                 result = self.learning_record_manager.update_mastery_level(
-                    existing_record["id"], 
-                    existing_record["mastery_level"], 
+                    existing_record["id"],
+                    existing_record["mastery_level"],
                     is_correct,
                     question_type
                 )
@@ -262,7 +263,10 @@ class VocabularyLearningManager:
                     is_mastered=mastery_level >= 0.8
                 )
                 logger.debug("创建学习记录结果: %s", result)
-            
+
+            # 使该用户的缓存失效
+            invalidate_user_cache(user_id)
+
             # 生成反馈消息
             if question_type == "choice":
                 message = "选择正确！" if is_correct else f"选择错误，正确答案是：{correct_answer}"
@@ -270,7 +274,7 @@ class VocabularyLearningManager:
                 message = "拼写正确！" if is_correct else f"拼写错误，正确答案是：{correct_answer}"
             else:
                 message = "翻译正确！" if is_correct else f"翻译错误，正确答案是：{correct_answer}"
-            
+
             # 处理学习阶段切换（仅在混合模式下）
             updated_session_info = None
             if session_info and question_type == "choice" and session_info.get("question_type") == "mixed":
@@ -280,7 +284,7 @@ class VocabularyLearningManager:
                 session_info["word_stages"] = word_stages
                 updated_session_info = session_info
                 logger.debug("学习阶段切换 - word_id=%s, stage=translation", word_id)
-                
+
                 # 更新数据库中的会话信息
                 session_id = session_info.get("session_id")
                 if session_id:
@@ -289,7 +293,7 @@ class VocabularyLearningManager:
                         logger.debug("会话信息已更新到数据库，session_id=%s", session_id)
                     else:
                         logger.warning("会话信息更新失败，session_id=%s", session_id)
-            
+
             return {
                 "success": True,
                 "is_correct": is_correct,
