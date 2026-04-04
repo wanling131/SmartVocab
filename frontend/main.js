@@ -73,9 +73,8 @@ function checkNetworkStatus() {
 // 全局错误处理 - 忽略浏览器扩展相关错误
 window.addEventListener('error', function(event) {
   // 忽略浏览器扩展相关的错误
-  if (event.error && event.error.message && 
+  if (event.error && event.error.message &&
       event.error.message.includes('message channel closed')) {
-    console.log('忽略浏览器扩展错误:', event.error.message)
     event.preventDefault()
     return false
   }
@@ -84,9 +83,8 @@ window.addEventListener('error', function(event) {
 // Promise错误处理
 window.addEventListener('unhandledrejection', function(event) {
   // 忽略浏览器扩展相关的Promise错误
-  if (event.reason && event.reason.message && 
+  if (event.reason && event.reason.message &&
       event.reason.message.includes('message channel closed')) {
-    console.log('忽略浏览器扩展Promise错误:', event.reason.message)
     event.preventDefault()
     return false
   }
@@ -113,7 +111,6 @@ function clearRecommendationCache() {
     totalAvailable: 0,
     displayedCount: 0
   }
-  console.log("推荐缓存已清除")
 }
 
 
@@ -248,7 +245,6 @@ function initAuth() {
         localStorage.removeItem("currentUser")
         currentUser = null
       } else {
-        console.log("从localStorage恢复用户状态:", currentUser)
         showPage("dashboard")
         loadDashboard()
         
@@ -326,18 +322,14 @@ async function loadRecommendations(forceRefresh = false) {
                       recommendationCache.displayedCount < recommendationCache.totalAvailable
     
     if (cacheValid) {
-      console.log("使用推荐缓存")
       displayRecommendations(recommendationCache.data.slice(recommendationCache.displayedCount, recommendationCache.displayedCount + 6))
       recommendationCache.displayedCount += 6
       return
     }
-    
-    // 需要获取新的推荐
-    console.log(forceRefresh ? "强制刷新推荐" : "获取新推荐")
-    
+
     // 第一次加载或强制刷新时，获取50个推荐单词
     const result = await apiRequest(`/recommendations/${currentUser.id}?limit=50&algorithm=mixed`)
-    
+
     if (result.success) {
       // 缓存所有推荐单词
       recommendationCache = {
@@ -347,8 +339,6 @@ async function loadRecommendations(forceRefresh = false) {
         totalAvailable: result.data.length,
         displayedCount: 0
       }
-      
-      console.log(`缓存了 ${result.data.length} 个推荐单词`)
       
       // 显示前6个
       const firstBatch = result.data.slice(0, 6)
