@@ -141,6 +141,15 @@ logs/
 # Local test scripts (not for cloud)
 automation/local_tests/
 
+# E2E tests (node_modules)
+tests/e2e/node_modules/
+tests/e2e/playwright-report/
+tests/e2e/test-results/
+tests/e2e/package-lock.json
+
+# MCP config
+.mcp.json
+
 # Claude Code local settings
 skills/
 **/.claude/
