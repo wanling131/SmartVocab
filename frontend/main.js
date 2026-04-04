@@ -169,6 +169,11 @@ function initAuth() {
     e.preventDefault()
     const username = document.getElementById("login-username").value
     const password = document.getElementById("login-password").value
+    const loginError = document.getElementById("login-error")
+
+    // 清除之前的错误信息
+    loginError.classList.remove("show")
+    loginError.textContent = ""
 
     showLoading()
     try {
@@ -189,10 +194,16 @@ function initAuth() {
         showPage("dashboard")
         loadDashboard()
       } else {
-        showToast(result.message || "登录失败", "error")
+        const errorMsg = result.message || "登录失败"
+        loginError.textContent = errorMsg
+        loginError.classList.add("show")
+        showToast(errorMsg, "error")
       }
     } catch (error) {
       hideLoading()
+      const errorMsg = error.message || "登录失败"
+      loginError.textContent = errorMsg
+      loginError.classList.add("show")
       handleError(error, "登录")
     }
   })
@@ -202,6 +213,11 @@ function initAuth() {
     const username = document.getElementById("register-username").value
     const password = document.getElementById("register-password").value
     const email = document.getElementById("register-email").value
+    const registerError = document.getElementById("register-error")
+
+    // 清除之前的错误信息
+    registerError.classList.remove("show")
+    registerError.textContent = ""
 
     showLoading()
     try {
@@ -226,10 +242,16 @@ function initAuth() {
           registerForm.reset()
         }
       } else {
-        showToast(result.message || "注册失败", "error")
+        const errorMsg = result.message || "注册失败"
+        registerError.textContent = errorMsg
+        registerError.classList.add("show")
+        showToast(errorMsg, "error")
       }
     } catch (error) {
       hideLoading()
+      const errorMsg = error.message || "注册失败"
+      registerError.textContent = errorMsg
+      registerError.classList.add("show")
       handleError(error, "注册")
     }
   })
