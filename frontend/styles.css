@@ -2373,5 +2373,80 @@ textarea:focus-visible {
 
 /* === 主色调发光变量 === */
 :root {
-  --primary-glow: rgba(139, 92, 246, 0.4);
+  --primary-glow: rgba(14, 165, 233, 0.15);
+}
+
+/* === 成就弹窗 === */
+.achievement-popup {
+  position: fixed;
+  top: 15%;
+  left: 50%;
+  transform: translateX(-50%) translateY(-20px);
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  box-shadow: var(--shadow-xl);
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  z-index: 10000;
+  opacity: 0;
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  border: 1px solid var(--border);
+}
+
+.achievement-popup.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.achievement-popup.hide {
+  opacity: 0;
+  transform: translateX(-50%) translateY(-30px);
+}
+
+.achievement-icon {
+  font-size: 40px;
+}
+
+.achievement-content {
+  text-align: left;
+}
+
+.achievement-title {
+  font-size: var(--text-xs);
+  color: var(--secondary);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.achievement-name {
+  font-size: var(--text-lg);
+  font-weight: 700;
+  color: var(--text);
+}
+
+.achievement-desc {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+/* === 连击提示 === */
+.streak-popup {
+  position: fixed;
+  top: 35%;
+  left: 50%;
+  transform: translateX(-50%) scale(0.5);
+  font-size: 32px;
+  font-weight: 800;
+  color: var(--secondary);
+  z-index: 9999;
+  opacity: 0;
+  transition: all 0.3s ease;
+  pointer-events: none;
+}
+
+.streak-popup.show {
+  opacity: 1;
+  transform: translateX(-50%) scale(1);
 }
