@@ -2,13 +2,18 @@
 学习计划API模块
 """
 
+import logging
 from flask import Blueprint, request
 from tools.user_learning_plans_crud import UserLearningPlansCRUD
+from tools.words_crud import WordsCRUD
 from .utils import APIResponse, handle_api_error
 from .auth_middleware import require_auth, get_current_user
 
+logger = logging.getLogger(__name__)
+
 plans_bp = Blueprint('plans', __name__, url_prefix='/api/plans')
 plans_crud = UserLearningPlansCRUD()
+words_crud = WordsCRUD()
 
 
 def _check_user_access(user_id):
@@ -124,3 +129,48 @@ def delete_plan(plan_id):
 
     plans_crud.deactivate(plan_id)
     return APIResponse.success(None, "计划已停用")
+
+
+@plans_bp.route('/<int:user_id>/start-learning', methods=['POST'])
+@handle_api_error
+@require_auth
+def start_plan_learning(user_id):
+    """根据用户生效计划开始学习"""
+    if not _check_user_access(user_id):
+        return APIResponse.error('无权访问', 403)
+
+    # 获取用户生效计划
+    plan = plans_crud.get_active_plan(user_id)
+    if not plan:
+        return APIResponse.error('请先创建学习计划', 400)
+
+    dataset_type = plan.get('dataset_type')
+    daily_new_count = plan.get('daily_new_count', 20)
+
+    # 根据计划词库类型获取单词
+    words = words_crud.get_by_dataset_type(dataset_type, limit=daily_new_count * 2)
+
+    if not words:
+        return APIResponse.error('该词库暂无可用单词', 400)
+
+    # 排除已学习的单词
+    from tools.learning_records_crud import LearningRecordsCRUD
+    records_crud = LearningRecordsCRUD()
+    learned_records = records_crud.get_by_user(user_id)
+    learned_word_ids = {r['word_id'] for r in learned_records}
+
+    available_words = [w for w in words if w['id'] not in learned_word_ids]
+
+    if not available_words:
+        # 如果没有新词，使用已学习的单词进行复习
+        available_words = words[:daily_new_count]
+
+    import random
+    selected_words = random.sample(available_words, min(daily_new_count, len(available_words)))
+
+    return APIResponse.success({
+        'plan': plan,
+        'words': selected_words,
+        'total_count': len(selected_words),
+        'dataset_type': dataset_type
+    }, f"开始学习 {dataset_type.upper()} 词库")

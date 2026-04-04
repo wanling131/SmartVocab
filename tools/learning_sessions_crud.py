@@ -195,34 +195,34 @@ class LearningSessionsCRUD(BaseCRUD):
     def get_by_user(self, user_id, limit=None, offset=0):
         """
         获取用户的所有会话
-        
+
         Args:
             user_id (int): 用户ID
             limit (int): 限制数量
             offset (int): 偏移量
-            
+
         Returns:
             list: 会话列表
         """
         logger.debug("LearningSessionsCRUD.get_by_user: user_id=%s, limit=%s, offset=%s", user_id, limit, offset)
-        
+
         query = """
-        SELECT * FROM learning_sessions 
+        SELECT * FROM learning_sessions
         WHERE user_id = %s
         ORDER BY created_at DESC
         """
         params = [user_id]
-        
+
         if limit is not None:
             query += " LIMIT %s"
             params.append(limit)
-        
+
         if offset > 0:
             query += " OFFSET %s"
             params.append(offset)
-        
+
         results = self.execute_query(query, tuple(params), fetch_all=True)
-        
+
         if results:
             # 解析每个会话的JSON数据
             for result in results:
@@ -230,7 +230,51 @@ class LearningSessionsCRUD(BaseCRUD):
                     result['session_data'] = json.loads(result['session_data'])
                 except json.JSONDecodeError:
                     result['session_data'] = {}
-            
+
             logger.debug("LearningSessionsCRUD.get_by_user: 找到%s个会话", len(results))
-        
+
+        return results or []
+
+    def delete(self, session_id):
+        """
+        删除学习会话
+
+        Args:
+            session_id (int): 会话ID
+
+        Returns:
+            int: 受影响的行数
+        """
+        logger.debug("LearningSessionsCRUD.delete: session_id=%s", session_id)
+
+        query = "DELETE FROM learning_sessions WHERE id = %s"
+        affected_rows = self.execute_update(query, (session_id,))
+
+        logger.debug("LearningSessionsCRUD.delete: 删除了%s行", affected_rows)
+        return affected_rows
+
+    def list_all(self, limit=100, offset=0):
+        """
+        获取所有学习会话列表
+
+        Args:
+            limit (int): 限制返回记录数，默认100
+            offset (int): 偏移量，默认0
+
+        Returns:
+            list: 会话列表
+        """
+        logger.debug("LearningSessionsCRUD.list_all: limit=%s, offset=%s", limit, offset)
+
+        query = "SELECT * FROM learning_sessions ORDER BY created_at DESC LIMIT %s OFFSET %s"
+        results = self.execute_query(query, (limit, offset), fetch_all=True)
+
+        if results:
+            for result in results:
+                try:
+                    result['session_data'] = json.loads(result['session_data'])
+                except json.JSONDecodeError:
+                    result['session_data'] = {}
+            logger.debug("LearningSessionsCRUD.list_all: 返回%s条记录", len(results))
+
         return results or []

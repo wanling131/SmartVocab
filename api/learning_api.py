@@ -75,3 +75,107 @@ def get_forgetting_curve(user_id):
     days = request.args.get('days', LEARNING_PARAMS.get("days_trend_analysis", 7), type=int)
     curve_data = forgetting_curve_manager.get_forgetting_curve_data(user_id, days)
     return APIResponse.success(curve_data, "获取遗忘曲线数据成功")
+
+
+@learning_bp.route('/record/<int:record_id>', methods=['GET'])
+@handle_api_error
+@require_auth
+def get_learning_record(record_id):
+    """获取单条学习记录"""
+    from tools.learning_records_crud import LearningRecordsCRUD
+    records_crud = LearningRecordsCRUD()
+    record = records_crud.read(record_id)
+    if not record:
+        return APIResponse.error('记录不存在', 404)
+
+    # 验证记录所属用户
+    if not _check_user_access(record['user_id']):
+        return APIResponse.error('无权访问', 403)
+
+    return APIResponse.success(record, "获取学习记录成功")
+
+
+@learning_bp.route('/record/<int:record_id>', methods=['PUT'])
+@handle_api_error
+@require_auth
+def update_learning_record(record_id):
+    """更新学习记录"""
+    from tools.learning_records_crud import LearningRecordsCRUD
+    records_crud = LearningRecordsCRUD()
+
+    record = records_crud.read(record_id)
+    if not record:
+        return APIResponse.error('记录不存在', 404)
+
+    # 验证记录所属用户
+    if not _check_user_access(record['user_id']):
+        return APIResponse.error('无权修改', 403)
+
+    data = request.get_json()
+    fields = {}
+    for k in ['mastery_level', 'review_count', 'is_mastered', 'next_review_at']:
+        if k in data:
+            fields[k] = data[k]
+
+    if fields:
+        records_crud.update(record_id, **fields)
+
+    updated = records_crud.read(record_id)
+    return APIResponse.success(updated, "更新学习记录成功")
+
+
+@learning_bp.route('/record/<int:record_id>', methods=['DELETE'])
+@handle_api_error
+@require_auth
+def delete_learning_record(record_id):
+    """删除学习记录"""
+    from tools.learning_records_crud import LearningRecordsCRUD
+    records_crud = LearningRecordsCRUD()
+
+    record = records_crud.read(record_id)
+    if not record:
+        return APIResponse.error('记录不存在', 404)
+
+    # 验证记录所属用户
+    if not _check_user_access(record['user_id']):
+        return APIResponse.error('无权删除', 403)
+
+    records_crud.delete(record_id)
+    return APIResponse.success(None, "删除学习记录成功")
+
+
+@learning_bp.route('/sessions/<int:user_id>', methods=['GET'])
+@handle_api_error
+@require_auth
+def get_learning_sessions(user_id):
+    """获取用户的学习会话列表"""
+    if not _check_user_access(user_id):
+        return APIResponse.error('无权访问', 403)
+
+    from tools.learning_sessions_crud import LearningSessionsCRUD
+    sessions_crud = LearningSessionsCRUD()
+    limit = request.args.get('limit', 50, type=int)
+    offset = request.args.get('offset', 0, type=int)
+
+    sessions = sessions_crud.get_by_user(user_id, limit, offset)
+    return APIResponse.success(sessions, "获取学习会话列表成功")
+
+
+@learning_bp.route('/session/<int:session_id>', methods=['DELETE'])
+@handle_api_error
+@require_auth
+def delete_learning_session(session_id):
+    """删除学习会话"""
+    from tools.learning_sessions_crud import LearningSessionsCRUD
+    sessions_crud = LearningSessionsCRUD()
+
+    session = sessions_crud.get_by_id(session_id)
+    if not session:
+        return APIResponse.error('会话不存在', 404)
+
+    # 验证会话所属用户
+    if not _check_user_access(session['user_id']):
+        return APIResponse.error('无权删除', 403)
+
+    sessions_crud.delete(session_id)
+    return APIResponse.success(None, "删除学习会话成功")

@@ -239,14 +239,97 @@ class WordsCRUD(BaseCRUD):
             params.append(offset)
         
         results = self.execute_query(query, tuple(params), fetch_all=True)
-        
+
         if results:
             results = self._parse_domain_field(results)
             self.logger.info(f"找到{len(results)}个难度{difficulty_level}的单词")
-        
+
         return results or []
-    
-    
+
+    def get_by_dataset_type(self, dataset_type: str, limit: Optional[int] = None, offset: int = 0) -> List[Dict[str, Any]]:
+        """
+        根据词库类型获取单词
+
+        Args:
+            dataset_type (str): 词库类型（cet4, cet6, toefl, ielts等）
+            limit (Optional[int]): 限制返回数量
+            offset (int): 偏移量
+
+        Returns:
+            List[Dict[str, Any]]: 指定词库类型的单词记录列表
+        """
+        self.log_operation("根据词库类型获取单词", dataset_type=dataset_type, limit=limit, offset=offset)
+
+        query = "SELECT * FROM words WHERE dataset_type = %s ORDER BY frequency_rank ASC"
+        params = [dataset_type]
+
+        if limit is not None:
+            query += " LIMIT %s"
+            params.append(limit)
+
+        if offset > 0:
+            query += " OFFSET %s"
+            params.append(offset)
+
+        results = self.execute_query(query, tuple(params), fetch_all=True)
+
+        if results:
+            results = self._parse_domain_field(results)
+            self.logger.info(f"找到{len(results)}个{dataset_type}词库的单词")
+
+        return results or []
+
+    def get_by_dataset_and_difficulty(self, dataset_type: str, difficulty_level: int,
+                                       limit: Optional[int] = None, offset: int = 0) -> List[Dict[str, Any]]:
+        """
+        根据词库类型和难度等级获取单词
+
+        Args:
+            dataset_type (str): 词库类型
+            difficulty_level (int): 难度等级（1-6）
+            limit (Optional[int]): 限制返回数量
+            offset (int): 偏移量
+
+        Returns:
+            List[Dict[str, Any]]: 符合条件的单词记录列表
+        """
+        self.log_operation("根据词库和难度获取单词", dataset_type=dataset_type,
+                          difficulty_level=difficulty_level, limit=limit)
+
+        query = "SELECT * FROM words WHERE dataset_type = %s AND difficulty_level = %s ORDER BY frequency_rank ASC"
+        params = [dataset_type, difficulty_level]
+
+        if limit is not None:
+            query += " LIMIT %s"
+            params.append(limit)
+
+        if offset > 0:
+            query += " OFFSET %s"
+            params.append(offset)
+
+        results = self.execute_query(query, tuple(params), fetch_all=True)
+
+        if results:
+            results = self._parse_domain_field(results)
+            self.logger.info(f"找到{len(results)}个符合条件的单词")
+
+        return results or []
+
+    def count_by_dataset(self, dataset_type: str) -> int:
+        """
+        统计指定词库类型的单词数量
+
+        Args:
+            dataset_type (str): 词库类型
+
+        Returns:
+            int: 单词数量
+        """
+        query = "SELECT COUNT(*) as cnt FROM words WHERE dataset_type = %s"
+        result = self.execute_query(query, (dataset_type,), fetch_one=True)
+        return result.get('cnt', 0) if result else 0
+
+
 def main():
     """
     测试函数

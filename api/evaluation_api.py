@@ -94,3 +94,38 @@ def get_history(user_id):
     limit = request.args.get('limit', 50, type=int)
     history = results_crud.get_by_user(user_id, limit)
     return APIResponse.success(history, "获取评测历史成功")
+
+
+@evaluation_bp.route('/result/<int:result_id>', methods=['GET'])
+@handle_api_error
+@require_auth
+def get_evaluation_result(result_id):
+    """获取单条评测结果"""
+    result = results_crud.read(result_id)
+    if not result:
+        return APIResponse.error('评测结果不存在', 404)
+
+    # 验证结果所属用户
+    if not _check_user_access(result['user_id']):
+        return APIResponse.error('无权访问', 403)
+
+    return APIResponse.success(result, "获取评测结果成功")
+
+
+@evaluation_bp.route('/result/<int:result_id>', methods=['DELETE'])
+@handle_api_error
+@require_auth
+def delete_evaluation_result(result_id):
+    """删除评测结果"""
+    result = results_crud.read(result_id)
+    if not result:
+        return APIResponse.error('评测结果不存在', 404)
+
+    # 验证结果所属用户
+    if not _check_user_access(result['user_id']):
+        return APIResponse.error('无权删除', 403)
+
+    from tools.evaluation_results_crud import EvaluationResultsCRUD
+    crud = EvaluationResultsCRUD()
+    crud.delete(result_id)
+    return APIResponse.success(None, "删除评测结果成功")

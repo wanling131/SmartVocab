@@ -52,3 +52,28 @@ class EvaluationResultsCRUD(BaseCRUD):
         LIMIT %s
         """
         return self.execute_query(query, (user_id, limit), fetch_one=False, fetch_all=True) or []
+
+    def update(self, result_id: int, **kwargs) -> int:
+        """
+        更新评测结果
+        """
+        allowed = ['score', 'correct_count', 'total_count', 'duration_seconds', 'assessed_level']
+        fields = {k: v for k, v in kwargs.items() if k in allowed}
+        if not fields:
+            return 0
+        query, params = self.build_update_query(fields)
+        return self.execute_update(query, params + (result_id,))
+
+    def delete(self, result_id: int) -> int:
+        """
+        删除评测结果
+        """
+        query = "DELETE FROM evaluation_results WHERE id = %s"
+        return self.execute_update(query, (result_id,))
+
+    def list_all(self, limit: int = 100, offset: int = 0) -> List[Dict[str, Any]]:
+        """
+        获取所有评测结果列表
+        """
+        query = "SELECT * FROM evaluation_results ORDER BY submitted_at DESC LIMIT %s OFFSET %s"
+        return self.execute_query(query, (limit, offset), fetch_one=False, fetch_all=True) or []

@@ -1376,6 +1376,7 @@ async function loadPlansPage() {
             </div>
           </div>
           <div class="plan-actions">
+            <button class="btn btn-primary btn-sm" onclick="startPlanLearning(${r.data.id})">开始学习</button>
             <button class="btn btn-secondary btn-sm" onclick="deactivatePlan(${r.data.id})">停用计划</button>
           </div>
         </div>
@@ -1488,6 +1489,69 @@ async function deletePlan(planId) {
   }
 }
 
+// 按计划开始学习
+async function startPlanLearning(planId) {
+  if (!currentUser?.id) return
+
+  showLoading()
+  try {
+    // 如果指定了planId，先激活该计划
+    if (planId) {
+      const activateResult = await apiRequest(`/plans/${planId}`, {
+        method: "PUT",
+        body: JSON.stringify({ is_active: true })
+      })
+      if (!activateResult.success) {
+        hideLoading()
+        showToast(activateResult.message || "激活计划失败", "error")
+        return
+      }
+    }
+
+    const r = await apiRequest(`/plans/${currentUser.id}/start-learning`, {
+      method: "POST"
+    })
+    hideLoading()
+
+    if (r.success && r.data) {
+      const { words, plan, dataset_type } = r.data
+
+      if (!words || words.length === 0) {
+        showToast("该词库暂无可用单词", "error")
+        return
+      }
+
+      // 创建学习会话
+      currentSession = {
+        user_id: currentUser.id,
+        words: words,
+        current_word_index: 0,
+        correct_count: 0,
+        total_count: words.length,
+        start_time: Date.now(),
+        session_type: "plan",
+        question_type: "mixed",
+        word_stages: {},
+        plan_info: plan
+      }
+
+      browseMode = false
+      sessionStartTime = Date.now()
+      correctAnswers = 0
+      totalAnswers = 0
+
+      showPage("learning")
+      loadCurrentWord()
+      showToast(`开始学习 ${dataset_type.toUpperCase()} 词库，共 ${words.length} 词`, "success")
+    } else {
+      showToast(r.message || "开始学习失败", "error")
+    }
+  } catch (e) {
+    hideLoading()
+    showToast(e.message || "开始学习失败", "error")
+  }
+}
+
 // 个人中心页面
 async function loadProfilePage() {
   if (!currentUser?.id) return
@@ -1531,10 +1595,57 @@ async function loadProfilePage() {
       document.getElementById("profile-streak-days").textContent = statsRes.data.active_days || 0
     }
 
+    // 加载成就
+    await loadAchievements()
+
   } catch (e) {
     showToast("加载个人信息失败: " + e.message, "error")
   } finally {
     hideLoading()
+  }
+}
+
+async function loadAchievements() {
+  if (!currentUser?.id) return
+
+  const grid = document.getElementById("achievements-grid")
+  if (!grid) return
+
+  try {
+    const r = await apiRequest(`/achievements/${currentUser.id}`)
+    if (r.success && r.data) {
+      const achievements = r.data
+      if (achievements.length === 0) {
+        grid.innerHTML = `
+          <div class="empty-state">
+            <p>暂无成就，开始学习解锁更多成就吧！</p>
+          </div>
+        `
+      } else {
+        grid.innerHTML = achievements.map(a => `
+          <div class="achievement-card" title="${a.achievement_description || ''}">
+            <div class="achievement-icon">${a.icon || '🏆'}</div>
+            <div class="achievement-info">
+              <div class="achievement-name">${a.achievement_name}</div>
+              <div class="achievement-desc">${a.achievement_description || ''}</div>
+              <div class="achievement-time">${formatTime(a.earned_at)}</div>
+            </div>
+          </div>
+        `).join("")
+      }
+    }
+  } catch (e) {
+    grid.innerHTML = `<p>加载成就失败</p>`
+  }
+}
+
+function formatTime(timeStr) {
+  if (!timeStr) return ""
+  try {
+    const d = new Date(timeStr)
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+  } catch {
+    return ""
   }
 }
 
@@ -2295,13 +2406,19 @@ function initEventListeners() {
 document.addEventListener("DOMContentLoaded", () => {
   initAuth()
   initEventListeners()
-  
+
   // 添加网络状态监听
   window.addEventListener('online', () => {
     showToast("网络连接已恢复", "success")
   })
-  
+
   window.addEventListener('offline', () => {
     showToast("网络连接已断开", "error")
   })
 })
+
+// 全局函数暴露（供HTML onclick使用）
+window.startPlanLearning = startPlanLearning
+window.activatePlan = activatePlan
+window.deactivatePlan = deactivatePlan
+window.deletePlan = deletePlan

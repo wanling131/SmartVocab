@@ -33,6 +33,7 @@ from .plans_api import plans_bp
 from .evaluation_api import evaluation_bp
 from .levels_api import levels_bp
 from .health_api import health_bp
+from .achievements_api import achievements_bp
 from .utils import APIResponse
 
 
@@ -98,6 +99,7 @@ class APILauncher:
         self.app.register_blueprint(plans_bp)
         self.app.register_blueprint(evaluation_bp)
         self.app.register_blueprint(levels_bp)
+        self.app.register_blueprint(achievements_bp)
 
         @self.app.route("/")
         def index():
