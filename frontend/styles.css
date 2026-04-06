@@ -857,6 +857,27 @@ body::before {
   font-size: var(--text-sm);
 }
 
+/* 导出按钮组 */
+.export-buttons {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.export-buttons .btn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 1;
+  min-width: 120px;
+  justify-content: center;
+}
+
+.export-buttons .btn:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
 /* === 学习页面 === */
 .learning-container {
   max-width: 800px;

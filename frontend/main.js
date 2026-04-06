@@ -2759,6 +2759,223 @@ async function saveProfile() {
   }
 }
 
+// ==================== 学习报告导出功能 ====================
+
+/**
+ * 导出学习报告为 CSV 格式
+ */
+async function exportLearningReportCSV() {
+  if (!currentUser?.id) return
+
+  showLoading()
+  try {
+    // 获取学习数据
+    const [statsRes, recordsRes, progressRes] = await Promise.all([
+      apiRequest(`/learning/statistics/${currentUser.id}?days=30`),
+      apiRequest(`/learning/records/${currentUser.id}?limit=500`),
+      apiRequest(`/learning/progress/${currentUser.id}`)
+    ])
+
+    if (!statsRes.success) {
+      showToast("获取数据失败", "error")
+      return
+    }
+
+    const stats = statsRes.data
+    const records = recordsRes.data || []
+    const progress = progressRes.data || {}
+
+    // 构建 CSV 内容
+    const csvRows = []
+
+    // 标题
+    csvRows.push("SmartVocab 学习报告")
+    csvRows.push(`导出时间,${new Date().toLocaleString('zh-CN')}`)
+    csvRows.push(`用户,${currentUser.username}`)
+    csvRows.push("")
+
+    // 学习概览
+    csvRows.push("=== 学习概览 ===")
+    csvRows.push(`总复习次数,${stats.total_reviews || 0}`)
+    csvRows.push(`新学单词,${stats.new_words || 0}`)
+    csvRows.push(`已掌握单词,${progress.learned_words || 0}`)
+    csvRows.push(`掌握率,${((progress.mastery_rate || 0) * 100).toFixed(1)}%`)
+    csvRows.push(`日均复习,${stats.average_reviews_per_day || 0}`)
+    csvRows.push("")
+
+    // 最近学习记录
+    csvRows.push("=== 最近学习记录 ===")
+    csvRows.push("单词,翻译,是否正确,掌握度,学习时间")
+
+    records.slice(0, 100).forEach(r => {
+      const word = escapeCsvField(r.word || '')
+      const trans = escapeCsvField(r.translation || '')
+      const correct = r.is_correct ? '正确' : '错误'
+      const mastery = ((r.mastery_level || 0) * 100).toFixed(0) + '%'
+      const time = r.created_at || ''
+      csvRows.push(`${word},${trans},${correct},${mastery},${time}`)
+    })
+
+    // 下载文件
+    const blob = new Blob(['\ufeff' + csvRows.join('\n')], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `SmartVocab学习报告_${new Date().toISOString().split('T')[0]}.csv`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+
+    showToast("CSV 导出成功", "success")
+  } catch (e) {
+    showToast("导出失败: " + e.message, "error")
+  } finally {
+    hideLoading()
+  }
+}
+
+/**
+ * 导出学习报告为 JSON 格式
+ */
+async function exportLearningReportJSON() {
+  if (!currentUser?.id) return
+
+  showLoading()
+  try {
+    const [statsRes, recordsRes, progressRes, achievementsRes] = await Promise.all([
+      apiRequest(`/learning/statistics/${currentUser.id}?days=30`),
+      apiRequest(`/learning/records/${currentUser.id}?limit=100`),
+      apiRequest(`/learning/progress/${currentUser.id}`),
+      apiRequest(`/achievements/${currentUser.id}`)
+    ])
+
+    const report = {
+      exportTime: new Date().toISOString(),
+      user: {
+        id: currentUser.id,
+        username: currentUser.username
+      },
+      statistics: statsRes.success ? statsRes.data : {},
+      progress: progressRes.success ? progressRes.data : {},
+      achievements: achievementsRes.success ? achievementsRes.data : {},
+      recentRecords: recordsRes.success ? recordsRes.data : []
+    }
+
+    const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `SmartVocab学习报告_${new Date().toISOString().split('T')[0]}.json`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+
+    showToast("JSON 导出成功", "success")
+  } catch (e) {
+    showToast("导出失败: " + e.message, "error")
+  } finally {
+    hideLoading()
+  }
+}
+
+/**
+ * 导出学习报告为 PDF 格式（简化版，使用浏览器打印）
+ */
+async function exportLearningReportPDF() {
+  if (!currentUser?.id) return
+
+  showLoading()
+  try {
+    const [statsRes, progressRes] = await Promise.all([
+      apiRequest(`/learning/statistics/${currentUser.id}?days=30`),
+      apiRequest(`/learning/progress/${currentUser.id}`)
+    ])
+
+    const stats = statsRes.data || {}
+    const progress = progressRes.data || {}
+
+    // 创建打印专用页面
+    const printContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>SmartVocab 学习报告</title>
+        <style>
+          body { font-family: 'Microsoft YaHei', sans-serif; padding: 40px; max-width: 800px; margin: 0 auto; }
+          h1 { color: #8b5cf6; border-bottom: 2px solid #8b5cf6; padding-bottom: 10px; }
+          h2 { color: #374151; margin-top: 30px; }
+          .stat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin: 20px 0; }
+          .stat-item { background: #f3f4f6; padding: 15px; border-radius: 8px; }
+          .stat-value { font-size: 24px; font-weight: bold; color: #8b5cf6; }
+          .stat-label { color: #6b7280; margin-top: 5px; }
+          .footer { margin-top: 40px; text-align: center; color: #9ca3af; font-size: 12px; }
+          @media print { body { padding: 20px; } }
+        </style>
+      </head>
+      <body>
+        <h1>SmartVocab 学习报告</h1>
+        <p>用户: ${currentUser.username} | 导出时间: ${new Date().toLocaleDateString('zh-CN')}</p>
+
+        <h2>📊 学习概览</h2>
+        <div class="stat-grid">
+          <div class="stat-item">
+            <div class="stat-value">${stats.total_reviews || 0}</div>
+            <div class="stat-label">总复习次数</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value">${stats.new_words || 0}</div>
+            <div class="stat-label">新学单词</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value">${progress.learned_words || 0}</div>
+            <div class="stat-label">已掌握单词</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value">${((progress.mastery_rate || 0) * 100).toFixed(1)}%</div>
+            <div class="stat-label">掌握率</div>
+          </div>
+        </div>
+
+        <h2>📈 学习统计</h2>
+        <p>日均复习次数: ${stats.average_reviews_per_day?.toFixed(1) || 0}</p>
+        <p>统计周期: 最近30天</p>
+
+        <div class="footer">
+          <p>由 SmartVocab 智能词汇学习系统生成</p>
+        </div>
+      </body>
+      </html>
+    `
+
+    const printWindow = window.open('', '_blank')
+    printWindow.document.write(printContent)
+    printWindow.document.close()
+
+    // 延迟打印以确保内容加载完成
+    setTimeout(() => {
+      printWindow.print()
+    }, 500)
+
+    showToast("请在打印对话框中选择'另存为PDF'", "success")
+  } catch (e) {
+    showToast("导出失败: " + e.message, "error")
+  } finally {
+    hideLoading()
+  }
+}
+
+/**
+ * 转义 CSV 字段
+ */
+function escapeCsvField(field) {
+  if (field.includes(',') || field.includes('"') || field.includes('\n')) {
+    return '"' + field.replace(/"/g, '""') + '"'
+  }
+  return field
+}
+
 // 闯关模式页
 let currentGate = null
 let gateSession = null
@@ -3524,6 +3741,22 @@ function initEventListeners() {
   const profileLogoutBtn = document.getElementById("profile-logout-btn")
   if (profileLogoutBtn) {
     profileLogoutBtn.addEventListener("click", logout)
+  }
+
+  // 导出按钮事件
+  const exportCsvBtn = document.getElementById("export-csv-btn")
+  if (exportCsvBtn) {
+    exportCsvBtn.addEventListener("click", exportLearningReportCSV)
+  }
+
+  const exportPdfBtn = document.getElementById("export-pdf-btn")
+  if (exportPdfBtn) {
+    exportPdfBtn.addEventListener("click", exportLearningReportPDF)
+  }
+
+  const exportJsonBtn = document.getElementById("export-json-btn")
+  if (exportJsonBtn) {
+    exportJsonBtn.addEventListener("click", exportLearningReportJSON)
   }
 
   // 学习页面
