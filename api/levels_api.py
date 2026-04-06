@@ -12,7 +12,7 @@ from tools.learning_records_crud import LearningRecordsCRUD
 from tools.learning_sessions_crud import LearningSessionsCRUD
 from core.vocabulary.vocabulary_learning_manager import VocabularyLearningManager
 from .utils import APIResponse, handle_api_error
-from .auth_middleware import require_auth, get_current_user
+from .auth_middleware import require_auth, check_user_access
 
 logger = logging.getLogger(__name__)
 
@@ -23,14 +23,6 @@ words_crud = WordsCRUD()
 learning_records_crud = LearningRecordsCRUD()
 learning_sessions_crud = LearningSessionsCRUD()
 vocabulary_manager = VocabularyLearningManager()
-
-
-def _check_user_access(user_id):
-    """检查当前用户是否有权访问指定用户的数据"""
-    current_user = get_current_user()
-    if not current_user or current_user.get('user_id') != user_id:
-        return False
-    return True
 
 
 @levels_bp.route('/gates', methods=['GET'])
@@ -46,7 +38,7 @@ def get_gates():
 @require_auth
 def get_progress(user_id):
     """获取用户关卡进度"""
-    if not _check_user_access(user_id):
+    if not check_user_access(user_id):
         return APIResponse.error('无权访问', 403)
     progress = progress_crud.get_by_user(user_id)
     return APIResponse.success(progress, "获取关卡进度成功")
@@ -65,7 +57,7 @@ def unlock_gate():
         return APIResponse.error('user_id 和 level_gate_id 不能为空', 400)
 
     # 验证用户身份
-    if not _check_user_access(user_id):
+    if not check_user_access(user_id):
         return APIResponse.error('无权操作', 403)
 
     gate = gates_crud.read(level_gate_id)
@@ -104,7 +96,7 @@ def start_gate_session(gate_id):
         return APIResponse.error('user_id 不能为空', 400)
 
     # 验证用户身份
-    if not _check_user_access(user_id):
+    if not check_user_access(user_id):
         return APIResponse.error('无权操作', 403)
 
     # 获取关卡信息
@@ -188,7 +180,7 @@ def complete_gate(gate_id):
         return APIResponse.error('user_id 不能为空', 400)
 
     # 验证用户身份
-    if not _check_user_access(user_id):
+    if not check_user_access(user_id):
         return APIResponse.error('无权操作', 403)
 
     # 计算正确率

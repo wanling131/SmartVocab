@@ -3,6 +3,23 @@
  * 包含安全、动画、通用工具函数
  */
 
+// ==================== 用户工具 ====================
+
+/**
+ * 获取当前登录用户信息
+ * @returns {Object|null} 用户对象或 null
+ */
+export function getCurrentUser() {
+  try {
+    const userStr = localStorage.getItem("currentUser")
+    if (!userStr) return null
+    return JSON.parse(userStr)
+  } catch (e) {
+    console.error("解析用户信息失败:", e)
+    return null
+  }
+}
+
 // ==================== 安全工具 ====================
 
 /**

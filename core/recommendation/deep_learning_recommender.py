@@ -6,6 +6,7 @@
 import sys
 import os
 import logging
+import math
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
@@ -25,7 +26,7 @@ try:
     TORCH_AVAILABLE = True
 except ImportError:
     TORCH_AVAILABLE = False
-    print("PyTorch未安装，使用传统推荐算法")
+    logger.warning("PyTorch未安装，使用传统推荐算法")
 
 from tools.users_crud import UsersCRUD
 from tools.learning_records_crud import LearningRecordsCRUD
@@ -240,7 +241,7 @@ class DeepLearningRecommendationEngine:
         
         if TORCH_AVAILABLE:
             self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-            print(f"使用设备: {self.device}")
+            logger.info(f"使用设备: {self.device}")
             
             if _skip_heavy_dl_init():
                 logger.info("SMARTVOCAB_SKIP_DL_INIT 已启用：跳过深度学习模型加载与自动训练（推荐将回退传统策略）")
@@ -249,18 +250,18 @@ class DeepLearningRecommendationEngine:
                 self._try_load_model()
                 # 如果没有已训练的模型，尝试自动训练
                 if not self.is_trained:
-                    print("未找到已训练的模型，尝试自动训练...")
+                    logger.info("未找到已训练的模型，尝试自动训练...")
                     self._auto_train_model()
         else:
-            print("使用传统推荐算法")
+            logger.info("使用传统推荐算法")
         
         # 标记为已初始化
         DeepLearningRecommendationEngine._initialized = True
     
     def _try_load_model(self, user_id=None):
         """尝试加载已训练的模型"""
-        print(f"=== 模型加载开始 ===")
-        print(f"目标用户ID: {user_id if user_id else '通用模型'}")
+        logger.debug(f"=== 模型加载开始 ===")
+        logger.debug(f"目标用户ID: {user_id if user_id else '通用模型'}")
         
         model_paths = []
         
@@ -268,7 +269,7 @@ class DeepLearningRecommendationEngine:
         if user_id is not None:
             user_model_path = f"models/deep_learning_recommender_user_{user_id}.pth"
             model_paths.append(user_model_path)
-            print(f"1. 检查用户特定模型: {user_model_path}")
+            logger.debug(f"1. 检查用户特定模型: {user_model_path}")
         
         # 然后尝试通用模型
         common_model_paths = [
@@ -278,30 +279,30 @@ class DeepLearningRecommendationEngine:
         ]
         model_paths.extend(common_model_paths)
         
-        print(f"2. 检查通用模型路径:")
+        logger.debug(f"2. 检查通用模型路径:")
         for i, path in enumerate(common_model_paths, 2):
-            print(f"   {i}. {path}")
+            logger.debug(f"   {i}. {path}")
         
         for i, model_path in enumerate(model_paths, 1):
             try:
                 if os.path.exists(model_path):
-                    print(f"[OK] 找到模型文件: {model_path}")
+                    logger.debug(f"[OK] 找到模型文件: {model_path}")
                     success = self.load_model(model_path)
                     if success:
                         model_type = "用户特定" if user_id and f"user_{user_id}" in model_path else "通用"
-                        print(f"[OK] 成功加载{model_type}模型: {model_path}")
-                        print(f"=== 模型加载完成 ===")
+                        logger.debug(f"[OK] 成功加载{model_type}模型: {model_path}")
+                        logger.debug(f"=== 模型加载完成 ===")
                         return True
                     else:
-                        print(f"[FAIL] 模型文件存在但加载失败: {model_path}")
+                        logger.warning(f"[FAIL] 模型文件存在但加载失败: {model_path}")
                 else:
-                    print(f"[FAIL] 模型文件不存在: {model_path}")
+                    logger.warning(f"[FAIL] 模型文件不存在: {model_path}")
             except Exception as e:
-                print(f"[FAIL] 加载模型异常 {model_path}: {str(e)}")
+                logger.warning(f"[FAIL] 加载模型异常 {model_path}: {str(e)}")
                 continue
         
-        print("[FAIL] 所有模型路径都加载失败")
-        print(f"=== 模型加载结束 ===")
+        logger.warning("[FAIL] 所有模型路径都加载失败")
+        logger.debug(f"=== 模型加载结束 ===")
         return False
     
     def _auto_train_model(self):
@@ -310,19 +311,19 @@ class DeepLearningRecommendationEngine:
             # 检查是否有足够的训练数据
             all_records = self.learning_records_crud.list_all(limit=10000)  # 获取更多记录
             if len(all_records) >= MIN_TRAINING_RECORDS:  # 至少需要50条记录
-                print("检测到足够的学习数据，开始自动训练模型...")
+                logger.info("检测到足够的学习数据，开始自动训练模型...")
                 success = self.train_model(epochs=LEARNING_PARAMS["default_epochs"], batch_size=LEARNING_PARAMS["default_batch_size"], learning_rate=0.001)
                 if success:
-                    print("模型自动训练完成！")
+                    logger.info("模型自动训练完成！")
                     # 保存模型
                     os.makedirs("models", exist_ok=True)
                     self.save_model("models/deep_learning_recommender.pth")
                 else:
-                    print("模型自动训练失败")
+                    logger.warning("模型自动训练失败")
             else:
-                print(f"训练数据不足 ({len(all_records)} 条)，需要至少{MIN_TRAINING_RECORDS}条记录")
+                logger.info(f"训练数据不足 ({len(all_records)} 条)，需要至少{MIN_TRAINING_RECORDS}条记录")
         except Exception as e:
-            print(f"自动训练模型时出错: {str(e)}")
+            logger.error(f"自动训练模型时出错: {str(e)}")
     
     def extract_word_features(self, word_data):
         """
@@ -364,7 +365,7 @@ class DeepLearningRecommendationEngine:
         if isinstance(domain_data, str):
             try:
                 domain_data = json.loads(domain_data)
-            except:
+            except (json.JSONDecodeError, TypeError):
                 domain_data = {}
         elif isinstance(domain_data, list):
             domain_data = {}
@@ -610,7 +611,7 @@ class DeepLearningRecommendationEngine:
         """
         准备训练数据
         """
-        print("准备训练数据...")
+        logger.info("准备训练数据...")
         
         # 获取所有学习记录
         all_records = self.learning_records_crud.list_all(limit=10000)  # 增加限制以获取更多记录
@@ -623,9 +624,9 @@ class DeepLearningRecommendationEngine:
         self.word_id_to_index = {word['id']: idx for idx, word in enumerate(all_words)}
         self.user_id_to_index = {user_id: idx for idx, user_id in enumerate(all_users)}
         
-        print(f"单词总数: {len(all_words)}")
-        print(f"用户总数: {len(all_users)}")
-        print(f"学习记录总数: {len(all_records)}")
+        logger.debug(f"单词总数: {len(all_words)}")
+        logger.info(f"用户总数: {len(all_users)}")
+        logger.debug(f"学习记录总数: {len(all_records)}")
         
         # 检查学习记录中的word_id是否存在于单词表中
         missing_words = []
@@ -635,15 +636,15 @@ class DeepLearningRecommendationEngine:
                 missing_words.append(word_id)
         
         if missing_words:
-            print(f"发现 {len(missing_words)} 个学习记录中的word_id在单词表中不存在")
-            print(f"缺失的word_id示例: {missing_words[:10]}")
+            logger.warning(f"发现 {len(missing_words)} 个学习记录中的word_id在单词表中不存在")
+            logger.debug(f"缺失的word_id示例: {missing_words[:10]}")
         
         # 提取特征
-        print("提取单词特征...")
+        logger.info("提取单词特征...")
         for word in all_words:
             self.word_features[word['id']] = self.extract_word_features(word)
         
-        print("提取用户特征...")
+        logger.info("提取用户特征...")
         for user_id in all_users:
             user_records = [r for r in all_records if r['user_id'] == user_id]
             self.user_features[user_id] = self.extract_user_features(user_id, user_records)
@@ -678,10 +679,10 @@ class DeepLearningRecommendationEngine:
                 elif len(self.user_features[user_id]) != self.user_feature_dim:
                     reasons.append(f"user_id={user_id}特征维度错误({len(self.user_features[user_id])})")
                 
-                print(f"跳过无效记录: word_id={word_id}, user_id={user_id}, 原因: {', '.join(reasons)}")
+                logger.debug(f"跳过无效记录: word_id={word_id}, user_id={user_id}, 原因: {', '.join(reasons)}")
         
-        print(f"训练数据准备完成: {valid_count} 条有效记录, {invalid_count} 条无效记录")
-        print(f"有效记录比例: {valid_count/(valid_count+invalid_count)*100:.1f}%")
+        logger.info(f"训练数据准备完成: {valid_count} 条有效记录, {invalid_count} 条无效记录")
+        logger.debug(f"有效记录比例: {valid_count/(valid_count+invalid_count)*100:.1f}%")
         return training_records
     
     def check_and_train_model(self, user_id):
@@ -699,7 +700,7 @@ class DeepLearningRecommendationEngine:
             user_records = self.learning_records_crud.get_by_user(user_id)
             record_count = len(user_records)
             
-            print(f"用户 {user_id} 当前学习记录数量: {record_count}")
+            logger.info(f"用户 {user_id} 当前学习记录数量: {record_count}")
             
             # 检查是否已经有模型文件名
             model_filename = self.users_crud.get_model_filename(user_id)
@@ -708,33 +709,33 @@ class DeepLearningRecommendationEngine:
                 # 检查模型文件是否存在
                 model_path = f"models/{model_filename}"
                 if os.path.exists(model_path):
-                    print(f"找到用户 {user_id} 的模型文件: {model_filename}")
+                    logger.debug(f"找到用户 {user_id} 的模型文件: {model_filename}")
                     success = self.load_model(model_path)
                     if success:
                         return True
                     else:
-                        print(f"加载用户 {user_id} 的模型失败，将重新训练")
+                        logger.warning(f"加载用户，将重新训练")
             
             # 如果学习记录超过最小要求，训练新模型
             if record_count >= MIN_TRAINING_RECORDS:
-                print(f"用户 {user_id} 学习记录超过{MIN_TRAINING_RECORDS}个，开始训练深度学习模型...")
+                logger.info(f"用户 {user_id} 学习记录超过{MIN_TRAINING_RECORDS}个，开始训练深度学习模型...")
                 success = self.train_model_for_user(user_id, epochs=LEARNING_PARAMS["default_epochs"], batch_size=LEARNING_PARAMS["default_batch_size"])
                 
                 if success:
                     # 保存模型文件名到数据库
                     model_filename = f"deep_learning_recommender_user_{user_id}.pth"
                     self.users_crud.update_model_filename(user_id, model_filename)
-                    print(f"用户 {user_id} 的模型训练完成，文件名已保存到数据库")
+                    logger.info(f"用户 {user_id} 的模型训练完成，文件名已保存到数据库")
                     return True
                 else:
-                    print(f"用户 {user_id} 的模型训练失败")
+                    logger.info(f"用户 {user_id} 的模型训练失败")
                     return False
             else:
-                print(f"用户 {user_id} 学习记录不足{MIN_TRAINING_RECORDS}个，暂不训练模型")
+                logger.info(f"用户 {user_id} 学习记录不足{MIN_TRAINING_RECORDS}个，暂不训练模型")
                 return False
                 
         except Exception as e:
-            print(f"检查并训练模型时出错: {str(e)}")
+            logger.error(f"检查并训练模型时出错: {str(e)}")
             return False
     
     def train_model_for_user(self, user_id, epochs=LEARNING_PARAMS["default_epochs"], batch_size=LEARNING_PARAMS["default_batch_size"], learning_rate=0.001):
@@ -751,22 +752,22 @@ class DeepLearningRecommendationEngine:
             bool: 训练是否成功
         """
         if not TORCH_AVAILABLE:
-            print("PyTorch未安装，无法训练模型")
+            logger.warning("PyTorch未安装，无法训练模型")
             return False
         
         try:
-            print(f"为用户 {user_id} 训练深度学习模型...")
+            logger.info(f"为用户 {user_id} 训练深度学习模型...")
             
             # 获取该用户的学习记录
             user_records = self.learning_records_crud.get_by_user(user_id)
             if len(user_records) < MIN_TRAINING_RECORDS:
-                print(f"用户 {user_id} 的学习记录不足 ({len(user_records)} 条)，需要至少{MIN_TRAINING_RECORDS}条记录")
+                logger.info(f"用户 {user_id} 的学习记录不足 ({len(user_records)} 条)，需要至少{MIN_TRAINING_RECORDS}条记录")
                 return False
             
             # 获取所有单词数据
             all_words = self.words_crud.list_all()
             if not all_words:
-                print("没有找到单词数据")
+                logger.warning("没有找到单词数据")
                 return False
             
             # 构建特征
@@ -785,7 +786,7 @@ class DeepLearningRecommendationEngine:
             self.user_features[user_id] = self.extract_user_features(user_id, user_records)
             self.user_id_to_index[user_id] = 0
             
-            print(f"特征构建完成: 单词特征 {len(self.word_features)} 个, 用户特征 {len(self.user_features)} 个")
+            logger.debug(f"特征构建完成: 单词特征 {len(self.word_features)} 个, 用户特征 {len(self.user_features)} 个")
             
             # 创建数据集
             dataset = VocabularyDataset(user_records, self.word_features, self.user_features)
@@ -820,10 +821,10 @@ class DeepLearningRecommendationEngine:
                 
                 if epoch % 10 == 0:
                     avg_loss = total_loss / len(dataloader)
-                    print(f"Epoch {epoch}, 平均损失: {avg_loss:.4f}")
+                    logger.debug(f"Epoch {epoch}, 平均损失: {avg_loss:.4f}")
             
             self.is_trained = True
-            print(f"用户 {user_id} 的模型训练完成！")
+            logger.info(f"用户 {user_id} 的模型训练完成！")
             
             # 保存用户特定模型
             self.save_model(user_id=user_id)
@@ -831,7 +832,7 @@ class DeepLearningRecommendationEngine:
             return True
             
         except Exception as e:
-            print(f"训练模型失败: {str(e)}")
+            logger.error(f"训练模型失败: {str(e)}")
             import traceback
             traceback.print_exc()
             return False
@@ -846,15 +847,15 @@ class DeepLearningRecommendationEngine:
             learning_rate (float): 学习率
         """
         if not TORCH_AVAILABLE:
-            print("PyTorch未安装，无法训练深度学习模型")
+            logger.warning("PyTorch未安装，无法训练深度学习模型")
             return False
         
-        print("开始训练深度学习推荐模型...")
+        logger.info("开始训练深度学习推荐模型...")
         
         # 准备数据
         training_records = self.prepare_training_data()
         if len(training_records) < MIN_TRAINING_RECORDS:
-            print(f"训练数据不足 ({len(training_records)} 条)，需要至少{MIN_TRAINING_RECORDS}条记录")
+            logger.info(f"训练数据不足 ({len(training_records)} 条)，需要至少{MIN_TRAINING_RECORDS}条记录")
             return False
         
         # 创建数据集
@@ -899,10 +900,10 @@ class DeepLearningRecommendationEngine:
             
             if epoch % 10 == 0:
                 avg_loss = total_loss / len(dataloader)
-                print(f"Epoch {epoch}, Loss: {avg_loss:.4f}")
+                logger.debug(f"Epoch {epoch}, Loss: {avg_loss:.4f}")
         
         self.is_trained = True
-        print("模型训练完成!")
+        logger.info("模型训练完成!")
         return True
     
     def get_deep_learning_recommendations(self, user_id, limit=LEARNING_PARAMS["default_recommendation_limit"]):
@@ -917,7 +918,7 @@ class DeepLearningRecommendationEngine:
             list: 推荐单词列表
         """
         if not self.is_trained or not TORCH_AVAILABLE:
-            print("深度学习模型未训练或PyTorch未安装，使用传统推荐")
+            logger.info("深度学习模型未训练或PyTorch未安装，使用传统推荐")
             return self._get_traditional_recommendations(user_id, limit)
         
         # 获取用户已学单词
@@ -1002,11 +1003,11 @@ class DeepLearningRecommendationEngine:
             user_id (int): 用户ID，如果指定则为该用户保存独立模型
         """
         if not TORCH_AVAILABLE:
-            print("PyTorch未安装，无法保存模型")
+            logger.warning("PyTorch未安装，无法保存模型")
             return False
         
         if not self.is_trained:
-            print("模型未训练，无法保存")
+            logger.warning("模型未训练，无法保存")
             return False
         
         try:
@@ -1014,11 +1015,11 @@ class DeepLearningRecommendationEngine:
             if user_id is not None:
                 if filepath is None:
                     filepath = f"models/deep_learning_recommender_user_{user_id}.pth"
-                print(f"为用户 {user_id} 保存模型到: {filepath}")
+                logger.info(f"为用户 {user_id} 保存模型到: {filepath}")
             else:
                 if filepath is None:
                     filepath = "models/deep_learning_recommender.pth"
-                print(f"保存通用模型到: {filepath}")
+                logger.info(f"保存通用模型到: {filepath}")
             
             # 确保目录存在
             os.makedirs(os.path.dirname(filepath), exist_ok=True)
@@ -1035,10 +1036,10 @@ class DeepLearningRecommendationEngine:
             }
             
             torch.save(checkpoint, filepath)
-            print(f"模型已保存到: {filepath}")
+            logger.info(f"模型已保存到: {filepath}")
             return True
         except Exception as e:
-            print(f"保存模型失败: {str(e)}")
+            logger.error(f"保存模型失败: {str(e)}")
             return False
     
     def load_model(self, filepath):
@@ -1046,7 +1047,7 @@ class DeepLearningRecommendationEngine:
         加载模型
         """
         if not TORCH_AVAILABLE:
-            print("PyTorch未安装，无法加载模型")
+            logger.warning("PyTorch未安装，无法加载模型")
             return False
         
         try:
@@ -1070,10 +1071,10 @@ class DeepLearningRecommendationEngine:
             self.model.load_state_dict(checkpoint['model_state_dict'])
             
             self.is_trained = True
-            print(f"模型已从 {filepath} 加载")
+            logger.info(f"模型已从 {filepath} 加载")
             return True
         except Exception as e:
-            print(f"加载模型失败: {str(e)}")
+            logger.error(f"加载模型失败: {str(e)}")
             return False
     
     def close(self):
@@ -1091,7 +1092,7 @@ def main():
     
     # 检查PyTorch是否可用
     if not TORCH_AVAILABLE:
-        print("[FAIL] PyTorch未安装，请安装: pip install torch")
+        logger.warning("[FAIL] PyTorch未安装，请安装: pip install torch")
         print("将使用传统推荐算法")
         return
     
@@ -1107,7 +1108,7 @@ def main():
         print("\n2. 测试推荐功能...")
         recommendations = recommender.get_deep_learning_recommendations(1, limit=5)
         
-        print(f"为用户1推荐了 {len(recommendations)} 个单词:")
+        logger.info(f"为用户1推荐了 {len(recommendations)} 个单词:")
         for i, rec in enumerate(recommendations):
             print(f"  {i+1}. {rec['word']} - {rec['translation']} (分数: {rec['recommendation_score']:.3f})")
         

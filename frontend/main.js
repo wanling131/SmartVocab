@@ -1,4 +1,9 @@
 import { apiRequest, setToken, getToken, clearToken } from "./js/api-client.js"
+import { getCurrentUser } from "./js/utils.js"
+import { getCurrentUser as getStoredUser } from "./js/utils.js"
+
+// Web Worker 客户端（用于大量数据计算)
+let workerClient = null
 
 // ==================== 安全工具函数 ====================
 
@@ -27,6 +32,355 @@ function safeHtml(element, html, vars = {}) {
     result = result.replace(placeholder, escapeHtml(value))
   }
   element.innerHTML = result
+}
+
+// ==================== UI 组件工具函数 ====================
+
+/**
+ * 显示确认对话框
+ * @param {string} message - 确认消息
+ * @param {Object} options - 配置选项
+ * @returns {Promise<boolean>} - 用户选择结果
+ */
+function showConfirm(message, options = {}) {
+  const { title = '确认操作', confirmText = '确定', cancelText = '取消', type = 'warning' } = options
+
+  return new Promise((resolve) => {
+    const overlay = document.createElement('div')
+    overlay.className = 'confirm-overlay'
+    overlay.innerHTML = `
+      <div class="confirm-dialog ${type}">
+        <div class="confirm-header">
+          <span class="confirm-icon">${type === 'danger' ? '⚠️' : type === 'warning' ? '⚡' : 'ℹ️'}</span>
+          <h3>${escapeHtml(title)}</h3>
+        </div>
+        <div class="confirm-body">
+          <p>${escapeHtml(message)}</p>
+        </div>
+        <div class="confirm-footer">
+          <button class="btn btn-secondary confirm-cancel">${escapeHtml(cancelText)}</button>
+          <button class="btn ${type === 'danger' ? 'btn-danger' : 'btn-primary'} confirm-ok">${escapeHtml(confirmText)}</button>
+        </div>
+      </div>
+    `
+
+    document.body.appendChild(overlay)
+
+    // 动画显示
+    requestAnimationFrame(() => {
+      overlay.classList.add('show')
+    })
+
+    const handleResult = (result) => {
+      overlay.classList.remove('show')
+      setTimeout(() => overlay.remove(), 300)
+      resolve(result)
+    }
+
+    overlay.querySelector('.confirm-ok').addEventListener('click', () => handleResult(true))
+    overlay.querySelector('.confirm-cancel').addEventListener('click', () => handleResult(false))
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) handleResult(false)
+    })
+
+    // ESC 键关闭
+    const handleEsc = (e) => {
+      if (e.key === 'Escape') {
+        document.removeEventListener('keydown', handleEsc)
+        handleResult(false)
+      }
+    }
+    document.addEventListener('keydown', handleEsc)
+  })
+}
+
+// ==================== 例句展示功能 ====================
+
+/**
+ * 更新例句展示区域
+ * @param {Object} word - 单词对象
+ */
+function updateExampleSection(word) {
+  const exampleSection = document.getElementById("example-section")
+  const exampleText = document.getElementById("word-example")
+
+  if (!exampleSection || !exampleText) return
+
+  const example = word.example_sentence || word.example || ""
+
+  if (example && word.question_type !== "spelling") {
+    // 高亮当前单词
+    const highlighted = example.replace(
+      new RegExp(`\\b${word.word}\\b`, "gi"),
+      `<span class="highlight">${word.word}</span>`
+    )
+    exampleText.innerHTML = highlighted
+    exampleSection.classList.remove("hidden")
+  } else {
+    exampleSection.classList.add("hidden")
+  }
+}
+
+/**
+ * 切换例句显示/隐藏
+ */
+function toggleExample() {
+  const section = document.getElementById("example-section")
+  const icon = document.getElementById("toggle-example-icon")
+
+  if (section.classList.contains("hidden")) {
+    section.classList.remove("hidden")
+    if (icon) icon.textContent = "📖"
+  } else {
+    section.classList.add("hidden")
+    if (icon) icon.textContent = "📖"
+  }
+}
+
+// 暴露给全局
+window.toggleExample = toggleExample
+
+/**
+ * 获取难度描述
+ * @param {number} level - 难度等级 (1-6)
+ * @returns {string} 难度描述
+ */
+function getDifficultyDescription(level) {
+  const descriptions = {
+    1: "入门",
+    2: "基础",
+    3: "初级",
+    4: "中级",
+    5: "高级",
+    6: "专业"
+  }
+  return descriptions[level] || "未知"
+}
+
+/**
+ * 创建骨架屏加载效果
+ * @param {string} type - 骨架屏类型 ('card', 'list', 'text')
+ * @param {number} count - 数量
+ * @returns {string} - HTML字符串
+ */
+function createSkeleton(type = 'card', count = 3) {
+  const templates = {
+    card: '<div class="skeleton skeleton-card"><div class="skeleton skeleton-title"></div><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-text" style="width: 60%"></div></div>',
+    list: '<div class="skeleton skeleton-list-item"><div class="skeleton skeleton-avatar"></div><div class="skeleton skeleton-content"><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-text" style="width: 80%"></div></div></div>',
+    text: '<div class="skeleton skeleton-text"></div>'
+  }
+
+  const template = templates[type] || templates.card
+  return Array(count).fill(template).join('')
+}
+
+/**
+ * 设置元素加载状态
+ * @param {HTMLElement} element - 目标元素
+ * @param {boolean} isLoading - 是否加载中
+ * @param {string} loadingText - 加载文本
+ */
+function setElementLoading(element, isLoading, loadingText = '加载中...') {
+  if (!element) return
+
+  if (isLoading) {
+    element.dataset.originalContent = element.innerHTML
+    element.innerHTML = `<div class="loading-inline"><div class="loading-spinner-sm"></div><span>${loadingText}</span></div>`
+    element.disabled = true
+  } else {
+    if (element.dataset.originalContent) {
+      element.innerHTML = element.dataset.originalContent
+      delete element.dataset.originalContent
+    }
+    element.disabled = false
+  }
+}
+
+/**
+ * 平滑滚动到元素
+ * @param {HTMLElement|string} target - 目标元素或选择器
+ * @param {Object} options - 滚动选项
+ */
+function smoothScrollTo(target, options = {}) {
+  const { offset = 0, duration = 500 } = options
+  const element = typeof target === 'string' ? document.querySelector(target) : target
+
+  if (!element) return
+
+  const targetPosition = element.getBoundingClientRect().top + window.pageYOffset - offset
+  const startPosition = window.pageYOffset
+  const distance = targetPosition - startPosition
+  let startTime = null
+
+  function animation(currentTime) {
+    if (!startTime) startTime = currentTime
+    const progress = Math.min((currentTime - startTime) / duration, 1)
+    const easeProgress = 1 - Math.pow(1 - progress, 3)
+
+    window.scrollTo(0, startPosition + distance * easeProgress)
+
+    if (progress < 1) requestAnimationFrame(animation)
+  }
+
+  requestAnimationFrame(animation)
+}
+
+/**
+ * 显示内联错误提示
+ * @param {HTMLElement} element - 目标元素
+ * @param {string} message - 错误消息
+ * @param {number} duration - 持续时间
+ */
+function showInlineError(element, message, duration = 3000) {
+  if (!element) return
+
+  // 移除已有错误提示
+  const existingError = element.parentElement.querySelector('.inline-error')
+  if (existingError) existingError.remove()
+
+  const errorEl = document.createElement('div')
+  errorEl.className = 'inline-error'
+  errorEl.textContent = message
+  element.parentElement.appendChild(errorEl)
+  element.classList.add('input-error')
+
+  // 添加抖动动画
+  element.classList.add('shake-animate')
+  setTimeout(() => element.classList.remove('shake-animate'), 400)
+
+  setTimeout(() => {
+    errorEl.classList.add('fade-out')
+    element.classList.remove('input-error')
+    setTimeout(() => errorEl.remove(), 300)
+  }, duration)
+}
+
+/**
+ * 添加按钮加载状态
+ * @param {HTMLElement} button - 按钮元素
+ * @param {boolean} loading - 是否加载中
+ * @param {string} text - 加载时显示的文本
+ */
+function setButtonLoading(button, loading, text = '处理中...') {
+  if (!button) return
+
+  if (loading) {
+    button.dataset.originalText = button.innerHTML
+    button.innerHTML = `<span class="loading-spinner-sm"></span><span>${text}</span>`
+    button.disabled = true
+    button.classList.add('loading')
+  } else {
+    button.innerHTML = button.dataset.originalText || button.innerHTML
+    button.disabled = false
+    button.classList.remove('loading')
+    delete button.dataset.originalText
+  }
+}
+
+// ==================== DOM 操作工具函数 ====================
+
+/**
+ * 批量设置元素属性
+ * @param {HTMLElement} element - 目标元素
+ * @param {Object} attrs - 属性对象
+ */
+function setAttributes(element, attrs) {
+  if (!element || !attrs) return
+  Object.entries(attrs).forEach(([key, value]) => {
+    if (key === 'className') {
+      element.className = value
+    } else if (key === 'style' && typeof value === 'object') {
+      Object.assign(element.style, value)
+    } else if (key.startsWith('data')) {
+      element.dataset[key.slice(4).toLowerCase()] = value
+    } else {
+      element.setAttribute(key, value)
+    }
+  })
+}
+
+/**
+ * 创建带类名的元素
+ * @param {string} tag - 标签名
+ * @param {string|Array} classNames - 类名
+ * @param {Object} attrs - 属性
+ * @param {string} innerHTML - 内部HTML
+ * @returns {HTMLElement}
+ */
+function createElement(tag, classNames = '', attrs = {}, innerHTML = '') {
+  const element = document.createElement(tag)
+  if (classNames) {
+    const classes = Array.isArray(classNames) ? classNames : classNames.split(' ')
+    element.classList.add(...classes.filter(Boolean))
+  }
+  setAttributes(element, attrs)
+  if (innerHTML) element.innerHTML = innerHTML
+  return element
+}
+
+/**
+ * 显示/隐藏元素（带动画）
+ * @param {HTMLElement} element - 目标元素
+ * @param {boolean} show - 是否显示
+ * @param {string} animation - 动画类型
+ */
+function toggleVisibility(element, show, animation = 'fade') {
+  if (!element) return
+
+  if (show) {
+    element.style.display = ''
+    element.classList.remove('hidden', 'fade-out', 'slide-out')
+    element.classList.add(`${animation}-in`)
+  } else {
+    element.classList.add(`${animation}-out`)
+    setTimeout(() => {
+      element.classList.add('hidden')
+      element.classList.remove(`${animation}-out`)
+    }, 300)
+  }
+}
+
+/**
+ * 批量查询并操作元素
+ * @param {string} selector - 选择器
+ * @param {Function} callback - 操作函数
+ */
+function queryAndExecute(selector, callback) {
+  document.querySelectorAll(selector).forEach(callback)
+}
+
+/**
+ * 安全获取DOM元素
+ * @param {string|HTMLElement} target - 选择器或元素
+ * @returns {HTMLElement|null}
+ */
+function getElement(target) {
+  return typeof target === 'string' ? document.querySelector(target) : target
+}
+
+/**
+ * 批量获取DOM元素值
+ * @param {Object} fieldMap - 字段映射 {key: selector}
+ * @returns {Object}
+ */
+function getFormValues(fieldMap) {
+  const values = {}
+  Object.entries(fieldMap).forEach(([key, selector]) => {
+    const el = document.querySelector(selector)
+    values[key] = el ? el.value.trim() : ''
+  })
+  return values
+}
+
+/**
+ * 批量设置DOM元素值
+ * @param {Object} valueMap - 值映射 {selector: value}
+ */
+function setFormValues(valueMap) {
+  Object.entries(valueMap).forEach(([selector, value]) => {
+    const el = document.querySelector(selector)
+    if (el) el.value = value || ''
+  })
 }
 
 // ==================== 动画工具函数 ====================
@@ -176,22 +530,83 @@ function showLoading() {
     <div class="loading-content">
       <div class="loading-spinner"></div>
       <div class="loading-text">加载中...</div>
+      <div class="loading-dots">
+        <span></span><span></span><span></span>
+      </div>
     </div>
   `
   document.body.appendChild(overlay)
+  requestAnimationFrame(() => overlay.classList.add('show'))
 }
 
 function hideLoading() {
   const overlay = document.getElementById("loading-overlay")
   if (overlay) {
-    overlay.remove()
+    overlay.classList.remove('show')
+    setTimeout(() => overlay.remove(), 300)
   }
+}
+
+/**
+ * 显示加载骨架屏
+ * @param {string} containerId - 容器元素ID
+ * @param {string} type - 骨架屏类型
+ * @param {number} count - 数量
+ */
+function showSkeleton(containerId, type = 'card', count = 3) {
+  const container = document.getElementById(containerId)
+  if (!container) return
+
+  container.innerHTML = createSkeleton(type, count)
+}
+
+/**
+ * 显示统计卡片骨架屏
+ */
+function showStatsSkeleton() {
+  const grid = document.querySelector('.stats-grid')
+  if (!grid) return
+
+  grid.innerHTML = Array(4).fill(0).map(() => `
+    <div class="stat-card skeleton">
+      <div class="stat-skeleton">
+        <div class="skeleton skeleton-icon"></div>
+        <div class="skeleton-info">
+          <div class="skeleton skeleton-value"></div>
+          <div class="skeleton skeleton-label"></div>
+        </div>
+      </div>
+    </div>
+  `).join('')
+}
+
+/**
+ * 显示推荐卡片骨架屏
+ */
+function showRecommendationsSkeleton() {
+  const grid = document.getElementById('recommendations-grid')
+  if (!grid) return
+
+  grid.innerHTML = Array(6).fill(0).map(() => `
+    <div class="recommendation-skeleton">
+      <div class="skeleton skeleton-header"></div>
+      <div class="skeleton skeleton-content"></div>
+      <div class="skeleton skeleton-text" style="width: 60%"></div>
+    </div>
+  `).join('')
+}
+
+/**
+ * 显示列表骨架屏
+ */
+function showListSkeleton(containerId, count = 5) {
+  showSkeleton(containerId, 'list', count)
 }
 
 // 统一错误处理函数
 function handleError(error, context = "") {
   console.error(`错误 [${context}]:`, error)
-  
+
   let message = "操作失败"
   if (typeof error === "string") {
     message = error
@@ -200,31 +615,44 @@ function handleError(error, context = "") {
   } else if (error && error.response && error.response.data && error.response.data.message) {
     message = error.response.data.message
   }
-  
+
   showToast(message, "error")
 }
 
-// Toast消息显示函数
-function showToast(message, type = "success") {
-  // 创建toast元素
+// Toast消息显示函数（增强版）
+function showToast(message, type = "success", duration = 3000) {
+  // 移除已有的toast
+  const existingToasts = document.querySelectorAll(".toast")
+  existingToasts.forEach(t => t.remove())
+
   const toast = document.createElement("div")
   toast.className = `toast ${type}`
-  toast.textContent = message
 
-  // 添加到页面
+  const icons = {
+    success: '✓',
+    error: '✗',
+    info: 'ℹ',
+    warning: '⚠'
+  }
+
+  toast.innerHTML = `
+    <span class="toast-icon">${icons[type] || '•'}</span>
+    <span class="toast-message">${escapeHtml(message)}</span>
+    <button class="toast-close" onclick="this.parentElement.remove()">×</button>
+    <div class="toast-progress"></div>
+  `
+
   document.body.appendChild(toast)
 
+  // 添加入场动画
+  requestAnimationFrame(() => toast.classList.add('show'))
+
   // 自动移除
-  setTimeout(() => {
-    if (toast.parentNode) {
-      toast.style.animation = "toastSlide 0.3s ease reverse"
-      setTimeout(() => {
-        if (toast.parentNode) {
-          toast.parentNode.removeChild(toast)
-        }
-      }, 300)
-    }
-  }, 3000)
+  const timeoutId = setTimeout(() => {
+    toast.classList.remove('show')
+    toast.classList.add('hide')
+    setTimeout(() => toast.remove(), 300)
+  }, duration)
 }
 
 
@@ -265,6 +693,170 @@ let recommendationCache = {
   totalAvailable: 0,
   displayedCount: 0
 }
+
+// ==================== 单词发音功能 ====================
+
+/**
+ * 使用 Web Speech API 播放单词发音
+ * @param {string} word - 要发音的单词
+ * @param {string} lang - 语言代码 (默认 'en-US')
+ */
+function speakWord(word, lang = 'en-US') {
+  if (!word || !('speechSynthesis' in window)) {
+    console.warn('浏览器不支持语音合成')
+    return
+  }
+
+  // 取消之前的发音
+  window.speechSynthesis.cancel()
+
+  const utterance = new SpeechSynthesisUtterance(word)
+  utterance.lang = lang
+  utterance.rate = 0.9  // 稍慢一点更清晰
+  utterance.pitch = 1
+
+  // 尝试使用更自然的声音
+  const voices = window.speechSynthesis.getVoices()
+  const englishVoice = voices.find(v => v.lang.startsWith('en'))
+  if (englishVoice) {
+    utterance.voice = englishVoice
+  }
+
+  window.speechSynthesis.speak(utterance)
+}
+
+/**
+ * 添加发音按钮到单词卡片
+ * @param {HTMLElement} container - 包含单词的容器
+ * @param {string} word - 要发音的单词
+ */
+function addPronunciationButton(container, word) {
+  if (!container || !word) return
+
+  // 检查是否已有发音按钮
+  if (container.querySelector('.pronunciation-btn')) return
+
+  const btn = document.createElement('button')
+  btn.className = 'pronunciation-btn'
+  btn.innerHTML = '🔊'
+  btn.title = '播放发音'
+  btn.onclick = (e) => {
+    e.stopPropagation()
+    speakWord(word)
+  }
+
+  container.appendChild(btn)
+}
+
+// 预加载语音引擎
+if ('speechSynthesis' in window) {
+  window.speechSynthesis.getVoices()
+  window.speechSynthesis.onvoiceschanged = () => {
+    window.speechSynthesis.getVoices()
+  }
+}
+
+// ==================== 学习报告导出 ====================
+
+/**
+ * 导出学习报告为 JSON 文件
+ */
+async function exportLearningReport() {
+  if (!currentUser?.id) {
+    showToast('请先登录', 'error')
+    return
+  }
+
+  showLoading()
+  try {
+    // 获取学习统计
+    const [progressRes, statsRes] = await Promise.all([
+      apiRequest(`/learning/progress/${currentUser.id}`),
+      apiRequest(`/learning/statistics/${currentUser.id}`)
+    ])
+
+    const report = {
+      exportDate: new Date().toISOString(),
+      user: currentUser.username,
+      progress: progressRes.data || {},
+      statistics: statsRes.data || {}
+    }
+
+    // 创建下载
+    const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `smartvocab-report-${new Date().toISOString().split('T')[0]}.json`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+
+    hideLoading()
+    showToast('报告导出成功', 'success')
+  } catch (err) {
+    hideLoading()
+    showToast('导出失败: ' + err.message, 'error')
+  }
+}
+
+/**
+ * 导出收藏单词为 CSV
+ */
+async function exportFavoritesCSV() {
+  if (!currentUser?.id) {
+    showToast('请先登录', 'error')
+    return
+  }
+
+  showLoading()
+  try {
+    const result = await apiRequest(`/favorites/${currentUser.id}`)
+    const favorites = result.data?.favorites || []
+
+    if (favorites.length === 0) {
+      hideLoading()
+      showToast('暂无收藏单词', 'warning')
+      return
+    }
+
+    // CSV 头
+    const headers = ['单词', '音标', '翻译', '难度', '收藏时间']
+    const rows = favorites.map(f => [
+      f.word || '',
+      f.phonetic || '',
+      f.translation || '',
+      f.difficulty_level || '',
+      f.created_at || ''
+    ])
+
+    // 构建 CSV 内容
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+    ].join('\n')
+
+    // 添加 BOM 以支持中文
+    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `smartvocab-favorites-${new Date().toISOString().split('T')[0]}.csv`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+
+    hideLoading()
+    showToast(`已导出 ${favorites.length} 个单词`, 'success')
+  } catch (err) {
+    hideLoading()
+    showToast('导出失败: ' + err.message, 'error')
+  }
+}
+
+// ==================== 原有缓存代码 ====================
 
 // 推荐缓存持续时间（5分钟）
 const CACHE_DURATION = 5 * 60 * 1000
@@ -534,18 +1126,51 @@ async function loadDashboard() {
     // 加载学习进度
     const progress = await apiRequest(`/learning/progress/${currentUser.id}`)
     if (progress.success) {
-      document.getElementById("total-words").textContent = progress.data.total_words
-      document.getElementById("learned-words").textContent = progress.data.learned_words
-      document.getElementById("learning-words").textContent = progress.data.learning_words
-      document.getElementById("mastery-rate").textContent = (progress.data.mastery_rate * 100).toFixed(1) + "%"
+      // 使用数字动画效果
+      animateNumber(document.getElementById("total-words"), progress.data.total_words)
+      animateNumber(document.getElementById("learned-words"), progress.data.learned_words)
+      animateNumber(document.getElementById("learning-words"), progress.data.learning_words)
+
+      // 掌握率使用百分比格式
+      const masteryEl = document.getElementById("mastery-rate")
+      const masteryRate = (progress.data.mastery_rate * 100)
+      masteryEl.textContent = masteryRate.toFixed(1) + "%"
+      masteryEl.classList.add('count-up-animate')
     }
 
     // 加载推荐内容
     await loadRecommendations()
+
+    // 加载收藏ID列表
+    await loadFavoriteIds()
+
+    // 更新复习数量
+    await updateReviewCount()
   } catch (error) {
     handleError(error, "加载仪表板")
   } finally {
     hideLoading()
+  }
+}
+
+// 更新复习数量
+async function updateReviewCount() {
+  if (!currentUser?.id) return
+
+  try {
+    const result = await apiRequest(`/learning/review-words/${currentUser.id}?limit=100`)
+    if (result.success) {
+      const reviewCountEl = document.getElementById("review-count")
+      if (reviewCountEl) {
+        const count = result.data?.words?.length || 0
+        reviewCountEl.textContent = count
+        if (count > 0) {
+          reviewCountEl.classList.add('count-up-animate')
+        }
+      }
+    }
+  } catch (e) {
+    console.error("获取复习数量失败:", e)
   }
 }
 
@@ -1033,11 +1658,15 @@ async function loadCurrentWord() {
 
     // 记录单词显示开始时间
     wordStartTime = Date.now()
-    
+
     document.getElementById("current-word").textContent = word.question_type === "spelling" ? "拼写练习" : word.word
     document.getElementById("word-phonetic").textContent = word.question_type === "spelling" ? "" : (word.phonetic || "")
-    // word-pos元素被注释掉了，所以跳过
-    // document.getElementById("word-pos").textContent = word.pos || ""
+
+    // 显示例句（如果有）
+    updateExampleSection(word)
+
+    // 更新收藏按钮状态
+    updateFavoriteButton(word.word_id)
 
     // 更新进度（避免 total_count 为 0 时出现 NaN）
     const totalForProgress = Math.max(1, Number(currentSession.total_count) || 1)
@@ -1484,17 +2113,40 @@ async function loadStatistics(days = 7) {
     console.error("用户未登录或用户ID无效")
     return
   }
-  
+
   showLoading()
 
   try {
-    const stats = await apiRequest(`/learning/statistics/${currentUser.id}?days=${days}`)
+    // 并行获取本周和14天数据（用于计算上周对比）
+    const [thisWeekStats, twoWeeksStats] = await Promise.all([
+      apiRequest(`/learning/statistics/${currentUser.id}?days=7`),
+      apiRequest(`/learning/statistics/${currentUser.id}?days=14`)
+    ])
 
-    if (stats.success) {
-      document.getElementById("total-reviews").textContent = stats.data.total_reviews
-      document.getElementById("new-words").textContent = stats.data.new_words
-      document.getElementById("learned-words-stats").textContent = stats.data.learned_words
-      document.getElementById("avg-reviews").textContent = stats.data.average_reviews_per_day.toFixed(1)
+    if (thisWeekStats.success) {
+      document.getElementById("total-reviews").textContent = thisWeekStats.data.total_reviews
+      document.getElementById("new-words").textContent = thisWeekStats.data.new_words
+      document.getElementById("learned-words-stats").textContent = thisWeekStats.data.learned_words
+      document.getElementById("avg-reviews").textContent = thisWeekStats.data.average_reviews_per_day.toFixed(1)
+    }
+
+    // 计算周对比数据
+    if (thisWeekStats.success && twoWeeksStats.success) {
+      const thisWeek = thisWeekStats.data
+      const lastWeek = {
+        total_reviews: twoWeeksStats.data.total_reviews - thisWeek.total_reviews,
+        new_words: twoWeeksStats.data.new_words - thisWeek.new_words
+      }
+
+      // 更新对比显示
+      document.getElementById("this-week-reviews").textContent = thisWeek.total_reviews
+      document.getElementById("last-week-reviews").textContent = lastWeek.total_reviews
+      document.getElementById("this-week-words").textContent = thisWeek.new_words
+      document.getElementById("last-week-words").textContent = lastWeek.new_words
+
+      // 计算趋势
+      updateTrendArrow("reviews-trend", thisWeek.total_reviews, lastWeek.total_reviews)
+      updateTrendArrow("words-trend", thisWeek.new_words, lastWeek.new_words)
     }
 
     // 加载学习记录
@@ -1509,7 +2161,7 @@ async function loadStatistics(days = 7) {
         item.className = "record-item"
         item.innerHTML = `
                   <div>
-                      <span class="record-word">${record.word}</span>
+                      <span class="record-word">${escapeHtml(record.word)}</span>
                       <span class="record-result ${record.is_correct ? "correct" : "incorrect"}">
                           ${record.is_correct ? "✓ 正确" : "✗ 错误"}
                       </span>
@@ -1531,10 +2183,113 @@ async function loadStatistics(days = 7) {
     }
 
     await loadForgettingCurve()
+    await loadAdvancedCharts()
   } catch (error) {
     handleError(error, "加载统计")
   } finally {
     hideLoading()
+  }
+}
+
+// 加载高级图表（使用 Chart.js）
+async function loadAdvancedCharts() {
+  if (!window.ChartModule || !currentUser?.id) return
+
+  try {
+    // 获取学习统计数据
+    const statsResult = await apiRequest(`/learning/statistics/${currentUser.id}?days=30`)
+    const recordsResult = await apiRequest(`/learning/records/${currentUser.id}?limit=100`)
+
+    if (!statsResult.success) return
+
+    const stats = statsResult.data
+    const records = recordsResult.data || []
+
+    // 1. 学习趋势图（最近7天）
+    const trendCanvas = document.getElementById('learning-trend-canvas')
+    if (trendCanvas) {
+      const last7Days = []
+      const reviewCounts = []
+      const newWordCounts = []
+
+      for (let i = 6; i >= 0; i--) {
+        const date = new Date()
+        date.setDate(date.getDate() - i)
+        const dateStr = date.toISOString().split('T')[0]
+        last7Days.push(date.toLocaleDateString('zh-CN', { weekday: 'short' }))
+
+        // 统计当天记录
+        const dayRecords = records.filter(r => r.created_at?.startsWith(dateStr))
+        reviewCounts.push(dayRecords.length)
+        newWordCounts.push(dayRecords.filter(r => r.is_first_learn).length)
+      }
+
+      ChartModule.createProgressLineChart('learning-trend-canvas', last7Days, [
+        {
+          label: '复习次数',
+          data: reviewCounts,
+          borderColor: ChartModule.COLORS.primary,
+          backgroundColor: ChartModule.COLORS.primaryLight
+        },
+        {
+          label: '新学单词',
+          data: newWordCounts,
+          borderColor: ChartModule.COLORS.secondary,
+          backgroundColor: ChartModule.COLORS.secondaryLight
+        }
+      ])
+    }
+
+    // 2. 难度分布图
+    const difficultyCanvas = document.getElementById('difficulty-distribution-canvas')
+    if (difficultyCanvas && records.length > 0) {
+      const difficultyCounts = [0, 0, 0, 0, 0] // 1-5级
+      records.forEach(r => {
+        const level = Math.max(1, Math.min(5, r.difficulty_level || 3))
+        difficultyCounts[level - 1]++
+      })
+
+      ChartModule.createDifficultyBarChart(
+        'difficulty-distribution-canvas',
+        ['入门', '基础', '中级', '进阶', '高级'],
+        difficultyCounts
+      )
+    }
+
+    // 3. 词性分布图
+    const posCanvas = document.getElementById('pos-distribution-canvas')
+    if (posCanvas && records.length > 0) {
+      const posCounts = {}
+      const posLabels = { n: '名词', v: '动词', adj: '形容词', adv: '副词', other: '其他' }
+
+      records.forEach(r => {
+        const pos = r.pos || 'other'
+        posCounts[pos] = (posCounts[pos] || 0) + 1
+      })
+
+      const labels = Object.keys(posCounts).map(p => posLabels[p] || p)
+      const data = Object.values(posCounts)
+
+      ChartModule.createPosDistributionChart('pos-distribution-canvas', labels, data)
+    }
+
+    // 4. 能力雷达图
+    const radarCanvas = document.getElementById('mastery-radar-canvas')
+    if (radarCanvas) {
+      ChartModule.createMasteryRadarChart(
+        'mastery-radar-canvas',
+        ['词汇量', '掌握率', '复习频率', '新词进度', '稳定性'],
+        [
+          Math.min(stats.learned_words / 100 * 100, 100),
+          Math.min(stats.mastery_rate * 100 || 0, 100),
+          Math.min(stats.average_reviews_per_day * 10 || 0, 100),
+          Math.min(stats.new_words / 50 * 100 || 0, 100),
+          50 // 默认稳定性
+        ]
+      )
+    }
+  } catch (e) {
+    console.warn('加载高级图表失败:', e)
   }
 }
 
@@ -1543,27 +2298,36 @@ async function loadForgettingCurve() {
   if (!currentUser || !currentUser.id) return
 
   try {
-    const result = await apiRequest(`/learning/forgetting-curve/${currentUser.id}?days=7`)
+    const result = await apiRequest(`/learning/forgetting-curve/${currentUser.id}?days=30`)
     if (result.success && result.data && result.data.length > 0) {
-      const maxVal = Math.max(...result.data.map(d => d.words_to_review), 1)
-      chartContainer.innerHTML = `
-        <div class="forgetting-curve-bars">
-          ${result.data.map(d => `
-            <div class="curve-bar-wrap">
-              <div class="curve-bar" style="height: ${(d.words_to_review / maxVal) * 100}%"
-                title="${d.date}: ${d.words_to_review} 词"></div>
-              <span class="curve-label">${d.date.slice(5)}</span>
-              <span class="curve-value">${d.words_to_review}</span>
-            </div>
-          `).join('')}
-        </div>
-      `
+      // 使用 Chart.js 绘制遗忘曲线
+      const labels = result.data.map(d => d.date.slice(5)) // MM-DD 格式
+      const data = result.data.map(d => d.words_to_review)
+
+      if (window.ChartModule) {
+        window.ChartModule.createForgettingCurveChart('forgetting-curve-canvas', labels, data)
+      } else {
+        // 降级为简单的柱状图
+        const maxVal = Math.max(...data, 1)
+        chartContainer.innerHTML = `
+          <div class="forgetting-curve-bars">
+            ${result.data.slice(0, 14).map(d => `
+              <div class="curve-bar-wrap">
+                <div class="curve-bar" style="height: ${(d.words_to_review / maxVal) * 100}%"
+                  title="${d.date}: ${d.words_to_review} 词"></div>
+                <span class="curve-label">${d.date.slice(5)}</span>
+                <span class="curve-value">${d.words_to_review}</span>
+              </div>
+            `).join('')}
+          </div>
+        `
+      }
     } else {
       chartContainer.innerHTML = `
         <div class="empty-state">
           <div class="empty-state-icon">📊</div>
           <h4>暂无复习计划</h4>
-          <p>开始学习后，系统将根据记忆曲线生成未来7天复习计划</p>
+          <p>开始学习后，系统将根据记忆曲线生成未来复习计划</p>
         </div>
       `
     }
@@ -1657,6 +2421,7 @@ async function loadPlansList() {
           </div>
           <div class="plan-actions">
             ${!plan.is_active ? `<button class="btn btn-primary btn-sm" onclick="activatePlan(${plan.id})">启用</button>` : ''}
+            <button class="btn btn-secondary btn-sm" data-plan-id="${plan.id}" data-plan-name="${escapeHtml(plan.plan_name || '')}" data-dataset-type="${escapeHtml(plan.dataset_type)}" data-daily-new="${plan.daily_new_count}" data-daily-review="${plan.daily_review_count}" onclick="editPlanFromButton(this)">编辑</button>
             <button class="btn btn-secondary btn-sm" onclick="deletePlan(${plan.id})">删除</button>
           </div>
         </div>
@@ -1706,7 +2471,13 @@ async function deactivatePlan(planId) {
 }
 
 async function deletePlan(planId) {
-  if (!confirm("确定要删除这个计划吗？")) return
+  const confirmed = await showConfirm('确定要删除这个计划吗？此操作不可撤销。', {
+    title: '删除计划',
+    type: 'danger',
+    confirmText: '删除'
+  })
+
+  if (!confirmed) return
 
   showLoading()
   const r = await apiRequest(`/plans/${planId}`, {
@@ -1720,6 +2491,80 @@ async function deletePlan(planId) {
   } else {
     showToast(r.message || "删除失败", "error")
   }
+}
+
+// 从按钮读取数据并打开编辑弹窗（安全，避免 XSS）
+function editPlanFromButton(btn) {
+  const planId = parseInt(btn.dataset.planId)
+  const planName = btn.dataset.planName || ''
+  const datasetType = btn.dataset.datasetType || ''
+  const dailyNew = parseInt(btn.dataset.dailyNew) || 20
+  const dailyReview = parseInt(btn.dataset.dailyReview) || 20
+  editPlan(planId, planName, datasetType, dailyNew, dailyReview)
+}
+
+// 编辑计划
+async function editPlan(planId, planName, datasetType, dailyNew, dailyReview) {
+  // 创建编辑表单弹窗
+  const modal = document.createElement("div")
+  modal.className = "modal-overlay"
+  modal.innerHTML = `
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>编辑计划</h3>
+        <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>计划名称</label>
+          <input type="text" id="edit-plan-name" value="${escapeHtml(planName)}" placeholder="可选">
+        </div>
+        <div class="form-group">
+          <label>词库类型</label>
+          <input type="text" value="${escapeHtml(datasetType)}" disabled>
+        </div>
+        <div class="form-group">
+          <label>每日新学单词数</label>
+          <input type="number" id="edit-plan-daily-new" value="${dailyNew}" min="5" max="100">
+        </div>
+        <div class="form-group">
+          <label>每日复习单词数</label>
+          <input type="number" id="edit-plan-daily-review" value="${dailyReview}" min="5" max="100">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">取消</button>
+        <button class="btn btn-primary" id="save-edit-plan-btn">保存</button>
+      </div>
+    </div>
+  `
+  document.body.appendChild(modal)
+
+  // 绑定保存按钮
+  document.getElementById("save-edit-plan-btn").addEventListener("click", async () => {
+    const newName = document.getElementById("edit-plan-name").value.trim()
+    const newDailyNew = parseInt(document.getElementById("edit-plan-daily-new").value) || 20
+    const newDailyReview = parseInt(document.getElementById("edit-plan-daily-review").value) || 20
+
+    showLoading()
+    const r = await apiRequest(`/plans/${planId}`, {
+      method: "PUT",
+      body: JSON.stringify({
+        plan_name: newName || null,
+        daily_new_count: newDailyNew,
+        daily_review_count: newDailyReview
+      })
+    })
+    hideLoading()
+
+    if (r.success) {
+      showToast("计划已更新")
+      modal.remove()
+      loadPlansPage()
+    } else {
+      showToast(r.message || "更新失败", "error")
+    }
+  })
 }
 
 // 按计划开始学习
@@ -1948,15 +2793,34 @@ async function loadLevelsPage() {
       const isCompleted = p.is_completed
       const masteredCount = p.mastered_count || 0
 
+      // 难度描述
+      const difficultyDesc = getDifficultyDescription(g.difficulty_level)
+      const difficultyStars = "★".repeat(g.difficulty_level) + "☆".repeat(6 - g.difficulty_level)
+
       return `
-        <div class="recommendation-card ${!isUnlocked ? 'locked' : ''} ${isCompleted ? 'completed' : ''}">
-          <h3>${g.gate_name || '关卡' + g.gate_order}</h3>
-          <p>难度 ${g.difficulty_level} · ${g.word_count} 词</p>
-          <p>已掌握: ${masteredCount}/${g.word_count}</p>
-          ${isCompleted ? '<span class="badge badge-success">已通关 ✓</span>' : ''}
-          ${!isUnlocked && g.gate_order > 1 ? '<span class="badge badge-secondary">需完成上一关</span>' : ''}
-          ${isUnlocked && !isCompleted ? `<button class="btn btn-primary btn-sm" data-gate-id="${g.id}">开始闯关</button>` : ''}
-          ${isCompleted && isUnlocked ? `<button class="btn btn-secondary btn-sm" data-gate-id="${g.id}">再次挑战</button>` : ''}
+        <div class="gate-card ${!isUnlocked ? 'locked' : ''} ${isCompleted ? 'completed' : ''}">
+          <div class="gate-header">
+            <span class="gate-order">第 ${g.gate_order} 关</span>
+            <span class="gate-difficulty" data-difficulty="${g.difficulty_level}">
+              难度 ${difficultyStars}
+            </span>
+          </div>
+          <h3 class="gate-name">${g.gate_name || '关卡 ' + g.gate_order}</h3>
+          <p class="gate-desc">${difficultyDesc} · ${g.word_count} 个单词</p>
+          <div class="gate-progress">
+            <div class="progress-bar">
+              <div class="progress-fill" style="width: ${g.word_count > 0 ? (masteredCount / g.word_count * 100) : 0}%"></div>
+            </div>
+            <span class="progress-text">${masteredCount}/${g.word_count}</span>
+          </div>
+          <div class="gate-status">
+            ${isCompleted ? '<span class="badge badge-success">🏆 已通关</span>' : ''}
+            ${!isUnlocked && g.gate_order > 1 ? '<span class="badge badge-secondary">🔒 需完成上一关</span>' : ''}
+          </div>
+          <div class="gate-actions">
+            ${isUnlocked && !isCompleted ? `<button class="btn btn-primary btn-sm" data-gate-id="${g.id}">🚀 开始闯关</button>` : ''}
+            ${isCompleted && isUnlocked ? `<button class="btn btn-secondary btn-sm" data-gate-id="${g.id}">🔄 再次挑战</button>` : ''}
+          </div>
         </div>
       `
     }).join("")
@@ -2369,6 +3233,24 @@ async function submitEvaluation() {
   }
 }
 
+// 更新趋势箭头
+function updateTrendArrow(elementId, current, previous) {
+  const el = document.getElementById(elementId)
+  if (!el) return
+
+  const diff = current - previous
+  if (diff > 0) {
+    el.textContent = `↑ +${diff}`
+    el.className = "comparison-arrow up"
+  } else if (diff < 0) {
+    el.textContent = `↓ ${diff}`
+    el.className = "comparison-arrow down"
+  } else {
+    el.textContent = "→ 0"
+    el.className = "comparison-arrow same"
+  }
+}
+
 // 时间格式化函数
 function formatLearningTime(timeString) {
   try {
@@ -2423,6 +3305,9 @@ window.addEventListener('auth:logout', (event) => {
   showToast("登录已过期，请重新登录", "error")
 })
 
+// 页面懒加载状态
+const pageLoaded = new Set()
+
 // 事件监听器
 function initEventListeners() {
   // 使用事件委托处理所有导航链接
@@ -2438,19 +3323,33 @@ function initEventListeners() {
 
       showPage(page)
 
-      // 根据页面加载相应数据
-      if (page === "statistics") {
-        loadStatistics()
-      } else if (page === "dashboard") {
-        loadDashboard()
-      } else if (page === "plans") {
-        loadPlansPage()
-      } else if (page === "levels") {
-        loadLevelsPage()
-      } else if (page === "evaluation") {
-        loadEvaluationStart()
-      } else if (page === "profile") {
-        loadProfilePage()
+      // 懒加载：只在首次访问时加载页面数据
+      if (!pageLoaded.has(page)) {
+        pageLoaded.add(page)
+        switch (page) {
+          case "statistics":
+            loadStatistics()
+            break
+          case "dashboard":
+            loadDashboard()
+            updateReviewCount()
+            break
+          case "plans":
+            loadPlansPage()
+            break
+          case "levels":
+            loadLevelsPage()
+            break
+          case "evaluation":
+            loadEvaluationStart()
+            break
+          case "profile":
+            loadProfilePage()
+            break
+          case "favorites":
+            loadFavoritesPage()
+            break
+        }
       }
       // learning页面只能通过功能按钮进入，不能通过导航进入
     }
@@ -2565,6 +3464,63 @@ function initEventListeners() {
     })
   }
 
+  // 修改密码按钮
+  const changePasswordBtn = document.getElementById("change-password-btn")
+  if (changePasswordBtn) {
+    changePasswordBtn.addEventListener("click", async () => {
+      if (!currentUser?.id) return
+
+      const oldPassword = document.getElementById("old-password").value
+      const newPassword = document.getElementById("new-password").value
+      const confirmPassword = document.getElementById("confirm-password").value
+
+      // 验证并显示内联错误
+      if (!oldPassword) {
+        showInlineError(document.getElementById("old-password"), "请输入当前密码")
+        return
+      }
+      if (!newPassword) {
+        showInlineError(document.getElementById("new-password"), "请输入新密码")
+        return
+      }
+      if (newPassword.length < 6) {
+        showInlineError(document.getElementById("new-password"), "新密码至少需要6个字符")
+        return
+      }
+      if (newPassword !== confirmPassword) {
+        showInlineError(document.getElementById("confirm-password"), "两次输入的新密码不一致")
+        return
+      }
+
+      setButtonLoading(changePasswordBtn, true, "修改中...")
+
+      try {
+        const r = await apiRequest(`/auth/password/${currentUser.id}`, {
+          method: "PUT",
+          body: JSON.stringify({
+            old_password: oldPassword,
+            new_password: newPassword
+          })
+        })
+
+        setButtonLoading(changePasswordBtn, false)
+
+        if (r.success) {
+          showToast("密码修改成功")
+          // 清空密码框
+          document.getElementById("old-password").value = ""
+          document.getElementById("new-password").value = ""
+          document.getElementById("confirm-password").value = ""
+        } else {
+          showToast(r.message || "密码修改失败", "error")
+        }
+      } catch (e) {
+        setButtonLoading(changePasswordBtn, false)
+        showToast("密码修改失败: " + e.message, "error")
+      }
+    })
+  }
+
   const profileLogoutBtn = document.getElementById("profile-logout-btn")
   if (profileLogoutBtn) {
     profileLogoutBtn.addEventListener("click", logout)
@@ -2578,14 +3534,35 @@ function initEventListeners() {
   }
   document.getElementById("next-word-btn").addEventListener("click", nextWord)
   document.getElementById("finish-session-btn").addEventListener("click", finishSession)
-  document.getElementById("back-to-dashboard").addEventListener("click", () => {
+  document.getElementById("back-to-dashboard").addEventListener("click", async () => {
     if (currentSession && currentSession.current_word_index < currentSession.total_count) {
-      if (confirm("确定要退出当前学习吗？进度将不会保存。")) {
+      const confirmed = await showConfirm('确定要退出当前学习吗？进度将不会保存。', {
+        title: '退出学习',
+        type: 'warning',
+        confirmText: '确定退出'
+      })
+      if (confirmed) {
         currentSession = null
         showPage("dashboard")
       }
     } else {
       showPage("dashboard")
+    }
+  })
+
+  // 发音按钮
+  document.getElementById("pronunciation-btn")?.addEventListener("click", () => {
+    const word = currentSession?.currentWordCache
+    if (word?.word) {
+      speakWord(word.word)
+    }
+  })
+
+  // 收藏按钮
+  document.getElementById("favorite-btn")?.addEventListener("click", () => {
+    const word = currentSession?.currentWordCache
+    if (word) {
+      toggleFavorite(word.word_id, word.word, word.translation)
     }
   })
 
@@ -2655,3 +3632,328 @@ window.startPlanLearning = startPlanLearning
 window.activatePlan = activatePlan
 window.deactivatePlan = deactivatePlan
 window.deletePlan = deletePlan
+window.editPlanFromButton = editPlanFromButton
+window.editPlan = editPlan
+
+// ==================== 收藏功能 ====================
+
+// 存储当前用户收藏的单词ID集合
+let favoritedWordIds = new Set()
+
+// 加载用户收藏的单词ID列表
+async function loadFavoriteIds() {
+  const user = getCurrentUser()
+  if (!user) return
+
+  try {
+    const result = await apiRequest(`/favorites/${user.id}/ids`)
+    if (result.success) {
+      favoritedWordIds = new Set(result.data.word_ids || [])
+    }
+  } catch (e) {
+    console.error("加载收藏ID失败:", e)
+  }
+}
+
+// 检查单词是否已收藏
+function isWordFavorited(wordId) {
+  return favoritedWordIds.has(wordId)
+}
+
+// 切换收藏状态
+async function toggleFavorite(wordId, word, translation) {
+  const user = getCurrentUser()
+  if (!user) {
+    showToast("请先登录", "error")
+    return
+  }
+
+  const isFavorited = favoritedWordIds.has(wordId)
+  const btn = document.getElementById("favorite-btn")
+
+  try {
+    if (isFavorited) {
+      // 取消收藏
+      const result = await apiRequest(`/favorites/${user.id}/word/${wordId}`, {
+        method: "DELETE"
+      })
+      if (result.success) {
+        favoritedWordIds.delete(wordId)
+        if (btn) {
+          btn.classList.remove("active")
+          btn.querySelector(".favorite-icon").textContent = "☆"
+        }
+        showToast("已取消收藏")
+      }
+    } else {
+      // 添加收藏
+      const result = await apiRequest(`/favorites/${user.id}/word/${wordId}`, {
+        method: "POST",
+        body: JSON.stringify({ note: "" })
+      })
+      if (result.success) {
+        favoritedWordIds.add(wordId)
+        if (btn) {
+          btn.classList.add("active")
+          btn.querySelector(".favorite-icon").textContent = "★"
+        }
+        showToast("收藏成功 ⭐")
+      }
+    }
+  } catch (e) {
+    showToast("操作失败，请重试", "error")
+  }
+}
+
+// 更新收藏按钮状态
+function updateFavoriteButton(wordId) {
+  const btn = document.getElementById("favorite-btn")
+  if (!btn) return
+
+  const isFavorited = favoritedWordIds.has(wordId)
+  btn.classList.toggle("active", isFavorited)
+  btn.querySelector(".favorite-icon").textContent = isFavorited ? "★" : "☆"
+}
+
+// 加载收藏页面
+let allFavorites = [] // 存储所有收藏数据用于筛选
+
+async function loadFavoritesPage() {
+  const user = getCurrentUser()
+  if (!user) return
+
+  const listEl = document.getElementById("favorites-list")
+  const emptyEl = document.getElementById("favorites-empty")
+  const totalEl = document.getElementById("favorites-total")
+
+  // 显示骨架屏加载效果
+  listEl.innerHTML = createSkeleton('card', 4)
+  emptyEl.classList.add("hidden")
+
+  try {
+    const result = await apiRequest(`/favorites/${user.id}`)
+    if (result.success) {
+      allFavorites = result.data.favorites || []
+      renderFavorites(allFavorites)
+      initFavoritesFilters()
+    }
+  } catch (e) {
+    listEl.innerHTML = '<div class="error-message show">加载失败，请刷新重试</div>'
+  }
+}
+
+// 渲染收藏列表
+function renderFavorites(favorites) {
+  const listEl = document.getElementById("favorites-list")
+  const emptyEl = document.getElementById("favorites-empty")
+  const totalEl = document.getElementById("favorites-total")
+
+  totalEl.textContent = favorites.length
+
+  if (favorites.length === 0) {
+    listEl.innerHTML = ""
+    emptyEl.classList.remove("hidden")
+    return
+  }
+
+  listEl.innerHTML = ""
+  favorites.forEach((fav, index) => {
+    const card = document.createElement("div")
+    card.className = "favorite-card list-item-animate"
+    card.style.animationDelay = `${index * 0.05}s`
+    card.dataset.wordId = fav.word_id
+    card.dataset.difficulty = fav.difficulty_level || "0"
+    card.dataset.dataset = fav.dataset_type || "other"
+    card.innerHTML = `
+      <button class="remove-btn" onclick="removeFavoriteFromList(${fav.word_id}, this)">✕</button>
+      <div class="word">${escapeHtml(fav.word)}</div>
+      <div class="phonetic">${escapeHtml(fav.phonetic || "")}</div>
+      <div class="translation">${escapeHtml(fav.translation)}</div>
+      ${fav.note ? `<div class="note">${escapeHtml(fav.note)}</div>` : ""}
+      <div class="meta">
+        <span class="difficulty">难度 ${fav.difficulty_level || "-"}</span>
+        <span class="dataset-tag">${fav.dataset_type || "其他"}</span>
+        <span class="favorited-at">收藏于 ${fav.favorited_at ? new Date(fav.favorited_at).toLocaleDateString() : "-"}</span>
+      </div>
+    `
+    listEl.appendChild(card)
+  })
+}
+
+// 初始化筛选器
+function initFavoritesFilters() {
+  // 难度筛选
+  document.querySelectorAll("#difficulty-filters .filter-tag").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll("#difficulty-filters .filter-tag").forEach(b => b.classList.remove("active"))
+      btn.classList.add("active")
+      filterFavorites()
+    })
+  })
+
+  // 词库筛选
+  document.querySelectorAll("#dataset-filters .filter-tag").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll("#dataset-filters .filter-tag").forEach(b => b.classList.remove("active"))
+      btn.classList.add("active")
+      filterFavorites()
+    })
+  })
+}
+
+// 筛选收藏
+function filterFavorites() {
+  const difficulty = document.querySelector("#difficulty-filters .filter-tag.active")?.dataset.difficulty || "all"
+  const dataset = document.querySelector("#dataset-filters .filter-tag.active")?.dataset.dataset || "all"
+  const search = document.getElementById("favorites-search")?.value.toLowerCase() || ""
+
+  const filtered = allFavorites.filter(fav => {
+    const matchDifficulty = difficulty === "all" || String(fav.difficulty_level) === difficulty
+    const matchDataset = dataset === "all" || fav.dataset_type === dataset
+    const matchSearch = !search ||
+      (fav.word || "").toLowerCase().includes(search) ||
+      (fav.translation || "").toLowerCase().includes(search)
+    return matchDifficulty && matchDataset && matchSearch
+  })
+
+  renderFavorites(filtered)
+}
+
+// 从收藏列表中移除（带动画效果）
+async function removeFavoriteFromList(wordId, btnEl) {
+  const user = getCurrentUser()
+  if (!user) return
+
+  // 获取卡片元素
+  const card = btnEl.closest(".favorite-card")
+
+  try {
+    const result = await apiRequest(`/favorites/${user.id}/word/${wordId}`, {
+      method: "DELETE"
+    })
+    if (result.success) {
+      favoritedWordIds.delete(wordId)
+
+      // 添加淡出动画
+      card.style.transition = "all 0.3s ease"
+      card.style.transform = "translateX(100%)"
+      card.style.opacity = "0"
+
+      setTimeout(() => {
+        card.remove()
+        const totalEl = document.getElementById("favorites-total")
+        totalEl.textContent = parseInt(totalEl.textContent) - 1
+
+        // 如果没有收藏了，显示空状态
+        if (document.querySelectorAll(".favorite-card").length === 0) {
+          document.getElementById("favorites-empty").classList.remove("hidden")
+        }
+      }, 300)
+
+      showToast("已取消收藏")
+    }
+  } catch (e) {
+    showToast("操作失败", "error")
+  }
+}
+
+// 收藏页面搜索 - 使用 Web Worker 优化
+document.getElementById("favorites-search")?.addEventListener("input", async (e) => {
+  const query = e.target.value
+  const cards = document.querySelectorAll(".favorite-card")
+
+  if (!query || cards.length < 50) {
+    // 少量数据直接处理
+    cards.forEach(card => card.style.display = "")
+    return
+  }
+
+  // 大量数据使用 Worker
+  const items = Array.from(cards).map(card => ({
+    element: card,
+    word: card.querySelector(".word")?.textContent || "",
+    translation: card.querySelector(".translation")?.textContent || ""
+  }))
+
+  try {
+    const workerClient = window.workerClient
+    if (workerClient) {
+      const filtered = await workerClient.filter(items, query, ['word', 'translation'])
+      items.forEach((item, i) => {
+        cards[i].style.display = filtered.includes(item) ? "" : "none"
+      })
+    } else {
+      // 降级处理
+      const q = query.toLowerCase()
+      cards.forEach(card => {
+        const word = card.querySelector(".word")?.textContent.toLowerCase() || ""
+        const trans = card.querySelector(".translation")?.textContent.toLowerCase() || ""
+        card.style.display = word.includes(q) || trans.includes(q) ? "" : "none"
+      })
+    }
+  } catch (err) {
+    console.warn("Worker 搜索失败，降级处理:", err)
+    // 降级处理
+    const q = query.toLowerCase()
+    cards.forEach(card => {
+      const word = card.querySelector(".word")?.textContent.toLowerCase() || ""
+      const trans = card.querySelector(".translation")?.textContent.toLowerCase() || ""
+      card.style.display = word.includes(q) || trans.includes(q) ? "" : "none"
+    })
+  }
+})
+
+// 暴露给全局
+window.removeFavoriteFromList = removeFavoriteFromList
+
+// ==================== Service Worker 注册 ====================
+
+/**
+ * 注册 Service Worker
+ */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', async () => {
+    try {
+      const registration = await navigator.serviceWorker.register('/sw.js')
+      console.log('[SW] 注册成功:', registration.scope)
+
+      // 检查更新
+      registration.addEventListener('updatefound', () => {
+        const newWorker = registration.installing
+        newWorker.addEventListener('statechange', () => {
+          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            // 新版本可用，提示用户刷新
+            showToast('新版本可用，请刷新页面', 'info')
+          }
+        })
+      })
+    } catch (error) {
+      console.log('[SW] 注册失败:', error)
+    }
+  })
+}
+
+// ==================== 性能监控 ====================
+
+/**
+ * 上报性能指标
+ */
+function reportPerformance() {
+  if (!window.performance || !window.performance.timing) return
+
+  const timing = performance.timing
+  const metrics = {
+    dns: timing.domainLookupEnd - timing.domainLookupStart,
+    tcp: timing.connectEnd - timing.connectStart,
+    request: timing.responseStart - timing.requestStart,
+    response: timing.responseEnd - timing.responseStart,
+    dom: timing.domComplete - timing.domInteractive,
+    total: timing.loadEventEnd - timing.navigationStart
+  }
+
+  console.log('[性能指标]', metrics)
+}
+
+window.addEventListener('load', () => {
+  setTimeout(reportPerformance, 0)
+})

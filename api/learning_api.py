@@ -9,7 +9,7 @@ from core.learning.learning_record_manager import LearningRecordManager
 from core.forgetting_curve.forgetting_curve_manager import ForgettingCurveManager
 from config import LEARNING_PARAMS
 from .utils import APIResponse, handle_api_error
-from .auth_middleware import require_auth, get_current_user
+from .auth_middleware import require_auth, check_user_access
 
 # 创建蓝图
 learning_bp = Blueprint('learning', __name__, url_prefix='/api/learning')
@@ -20,20 +20,12 @@ learning_record_manager = LearningRecordManager()
 forgetting_curve_manager = ForgettingCurveManager()
 
 
-def _check_user_access(user_id):
-    """检查当前用户是否有权访问指定用户的数据"""
-    current_user = get_current_user()
-    if not current_user or current_user.get('user_id') != user_id:
-        return False
-    return True
-
-
 @learning_bp.route('/progress/<int:user_id>', methods=['GET'])
 @handle_api_error
 @require_auth
 def get_learning_progress(user_id):
     """获取学习进度"""
-    if not _check_user_access(user_id):
+    if not check_user_access(user_id):
         return APIResponse.error('无权访问', 403)
     progress = vocabulary_manager.get_learning_progress(user_id)
     return APIResponse.success(progress, "获取学习进度成功")
@@ -44,7 +36,7 @@ def get_learning_progress(user_id):
 @require_auth
 def get_learning_statistics(user_id):
     """获取学习统计"""
-    if not _check_user_access(user_id):
+    if not check_user_access(user_id):
         return APIResponse.error('无权访问', 403)
     days = request.args.get('days', 7, type=int)
     statistics = vocabulary_manager.get_learning_statistics(user_id, days)
@@ -56,7 +48,7 @@ def get_learning_statistics(user_id):
 @require_auth
 def get_learning_records(user_id):
     """获取学习记录"""
-    if not _check_user_access(user_id):
+    if not check_user_access(user_id):
         return APIResponse.error('无权访问', 403)
     limit = request.args.get('limit', type=int)
     offset = request.args.get('offset', 0, type=int)
@@ -70,7 +62,7 @@ def get_learning_records(user_id):
 @require_auth
 def get_forgetting_curve(user_id):
     """获取遗忘曲线数据（未来N天复习计划）"""
-    if not _check_user_access(user_id):
+    if not check_user_access(user_id):
         return APIResponse.error('无权访问', 403)
     days = request.args.get('days', LEARNING_PARAMS.get("days_trend_analysis", 7), type=int)
     curve_data = forgetting_curve_manager.get_forgetting_curve_data(user_id, days)
@@ -89,7 +81,7 @@ def get_learning_record(record_id):
         return APIResponse.error('记录不存在', 404)
 
     # 验证记录所属用户
-    if not _check_user_access(record['user_id']):
+    if not check_user_access(record['user_id']):
         return APIResponse.error('无权访问', 403)
 
     return APIResponse.success(record, "获取学习记录成功")
@@ -108,7 +100,7 @@ def update_learning_record(record_id):
         return APIResponse.error('记录不存在', 404)
 
     # 验证记录所属用户
-    if not _check_user_access(record['user_id']):
+    if not check_user_access(record['user_id']):
         return APIResponse.error('无权修改', 403)
 
     data = request.get_json()
@@ -137,7 +129,7 @@ def delete_learning_record(record_id):
         return APIResponse.error('记录不存在', 404)
 
     # 验证记录所属用户
-    if not _check_user_access(record['user_id']):
+    if not check_user_access(record['user_id']):
         return APIResponse.error('无权删除', 403)
 
     records_crud.delete(record_id)
@@ -149,7 +141,7 @@ def delete_learning_record(record_id):
 @require_auth
 def get_learning_sessions(user_id):
     """获取用户的学习会话列表"""
-    if not _check_user_access(user_id):
+    if not check_user_access(user_id):
         return APIResponse.error('无权访问', 403)
 
     from tools.learning_sessions_crud import LearningSessionsCRUD
@@ -174,7 +166,7 @@ def delete_learning_session(session_id):
         return APIResponse.error('会话不存在', 404)
 
     # 验证会话所属用户
-    if not _check_user_access(session['user_id']):
+    if not check_user_access(session['user_id']):
         return APIResponse.error('无权删除', 403)
 
     sessions_crud.delete(session_id)

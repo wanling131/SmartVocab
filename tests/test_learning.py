@@ -129,3 +129,106 @@ class TestRecommendationsAPI:
         """测试未授权获取推荐"""
         r = client.get("/api/recommendations/1")
         assert r.status_code == 401
+
+
+class TestAuthMiddleware:
+    """认证中间件测试"""
+
+    def test_check_user_access_function(self, client):
+        """测试 check_user_access 函数（在请求上下文中）"""
+        from api.auth_middleware import check_user_access
+
+        # 在没有登录的情况下，应该返回 False
+        # 需要在请求上下文中调用
+        with client.application.test_request_context():
+            result = check_user_access(1)
+            assert result == False
+
+    def test_generate_and_verify_token(self):
+        """测试 Token 生成和验证"""
+        from api.auth_middleware import generate_token, verify_token
+
+        token = generate_token(user_id=1, username="testuser")
+        assert token is not None
+        assert isinstance(token, str)
+
+        payload = verify_token(token)
+        assert payload is not None
+        assert payload.get("user_id") == 1
+        assert payload.get("username") == "testuser"
+
+    def test_verify_invalid_token(self):
+        """测试验证无效 Token"""
+        from api.auth_middleware import verify_token
+
+        result = verify_token("invalid.token.here")
+        assert result is None
+
+    def test_verify_empty_token(self):
+        """测试验证空 Token"""
+        from api.auth_middleware import verify_token
+
+        result = verify_token("")
+        assert result is None
+
+
+class TestLevelsAPI:
+    """关卡 API 测试"""
+
+    def test_get_gates_public(self, client):
+        """测试公开获取关卡列表"""
+        r = client.get("/api/levels/gates")
+        assert r.status_code == 200
+
+    def test_unlock_gate_unauthorized(self, client):
+        """测试未授权解锁关卡"""
+        r = client.post("/api/levels/unlock", json={"user_id": 1, "gate_id": 1})
+        assert r.status_code == 401
+
+    def test_complete_gate_unauthorized(self, client):
+        """测试未授权完成关卡"""
+        r = client.post("/api/levels/complete/1", json={"user_id": 1})
+        assert r.status_code == 401
+
+
+class TestVocabularyManagement:
+    """词汇管理 API 测试"""
+
+    def test_create_word_unauthorized(self, client):
+        """测试未授权创建词汇"""
+        r = client.post("/api/vocabulary/words", json={"word": "test", "translation": "测试"})
+        assert r.status_code == 401
+
+    def test_update_word_unauthorized(self, client):
+        """测试未授权更新词汇"""
+        r = client.put("/api/vocabulary/words/1", json={"word": "test2"})
+        assert r.status_code == 401
+
+    def test_delete_word_unauthorized(self, client):
+        """测试未授权删除词汇"""
+        r = client.delete("/api/vocabulary/words/1")
+        assert r.status_code == 401
+
+    def test_import_words_unauthorized(self, client):
+        """测试未授权导入词汇"""
+        r = client.post("/api/vocabulary/import", json={"words": []})
+        assert r.status_code == 401
+
+    def test_export_words_unauthorized(self, client):
+        """测试未授权导出词汇"""
+        r = client.get("/api/vocabulary/export")
+        assert r.status_code == 401
+
+
+class TestEvaluationResults:
+    """评估结果 API 测试"""
+
+    def test_get_result_unauthorized(self, client):
+        """测试未授权获取评估结果"""
+        r = client.get("/api/evaluation/result/1")
+        assert r.status_code == 401
+
+    def test_get_results_list_unauthorized(self, client):
+        """测试未授权获取评估历史"""
+        r = client.get("/api/evaluation/history/1")
+        assert r.status_code == 401

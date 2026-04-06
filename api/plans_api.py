@@ -7,7 +7,7 @@ from flask import Blueprint, request
 from tools.user_learning_plans_crud import UserLearningPlansCRUD
 from tools.words_crud import WordsCRUD
 from .utils import APIResponse, handle_api_error
-from .auth_middleware import require_auth, get_current_user
+from .auth_middleware import require_auth, check_user_access
 
 logger = logging.getLogger(__name__)
 
@@ -16,20 +16,12 @@ plans_crud = UserLearningPlansCRUD()
 words_crud = WordsCRUD()
 
 
-def _check_user_access(user_id):
-    """检查当前用户是否有权访问指定用户的数据"""
-    current_user = get_current_user()
-    if not current_user or current_user.get('user_id') != user_id:
-        return False
-    return True
-
-
 @plans_bp.route('/<int:user_id>', methods=['GET'])
 @handle_api_error
 @require_auth
 def get_plans(user_id):
     """获取用户计划列表"""
-    if not _check_user_access(user_id):
+    if not check_user_access(user_id):
         return APIResponse.error('无权访问', 403)
     limit = request.args.get('limit', 50, type=int)
     plans = plans_crud.get_by_user(user_id, limit)
@@ -41,7 +33,7 @@ def get_plans(user_id):
 @require_auth
 def get_active_plan(user_id):
     """获取用户当前生效计划"""
-    if not _check_user_access(user_id):
+    if not check_user_access(user_id):
         return APIResponse.error('无权访问', 403)
     plan = plans_crud.get_active_plan(user_id)
     return APIResponse.success(plan, "获取生效计划成功")
@@ -65,7 +57,7 @@ def create_plan():
         return APIResponse.error('user_id 和 dataset_type 不能为空', 400)
 
     # 验证用户身份
-    if not _check_user_access(user_id):
+    if not check_user_access(user_id):
         return APIResponse.error('无权创建计划', 403)
 
     # 将新计划设为生效前，先停用其他计划
@@ -99,7 +91,7 @@ def update_plan(plan_id):
         return APIResponse.error("计划不存在", 404)
 
     # 验证计划所属用户
-    if not _check_user_access(plan['user_id']):
+    if not check_user_access(plan['user_id']):
         return APIResponse.error('无权修改此计划', 403)
 
     data = request.get_json()
@@ -124,7 +116,7 @@ def delete_plan(plan_id):
         return APIResponse.error("计划不存在", 404)
 
     # 验证计划所属用户
-    if not _check_user_access(plan['user_id']):
+    if not check_user_access(plan['user_id']):
         return APIResponse.error('无权删除此计划', 403)
 
     plans_crud.deactivate(plan_id)
@@ -136,7 +128,7 @@ def delete_plan(plan_id):
 @require_auth
 def start_plan_learning(user_id):
     """根据用户生效计划开始学习"""
-    if not _check_user_access(user_id):
+    if not check_user_access(user_id):
         return APIResponse.error('无权访问', 403)
 
     # 获取用户生效计划

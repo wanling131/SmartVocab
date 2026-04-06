@@ -1,6 +1,6 @@
 /**
  * API 基础地址与请求封装（供 main 模块使用）
- * 包含请求缓存优化
+ * 包含请求缓存优化、请求去重、错误处理
  */
 
 // API 基础地址
@@ -24,12 +24,12 @@ export function clearToken() {
   localStorage.removeItem("auth_token")
 }
 
-localStorage.removeItem("auth_token")
-}
-
 // 请求缓存
 const apiCache = new Map()
 const API_CACHE_TTL = 2 * 60 * 1000 // 2分钟缓存
+
+// 请求去重：防止同时发出多个相同请求
+const pendingRequests = new Map()
 
 /**
  * 获取缓存的 API 响应
@@ -42,12 +42,14 @@ export function getCachedApiResponse(endpoint) {
   apiCache.delete(endpoint)
   return null
 }
+
 /**
  * 设置 API 响应缓存
  */
 export function setCachedApiResponse(endpoint, data) {
   apiCache.set(endpoint, { data, timestamp: Date.now() })
 }
+
 /**
  * 清除用户相关的所有缓存
  */
@@ -60,8 +62,16 @@ export function invalidateUserCache(userId) {
     }
   }
 }
+
 /**
- * 核心 API 请求函数
+ * 清除所有缓存
+ */
+export function clearAllCache() {
+  apiCache.clear()
+}
+
+/**
+ * 核心 API 请求函数（带请求去重）
  */
 export async function apiRequest(endpoint, options = {}) {
   const token = getToken()
@@ -70,44 +80,69 @@ export async function apiRequest(endpoint, options = {}) {
     ...(token ? { "Authorization": `Bearer ${token}` } : {}),
     ...options.headers
   }
+
   // 检查缓存（仅对GET请求且未禁用缓存时）
   const useCache = (!options.method || options.method === "GET") && options.useCache !== false
+
   if (useCache) {
     const cached = getCachedApiResponse(endpoint)
     if (cached) {
       return cached
     }
   }
-  try {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-      method: options.method || "GET",
-      headers,
-      body: options.body ? JSON.stringify(options.body) : undefined,
-      ...options.fetchOptions
-    })
-    // 夣401处理
-    if (response.status === 401) {
-      clearToken()
-      window.location.reload()
-      return { success: false, message: "登录已过期，请重新登录" }
-    }
-    const payload = await response.json()
-    // 错误消息处理
-    if (payload && typeof payload.message === "string" && payload.message) {
-      if (payload.success === false) {
-        console.error("HTTP错误:", payload.message)
-      }
-    }
-    // 缓存成功的GET响应
-    if (payload && payload.success && useCache) {
-      setCachedApiResponse(endpoint, payload)
-    }
-    return payload
-  } catch (error) {
-    console.error("API请求失败:", error)
-    if (error.name === "TypeError" && error.message.includes("fetch")) {
-      return { success: false, message: "网络请求失败，请检查网络连接" }
-    }
-    return { success: false, message: "网络请求失败" }
+
+  // 请求去重：检查是否有相同的请求正在进行中
+  const requestKey = `${options.method || "GET"}:${endpoint}`
+  if (pendingRequests.has(requestKey)) {
+    return pendingRequests.get(requestKey)
   }
+
+  // 发起请求
+  const requestPromise = (async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        method: options.method || "GET",
+        headers,
+        body: options.body ? (typeof options.body === 'string' ? options.body : JSON.stringify(options.body)) : undefined,
+        ...options.fetchOptions
+      })
+
+      // 处理401
+      if (response.status === 401) {
+        clearToken()
+        window.dispatchEvent(new CustomEvent('auth:logout'))
+        return { success: false, message: "登录已过期，请重新登录" }
+      }
+
+      const payload = await response.json()
+
+      // 错误消息处理
+      if (payload && typeof payload.message === "string" && payload.message) {
+        if (payload.success === false) {
+          console.error("API错误:", payload.message)
+        }
+      }
+
+      // 缓存成功的GET响应
+      if (payload && payload.success && useCache) {
+        setCachedApiResponse(endpoint, payload)
+      }
+
+      return payload
+    } catch (error) {
+      console.error("API请求失败:", error)
+      if (error.name === "TypeError" && error.message.includes("fetch")) {
+        return { success: false, message: "网络请求失败，请检查网络连接" }
+      }
+      return { success: false, message: "网络请求失败" }
+    } finally {
+      // 请求完成后从pending中移除
+      pendingRequests.delete(requestKey)
+    }
+  })()
+
+  // 将请求加入pending
+  pendingRequests.set(requestKey, requestPromise)
+
+  return requestPromise
 }

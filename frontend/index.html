@@ -6,9 +6,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="SmartVocab - 智能英语词汇学习平台，基于深度学习的个性化推荐系统">
     <meta name="theme-color" content="#8b5cf6">
+
+    <!-- 性能优化： 预连接API（如果使用外部API）-->
+    <!-- <link rel="preconnect" href="https://api.example.com"> -->
+    <!-- <link rel="dns-prefetch" href="https://api.example.com"> -->
+
+    <!-- 资源预加载提示 -->
+    <link rel="preload" href="styles.css" as="style">
+
     <title>SmartVocab - 智能英语学习平台</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%238b5cf6'/><text x='16' y='20' font-family='Arial' font-size='18' font-weight='bold' fill='white' text-anchor='middle'>S</text></svg>">
     <link rel="stylesheet" href="styles.css">
+    <!-- Chart.js 图表库 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
     <!-- 全局加载遮罩 -->
@@ -92,6 +102,10 @@
                 <a href="#" class="nav-link" data-page="statistics">
                     <span class="nav-icon">📊</span>
                     <span>统计</span>
+                </a>
+                <a href="#" class="nav-link" data-page="favorites">
+                    <span class="nav-icon">⭐</span>
+                    <span>我的收藏</span>
                 </a>
                 <a href="#" class="nav-link" data-page="profile">
                     <span class="nav-icon">👤</span>
@@ -219,8 +233,22 @@
 
                 <div id="word-card" class="word-card">
                     <div class="word-display">
-                        <h1 id="current-word">Loading...</h1>
+                        <div class="word-header">
+                            <h1 id="current-word">Loading...</h1>
+                            <button id="pronunciation-btn" class="pronunciation-btn" title="播放发音">🔊</button>
+                        </div>
                         <p id="word-phonetic" class="phonetic"></p>
+                        <!-- 例句展示区 -->
+                        <div id="example-section" class="example-section hidden">
+                            <p class="example-label">例句</p>
+                            <p id="word-example" class="word-example"></p>
+                            <button id="toggle-example-btn" class="toggle-example-btn" onclick="toggleExample()">
+                                <span id="toggle-example-icon">📖</span>
+                            </button>
+                        </div>
+                        <button id="favorite-btn" class="favorite-btn" title="收藏">
+                            <span class="favorite-icon">☆</span>
+                        </button>
                     </div>
 
                     <!-- 选择题界面 -->
@@ -297,9 +325,72 @@
                 </div>
 
                 <div class="stat-card-large">
+                    <h3>📊 周期对比</h3>
+                    <div class="comparison-section">
+                        <div class="comparison-row">
+                            <div class="comparison-item">
+                                <span class="comparison-label">本周</span>
+                                <span class="comparison-value" id="this-week-reviews">0</span>
+                                <span class="comparison-unit">次复习</span>
+                            </div>
+                            <div class="comparison-arrow" id="reviews-trend"></div>
+                            <div class="comparison-item">
+                                <span class="comparison-label">上周</span>
+                                <span class="comparison-value" id="last-week-reviews">0</span>
+                                <span class="comparison-unit">次复习</span>
+                            </div>
+                        </div>
+                        <div class="comparison-row">
+                            <div class="comparison-item">
+                                <span class="comparison-label">本周</span>
+                                <span class="comparison-value" id="this-week-words">0</span>
+                                <span class="comparison-unit">新词</span>
+                            </div>
+                            <div class="comparison-arrow" id="words-trend"></div>
+                            <div class="comparison-item">
+                                <span class="comparison-label">上周</span>
+                                <span class="comparison-value" id="last-week-words">0</span>
+                                <span class="comparison-unit">新词</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="stat-card-large">
                     <h3>📅 复习计划</h3>
                     <div id="forgetting-curve-chart" class="chart-container">
                         <canvas id="forgetting-curve-canvas"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 新增：可视化图表区域 -->
+            <div class="charts-section">
+                <h3>📊 数据可视化</h3>
+                <div class="charts-grid">
+                    <div class="chart-card">
+                        <h4>学习趋势</h4>
+                        <div class="chart-wrapper">
+                            <canvas id="learning-trend-canvas"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <h4>难度分布</h4>
+                        <div class="chart-wrapper">
+                            <canvas id="difficulty-distribution-canvas"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <h4>词性分布</h4>
+                        <div class="chart-wrapper">
+                            <canvas id="pos-distribution-canvas"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <h4>能力雷达</h4>
+                        <div class="chart-wrapper">
+                            <canvas id="mastery-radar-canvas"></canvas>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -404,6 +495,57 @@
         </div>
     </div>
 
+    <!-- 收藏单词页面 -->
+    <div id="favorites-page" class="page">
+        <div class="container">
+            <h2>⭐ 我的收藏</h2>
+            <div class="favorites-header">
+                <p class="favorites-count">共 <span id="favorites-total">0</span> 个收藏</p>
+                <div class="favorites-actions">
+                    <button id="export-favorites-btn" class="export-btn" onclick="exportFavoritesCSV()">
+                        📥 导出CSV
+                    </button>
+                </div>
+            </div>
+            <!-- 分类筛选 -->
+            <div class="favorites-filters">
+                <div class="filter-group">
+                    <label>难度筛选</label>
+                    <div class="filter-tags" id="difficulty-filters">
+                        <button class="filter-tag active" data-difficulty="all">全部</button>
+                        <button class="filter-tag" data-difficulty="1">入门</button>
+                        <button class="filter-tag" data-difficulty="2">基础</button>
+                        <button class="filter-tag" data-difficulty="3">初级</button>
+                        <button class="filter-tag" data-difficulty="4">中级</button>
+                        <button class="filter-tag" data-difficulty="5">高级</button>
+                        <button class="filter-tag" data-difficulty="6">专业</button>
+                    </div>
+                </div>
+                <div class="filter-group">
+                    <label>词库筛选</label>
+                    <div class="filter-tags" id="dataset-filters">
+                        <button class="filter-tag active" data-dataset="all">全部</button>
+                        <button class="filter-tag" data-dataset="cet4">CET4</button>
+                        <button class="filter-tag" data-dataset="cet6">CET6</button>
+                        <button class="filter-tag" data-dataset="toefl">TOEFL</button>
+                        <button class="filter-tag" data-dataset="ielts">IELTS</button>
+                    </div>
+                </div>
+                <div class="favorites-filter">
+                    <input type="text" id="favorites-search" placeholder="搜索单词...">
+                </div>
+            </div>
+            <div id="favorites-list" class="favorites-grid">
+                <div class="loading-placeholder">加载中...</div>
+            </div>
+            <div id="favorites-empty" class="empty-state hidden">
+                <div class="empty-icon">📚</div>
+                <p>还没有收藏任何单词</p>
+                <p class="empty-hint">在学习时点击单词旁边的 ☆ 即可收藏</p>
+            </div>
+        </div>
+    </div>
+
     <!-- 个人中心页面 -->
     <div id="profile-page" class="page">
         <div class="container">
@@ -469,6 +611,24 @@
                 <button id="save-profile-btn" class="btn btn-primary">保存修改</button>
             </div>
 
+            <!-- 修改密码 -->
+            <div class="option-card">
+                <h3>🔑 修改密码</h3>
+                <div class="form-group">
+                    <label>旧密码</label>
+                    <input type="password" id="old-password" placeholder="请输入当前密码">
+                </div>
+                <div class="form-group">
+                    <label>新密码</label>
+                    <input type="password" id="new-password" placeholder="至少6个字符">
+                </div>
+                <div class="form-group">
+                    <label>确认新密码</label>
+                    <input type="password" id="confirm-password" placeholder="再次输入新密码">
+                </div>
+                <button id="change-password-btn" class="btn btn-primary">修改密码</button>
+            </div>
+
             <!-- 账号操作 -->
             <div class="option-card">
                 <h3>🔐 账号操作</h3>
@@ -478,6 +638,11 @@
         </div>
     </div>
 
+    <!-- Web Worker 客户端（后台计算线程） -->
+    <script src="js/worker-client.js"></script>
+    <!-- 图表模块 -->
+    <script src="js/charts.js"></script>
+    <!-- 主应用模块 -->
     <script type="module" src="main.js"></script>
 </body>
 </html>

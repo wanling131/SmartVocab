@@ -1,11 +1,12 @@
 """
-成就系统CRUD操作
+成就系统CRUD操作（带缓存优化）
 """
 
 import logging
 from typing import Optional, List, Dict, Any
 from datetime import datetime, date
 from .base_crud import BaseCRUD
+from .memory_cache import user_stats_cache, invalidate_user_cache
 
 logger = logging.getLogger(__name__)
 
@@ -58,13 +59,19 @@ class UserAchievementsCRUD(BaseCRUD):
 
 
 class UserStreakCRUD(BaseCRUD):
-    """连续学习记录CRUD"""
+    """连续学习记录CRUD（带缓存优化）"""
 
     def __init__(self):
         super().__init__("user_streak")
 
     def get_current_streak(self, user_id: int) -> int:
-        """获取当前连续学习天数"""
+        """获取当前连续学习天数（带缓存）"""
+        # 尝试从缓存获取
+        cache_key = f"streak:{user_id}"
+        cached = user_stats_cache.get(cache_key)
+        if cached is not None:
+            return cached
+
         today = date.today()
         query = """
             SELECT streak_count, last_study_date FROM user_streak
@@ -75,6 +82,7 @@ class UserStreakCRUD(BaseCRUD):
         result = self.execute_query(query, (user_id,), fetch_one=True)
 
         if not result:
+            user_stats_cache.set(cache_key, 0, ttl=60)
             return 0
 
         last_date = result.get('last_study_date')
@@ -82,10 +90,11 @@ class UserStreakCRUD(BaseCRUD):
             last_date = date.fromisoformat(last_date)
 
         days_diff = (today - last_date).days
-        if days_diff > 1:
-            # 连续中断
-            return 0
-        return result.get('streak_count', 0)
+        streak = 0 if days_diff > 1 else result.get('streak_count', 0)
+
+        # 缓存结果
+        user_stats_cache.set(cache_key, streak, ttl=60)
+        return streak
 
     def update_streak(self, user_id: int) -> int:
         """更新连续学习记录，返回新的连续天数"""
@@ -100,6 +109,7 @@ class UserStreakCRUD(BaseCRUD):
         """
         result = self.execute_query(query, (user_id,), fetch_one=True)
 
+        new_streak = 0
         if not result:
             # 首次学习
             insert_query = """
@@ -107,35 +117,39 @@ class UserStreakCRUD(BaseCRUD):
                 VALUES (%s, 1, %s, %s)
             """
             self.execute_insert(insert_query, (user_id, today, today))
-            return 1
-
-        last_date = result.get('last_study_date')
-        if isinstance(last_date, str):
-            last_date = date.fromisoformat(last_date)
-
-        days_diff = (today - last_date).days
-
-        if days_diff == 0:
-            # 今天已更新
-            return result.get('streak_count', 0)
-        elif days_diff == 1:
-            # 连续学习
-            new_count = result.get('streak_count', 0) + 1
-            update_query = """
-                UPDATE user_streak
-                SET streak_count = %s, last_study_date = %s, updated_at = %s
-                WHERE id = %s
-            """
-            self.execute_update(update_query, (new_count, today, datetime.now(), result['id']))
-            return new_count
+            new_streak = 1
         else:
-            # 连续中断，重新开始
-            insert_query = """
-                INSERT INTO user_streak (user_id, streak_count, last_study_date, start_date)
-                VALUES (%s, 1, %s, %s)
-            """
-            self.execute_insert(insert_query, (user_id, today, today))
-            return 1
+            last_date = result.get('last_study_date')
+            if isinstance(last_date, str):
+                last_date = date.fromisoformat(last_date)
+
+            days_diff = (today - last_date).days
+
+            if days_diff == 0:
+                # 今天已更新
+                new_streak = result.get('streak_count', 0)
+            elif days_diff == 1:
+                # 连续学习
+                new_streak = result.get('streak_count', 0) + 1
+                update_query = """
+                    UPDATE user_streak
+                    SET streak_count = %s, last_study_date = %s, updated_at = %s
+                    WHERE id = %s
+                """
+                self.execute_update(update_query, (new_streak, today, datetime.now(), result['id']))
+            else:
+                # 连续中断，重新开始
+                insert_query = """
+                    INSERT INTO user_streak (user_id, streak_count, last_study_date, start_date)
+                    VALUES (%s, 1, %s, %s)
+                """
+                self.execute_insert(insert_query, (user_id, today, today))
+                new_streak = 1
+
+        # 使缓存失效
+        user_stats_cache.delete(f"streak:{user_id}")
+
+        return new_streak
 
 
 class LearningReportsCRUD(BaseCRUD):

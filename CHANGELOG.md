@@ -1,5 +1,34 @@
 # SmartVocab 更新日志
 
+## [2026-04-06] 代码质量优化与功能完善
+
+### 新增功能
+- **周月统计对比**
+  - 统计页面新增本周/上周复习次数对比
+  - 统计页面新增本周/上周新词学习对比
+  - 趋势箭头显示（↑上升/↓下降/→持平）
+- **API测试覆盖**
+  - `/api/auth/register` 注册端点测试
+  - `/api/auth/password/<user_id>` 密码修改测试
+  - `/api/evaluation/result/<result_id>` 评估结果测试
+  - `/api/evaluation/history/<user_id>` 评估历史测试
+
+### 优化改进
+- **代码重复消除**
+  - `_check_user_access` 函数统一到 `auth_middleware.py`
+  - 8个API文件改为导入公共函数
+- **安全加固**
+  - `record.word` 添加 `escapeHtml` 转义（XSS防护）
+- **测试覆盖率**：171 → 177个测试 (+3.5%)
+
+### 技术细节
+- `frontend/main.js`: 新增 `updateTrendArrow()` 函数
+- `frontend/main.js`: `loadStatistics()` 添加对比数据计算
+- `tests/test_auth.py`: 新增 `TestAuthAPIEndpoints` 测试类
+- `tests/test_learning.py`: 新增 `TestEvaluationResults` 测试类
+
+---
+
 ## [2026-04-04] 系统架构升级与全面优化
 
 ### 新增功能

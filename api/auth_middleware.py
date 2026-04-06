@@ -141,3 +141,27 @@ def optional_auth(f):
     def decorated(*args, **kwargs):
         return f(*args, **kwargs)
     return decorated
+
+
+def check_user_access(user_id: int) -> bool:
+    """
+    检查当前用户是否有权访问指定用户的数据
+
+    Args:
+        user_id: 要访问的用户ID
+
+    Returns:
+        bool: 如果当前用户有权访问返回 True，否则返回 False
+    """
+    current_user = get_current_user()
+    if not current_user or current_user.get('user_id') != user_id:
+        return False
+    return True
+
+
+def get_current_user_id() -> int:
+    """
+    获取当前用户ID，如果未登录返回 None
+    """
+    user = get_current_user()
+    return user.get('user_id') if user else None

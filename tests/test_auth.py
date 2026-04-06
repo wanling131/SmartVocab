@@ -150,3 +150,39 @@ class TestAdminPermission:
                 os.environ["ADMIN_USERS"] = original
             else:
                 os.environ.pop("ADMIN_USERS", None)
+
+
+class TestAuthAPIEndpoints:
+    """认证API端点测试"""
+
+    def test_register_endpoint_exists(self, client):
+        """测试注册端点存在"""
+        r = client.post("/api/auth/register", json={
+            "username": "test_new_user",
+            "password": "TestPass123",
+            "email": "test@example.com"
+        })
+        # 可能成功或失败（用户已存在），但不应是404
+        assert r.status_code in [200, 201, 400, 409, 500]
+
+    def test_register_missing_fields(self, client):
+        """测试注册缺少必填字段"""
+        r = client.post("/api/auth/register", json={})
+        assert r.status_code in [400, 500]
+
+    def test_password_change_unauthorized(self, client):
+        """测试未授权修改密码"""
+        r = client.put("/api/auth/password/1", json={
+            "old_password": "old",
+            "new_password": "new"
+        })
+        assert r.status_code == 401
+
+    def test_login_endpoint_exists(self, client):
+        """测试登录端点存在"""
+        r = client.post("/api/auth/login", json={
+            "username": "nonexistent_user_xyz",
+            "password": "wrong_password"
+        })
+        # 用户不存在应返回401
+        assert r.status_code == 401

@@ -2,8 +2,11 @@
 推荐记录表CRUD操作
 """
 
+import logging
 import mysql.connector
 from .database import get_database_context
+
+logger = logging.getLogger(__name__)
 
 class RecommendationsCRUD:
     """推荐记录表CRUD操作类"""
@@ -29,7 +32,7 @@ class RecommendationsCRUD:
                 cursor.execute(query, (limit, offset))
                 return cursor.fetchall()
             except Exception as e:
-                print(f"查询失败: {e}")
+                logger.error(f"查询失败: {e}")
                 return []
             finally:
                 cursor.close()
@@ -164,7 +167,7 @@ class RecommendationsCRUD:
                     cursor.execute(query, (user_id,))
                 return cursor.fetchall()
             except Exception as e:
-                print(f"查询失败: {e}")
+                logger.error(f"查询失败: {e}")
                 return []
             finally:
                 cursor.close()

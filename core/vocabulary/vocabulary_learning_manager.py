@@ -402,10 +402,13 @@ class VocabularyLearningManager:
                         "message": "暂无学习记录，请先学习一些单词"
                     }
             
-            # 获取单词详细信息
+            # 批量获取单词详情（解决N+1查询问题）
+            word_ids = [record["word_id"] for record in review_words]
+            word_dict = {w['id']: w for w in self.words_crud.get_by_ids(word_ids)}
+
             word_details = []
             for record in review_words:
-                word_info = self.words_crud.read(record["word_id"])
+                word_info = word_dict.get(record["word_id"])
                 if word_info:
                     word_details.append({
                         "id": word_info["id"],

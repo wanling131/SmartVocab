@@ -29,6 +29,9 @@ scikit-learn>=1.0.0
 python-dotenv==1.0.0
 requests==2.31.0
 
+# 系统监控（可选，用于 /api/health/metrics）
+psutil>=5.9.0
+
 # 开发工具
 pytest==7.4.0
 pytest-cov==4.1.0

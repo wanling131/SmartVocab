@@ -1,13 +1,14 @@
 ﻿import pandas as pd
 import mysql.connector
 import json
+import os
 
-# 数据库配置
+# 数据库配置（从环境变量读取，fallback 用于本地开发）
 DB_CONFIG = {
-    'host': 'localhost',
-    'user': 'root',
-    'password': '123456',
-    'database': 'smartvocab',
+    'host': os.getenv('DB_HOST', 'localhost'),
+    'user': os.getenv('DB_USER', 'root'),
+    'password': os.getenv('DB_PASSWORD', ''),
+    'database': os.getenv('DB_NAME', 'smartvocab'),
     'charset': 'utf8mb4'
 }
 

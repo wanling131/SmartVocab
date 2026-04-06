@@ -14,7 +14,7 @@ from config import LEARNING_PARAMS
 from core.vocabulary.vocabulary_learning_manager import VocabularyLearningManager
 from tools.words_crud import WordsCRUD
 
-from .auth_middleware import get_current_user, require_auth
+from .auth_middleware import get_current_user, require_auth, check_user_access
 from .utils import APIResponse, handle_api_error
 
 # 创建蓝图
@@ -29,24 +29,6 @@ words_crud = WordsCRUD()
 ADMIN_USERS: set = set(u.strip() for u in os.getenv('ADMIN_USERS', '').split(',') if u.strip())
 
 
-def _check_user_access(user_id: Union[int, str]) -> bool:
-    """检查当前登录用户与请求中的 user_id 是否一致。
-
-    Args:
-        user_id: 请求中的用户ID。
-
-    Returns:
-        bool: 是否有访问权限。
-    """
-    current = get_current_user()
-    if not current:
-        return False
-    try:
-        return int(current.get('user_id')) == int(user_id)
-    except (TypeError, ValueError):
-        return False
-
-
 def _session_info_matches_user(session_info: Optional[Dict[str, Any]]) -> bool:
     """检查会话 JSON 中的 user_id 是否与当前登录用户一致。
 
@@ -58,7 +40,7 @@ def _session_info_matches_user(session_info: Optional[Dict[str, Any]]) -> bool:
     """
     if not session_info or not isinstance(session_info, dict):
         return False
-    return _check_user_access(session_info.get('user_id'))
+    return check_user_access(session_info.get('user_id'))
 
 
 def _is_admin() -> bool:
@@ -99,7 +81,7 @@ def start_learning_session() -> tuple:
 
     if not user_id:
         return APIResponse.error('用户ID不能为空', 400)
-    if not _check_user_access(user_id):
+    if not check_user_access(user_id):
         return APIResponse.error('无权访问', 403)
 
     result = vocabulary_manager.start_learning_session(user_id, difficulty_level, word_count, question_type)
@@ -165,7 +147,7 @@ def submit_answer() -> tuple:
 
     if not all([user_id, word_id, user_answer, correct_answer]):
         return APIResponse.error('所有字段都不能为空', 400)
-    if not _check_user_access(user_id):
+    if not check_user_access(user_id):
         return APIResponse.error('无权访问', 403)
     if session_info and not _session_info_matches_user(session_info):
         return APIResponse.error('无权访问该会话', 403)
@@ -193,7 +175,7 @@ def get_active_session(user_id: int) -> tuple:
     Returns:
         tuple: (JSON响应, HTTP状态码)。
     """
-    if not _check_user_access(user_id):
+    if not check_user_access(user_id):
         return APIResponse.error('无权访问', 403)
     session_type = request.args.get('session_type', 'learning')
 
@@ -228,7 +210,7 @@ def finish_session() -> tuple:
     row = vocabulary_manager.learning_sessions_crud.get_by_id(sid)
     if not row:
         return APIResponse.error('会话不存在', 404)
-    if not _check_user_access(row.get('user_id')):
+    if not check_user_access(row.get('user_id')):
         return APIResponse.error('无权访问', 403)
 
     success = vocabulary_manager.finish_session(sid)
@@ -256,7 +238,7 @@ def start_review_session() -> tuple:
 
     if not user_id:
         return APIResponse.error('用户ID不能为空', 400)
-    if not _check_user_access(user_id):
+    if not check_user_access(user_id):
         return APIResponse.error('无权访问', 403)
 
     result = vocabulary_manager.start_review_session(user_id, word_count)
@@ -351,3 +333,109 @@ def export_words() -> Union[tuple, Response]:
         return Response(output.getvalue(), mimetype='text/csv',
                        headers={'Content-Disposition': 'attachment;filename=words_export.csv'})
     return APIResponse.success(words, "导出成功")
+
+
+# ==================== 单条词管理 API（管理员） ====================
+
+@vocabulary_bp.route('/words/<int:word_id>', methods=['GET'])
+@handle_api_error
+@require_auth
+def get_word(word_id):
+    """获取单个单词详情"""
+    if not _is_admin():
+        return APIResponse.error('无权操作， 仅管理员可访问', 403)
+
+    word = words_crud.read(word_id)
+    if not word:
+        return APIResponse.error('单词不存在', 404)
+    return APIResponse.success(word, "获取成功")
+
+
+@vocabulary_bp.route('/words/<int:word_id>', methods=['PUT'])
+@handle_api_error
+@require_auth
+def update_word(word_id):
+    """更新单词信息"""
+    if not _is_admin():
+        return APIResponse.error('无权操作， 仅管理员可访问', 403)
+
+    word = words_crud.read(word_id)
+    if not word:
+        return APIResponse.error('单词不存在', 404)
+
+    data = request.get_json()
+    if not data:
+        return APIResponse.error('请求数据不能为空', 400)
+
+    # 过滤允许更新的字段
+    allowed_fields = ['word', 'translation', 'phonetic', 'pos', 'tag',
+                     'definition_en', 'example_sentence', 'difficulty_level',
+                     'cefr_standard', 'dataset_type']
+    update_data = {k: v for k, v in data.items() if k in allowed_fields}
+
+    if not update_data:
+        return APIResponse.error('没有有效的更新字段', 400)
+
+    affected = words_crud.update(word_id, **update_data)
+    if affected > 0:
+        updated_word = words_crud.read(word_id)
+        return APIResponse.success(updated_word, "更新成功")
+    return APIResponse.error('更新失败', 500)
+
+
+@vocabulary_bp.route('/words/<int:word_id>', methods=['DELETE'])
+@handle_api_error
+@require_auth
+def delete_word(word_id):
+    """删除单词"""
+    if not _is_admin():
+        return APIResponse.error('无权操作， 仅管理员可访问', 403)
+
+    word = words_crud.read(word_id)
+    if not word:
+        return APIResponse.error('单词不存在', 404)
+
+    affected = words_crud.delete(word_id)
+    if affected > 0:
+        return APIResponse.success({}, "删除成功")
+    return APIResponse.error('删除失败', 500)
+
+
+@vocabulary_bp.route('/words', methods=['POST'])
+@handle_api_error
+@require_auth
+def create_word():
+    """创建新单词"""
+    if not _is_admin():
+        return APIResponse.error('无权操作， 仅管理员可访问', 403)
+
+    data = request.get_json()
+    if not data:
+        return APIResponse.error('请求数据不能为空', 400)
+
+    word = data.get('word')
+    translation = data.get('translation')
+    if not word or not translation:
+        return APIResponse.error('单词和释义不能为空', 400)
+
+    # 创建单词
+    word_id = words_crud.create(
+        word=word,
+        translation=translation,
+        phonetic=data.get('phonetic'),
+        pos=data.get('pos'),
+        tag=data.get('tag'),
+        total=data.get('frequency_rank', 0),
+        spoken_ratio=data.get('spoken_ratio', 0.5),
+        academic_ratio=data.get('academic_ratio', 0.5),
+        cefr_standard=data.get('cefr_standard'),
+        difficulty_level=data.get('difficulty_level', 3),
+        dataset_type=data.get('dataset_type'),
+        definition_en=data.get('definition_en'),
+        example_sentence=data.get('example_sentence')
+    )
+
+    if word_id:
+        new_word = words_crud.read(word_id)
+        return APIResponse.success(new_word, "创建成功")
+    return APIResponse.error('创建失败', 500)

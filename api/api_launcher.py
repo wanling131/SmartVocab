@@ -5,9 +5,11 @@ API服务启动器
 
 import logging
 import os
+import time
+import uuid
 from secrets import token_hex
 
-from flask import Flask
+from flask import Flask, request, g
 from flask_cors import CORS
 
 from config import APP_CONFIG
@@ -34,6 +36,7 @@ from .evaluation_api import evaluation_bp
 from .levels_api import levels_bp
 from .health_api import health_bp
 from .achievements_api import achievements_bp
+from .favorites_api import favorites_bp
 from .utils import APIResponse
 
 
@@ -53,9 +56,54 @@ class APILauncher:
         # 注册所有蓝图
         self._register_all_blueprints()
 
+        # 注册请求追踪中间件
+        self._register_request_middleware()
+
         # 注册错误处理器与安全响应头
         self._register_error_handlers()
         self._register_security_headers()
+
+    def _register_request_middleware(self):
+        """注册请求追踪中间件"""
+
+        @self.app.before_request
+        def before_request():
+            """请求开始前：生成请求ID、记录开始时间"""
+            g.request_id = request.headers.get('X-Request-ID', str(uuid.uuid4())[:8])
+            g.start_time = time.time()
+
+            # 记录请求日志（排除静态文件和健康检查）
+            if not request.path.startswith('/static') and request.path != '/api/health':
+                logger.info(
+                    "[%s] %s %s",
+                    g.request_id,
+                    request.method,
+                    request.path
+                )
+
+        @self.app.after_request
+        def after_request(response):
+            """请求结束后：添加请求ID头、记录响应时间"""
+            # 添加请求ID到响应头
+            if hasattr(g, 'request_id'):
+                response.headers['X-Request-ID'] = g.request_id
+
+            # 记录响应时间
+            if hasattr(g, 'start_time'):
+                elapsed_ms = (time.time() - g.start_time) * 1000
+                response.headers['X-Response-Time'] = f'{elapsed_ms:.2f}ms'
+
+                # 慢请求警告（>1秒）
+                if elapsed_ms > 1000 and not request.path.startswith('/static'):
+                    logger.warning(
+                        "[%s] 慢请求: %s %s (%.2fms)",
+                        g.request_id,
+                        request.method,
+                        request.path,
+                        elapsed_ms
+                    )
+
+            return response
 
     def _configure_app(self) -> None:
         """Flask 配置：密钥、请求体大小等（统一使用 strip 后的密钥，避免首尾空白通过校验却写入配置）"""
@@ -100,6 +148,7 @@ class APILauncher:
         self.app.register_blueprint(evaluation_bp)
         self.app.register_blueprint(levels_bp)
         self.app.register_blueprint(achievements_bp)
+        self.app.register_blueprint(favorites_bp)
 
         @self.app.route("/")
         def index():
@@ -119,6 +168,14 @@ class APILauncher:
         @self.app.errorhandler(413)
         def request_entity_too_large(error):
             return APIResponse.error("请求体过大", 413)
+
+        @self.app.errorhandler(Exception)
+        def handle_exception(error):
+            """全局异常处理"""
+            logger.exception("[%s] 未处理异常: %s", getattr(g, 'request_id', 'N/A'), error)
+            if APP_CONFIG.get("expose_error_details"):
+                return APIResponse.error(f"服务器错误: {str(error)}", 500)
+            return APIResponse.error("服务器内部错误，请稍后重试", 500)
 
     def _register_security_headers(self):
         """基础安全响应头（商用部署建议再配合 HTTPS 与反向代理）"""

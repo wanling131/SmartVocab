@@ -4,7 +4,9 @@ API基础工具模块
 """
 
 import logging
-from flask import jsonify
+import uuid
+import time
+from flask import jsonify, request, g
 from functools import wraps
 
 from config import APP_CONFIG
@@ -12,28 +14,46 @@ from config import APP_CONFIG
 logger = logging.getLogger(__name__)
 
 
+def generate_request_id():
+    """生成请求ID"""
+    return str(uuid.uuid4())[:8]
+
+
 class APIResponse:
     """API响应工具类"""
-    
+
     @staticmethod
     def success(data=None, message="操作成功", status_code=200):
         """创建成功响应"""
         response = {
             'success': True,
             'message': message,
-            'data': data
+            'data': data,
+            'request_id': getattr(g, 'request_id', None)
         }
         return jsonify(response), status_code
-    
+
     @staticmethod
     def error(message="操作失败", status_code=400, data=None):
         """创建错误响应"""
         response = {
             'success': False,
             'message': message,
-            'data': data
+            'data': data,
+            'request_id': getattr(g, 'request_id', None)
         }
         return jsonify(response), status_code
+
+    @staticmethod
+    def paginated(data, total, page=1, page_size=20, message="获取成功"):
+        """创建分页响应"""
+        return APIResponse.success({
+            'items': data,
+            'total': total,
+            'page': page,
+            'page_size': page_size,
+            'total_pages': (total + page_size - 1) // page_size if page_size > 0 else 0
+        }, message)
 
 def handle_api_error(func):
     """

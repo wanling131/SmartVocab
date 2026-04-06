@@ -12,7 +12,7 @@ SmartVocab is an intelligent English vocabulary learning system with deep learni
 # Install dependencies
 pip install -r requirements.txt
 
-# Run all unit tests (112 tests)
+# Run all unit tests (pytest)
 python -m pytest tests/ -v
 
 # Run specific test file
@@ -49,7 +49,7 @@ python -c "from tools.database import test_connection; test_connection()"
   - `api_launcher.py`: Registers all blueprints, Flask app factory
   - Each `*_api.py` is a Blueprint with related endpoints
   - `auth_middleware.py`: JWT token generation/validation, `@require_auth` decorator
-  - `utils.py`: `APIResponse` helper class
+  - `utils.py`: `APIResponse` helper class, `@handle_api_error` decorator
 
 - **`core/`**: Business logic layer
   - `auth/`: User authentication with bcrypt
@@ -64,6 +64,7 @@ python -c "from tools.database import test_connection; test_connection()"
   - `base_crud.py`: Base CRUD class with common operations
   - `*_crud.py`: Table-specific CRUD classes
   - `migrate_db.py`: Database schema migration helper
+  - `memory_cache.py`: TTL + LRU memory cache with decorator support
 
 - **`models/`**: Trained PyTorch model files (`.pth`)
   - `deep_learning_recommender.pth`: Global recommendation model
@@ -74,35 +75,51 @@ python -c "from tools.database import test_connection; test_connection()"
 ### Frontend Structure
 
 - **`frontend/`**: Single-page application
-  - `index.html`: All pages (auth, dashboard, learning, statistics, plans, levels, evaluation, profile)
-  - `main.js`: ES module with all page logic (includes `escapeHtml` for XSS prevention)
-  - `js/api-client.js`: API request wrapper with JWT handling
+  - `index.html`: All pages (auth, dashboard, learning, statistics, plans, levels, evaluation, profile, favorites)
+  - `main.js`: ES module entry point with all page logic (includes `escapeHtml`, `safeHtml` for XSS prevention)
+  - `js/api-client.js`: API request wrapper with JWT handling and 2-min cache
+  - `js/utils.js`: ES module with shared utilities (`escapeHtml`, `safeHtml`, `showToast`, `animateNumber`, etc.)
+  - `js/worker.js`: Web Worker for background filtering/sorting/statistics
+  - `js/worker-client.js`: `WorkerClient` class wraps Web Worker with auto-fallback
+  - `js/components/`: Page-specific modules (achievements.js, toast.js)
   - `styles.css`: Global styles with CSS animations
 
 ### Database
 
-14 tables: `users`, `words`, `user_learning_records`, `learning_sessions`, `recommendations`, `evaluation_papers`, `evaluation_paper_items`, `evaluation_results`, `level_gates`, `user_level_progress`, `user_learning_plans`, `user_achievements`, `user_streaks`, `learning_reports`
+16 tables: `users`, `words`, `user_learning_records`, `learning_sessions`, `recommendations`, `evaluation_papers`, `evaluation_paper_items`, `evaluation_results`, `level_gates`, `user_level_progress`, `user_learning_plans`, `user_achievements`, `user_streaks`, `learning_reports`, `user_favorite_words`
 
 ### API Modules
 
 | Module | Endpoints | Description |
 |--------|-----------|-------------|
-| Auth | `/api/auth/login`, `/register`, `/profile` | JWT authentication |
-| Vocabulary | `/api/vocabulary/...` | Learning sessions, import/export |
+| Auth | `/api/auth/login`, `/register`, `/profile`, `/password/<user_id>` | JWT authentication, password change |
+| Vocabulary | `/api/vocabulary/...`, `/words`, `/words/<id>` | Learning sessions, import/export, word CRUD (admin) |
 | Learning | `/api/learning/...` | Records, forgetting curve |
+| Recommendation | `/api/recommendations/<user_id>` | Smart word recommendations with algorithm selection |
 | Plans | `/api/plans` | Learning plan CRUD |
 | Evaluation | `/api/evaluation/...` | Level tests |
 | Levels | `/api/levels/...` | Gate progress, unlock |
 | Achievements | `/api/achievements/<user_id>` | User achievements, streak, reports |
-| Health | `/api/health` | System status |
+| Favorites | `/api/favorites/<user_id>`, `/api/favorites/<user_id>/ids`, `/api/favorites/<user_id>/word/<id>` | Word favorites CRUD, quick ID check |
+| Health | `/api/health`, `/api/health/db`, `/api/health/cache`, `/api/health/metrics` | System status, DB/cache checks, metrics |
 
 ## Key Patterns
+
+### Database Setup
+1. Create MySQL database (e.g., `smartvocab`)
+2. Run `文档/数据库建表脚本.sql` for base schema
+3. Run `文档/数据库升级迁移脚本.sql` for incremental updates (favorites, achievements, etc.)
+4. Or use `python tools/migrate_db.py` for programmatic migration
 
 ### Authentication Flow
 1. User login/register returns JWT token
 2. Frontend stores token in `localStorage`
 3. All protected API calls include `Authorization: Bearer <token>`
 4. Backend uses `@require_auth` decorator to validate
+
+### Permission Check
+- Use `check_user_access(user_id)` from `api/auth_middleware.py` to verify current user can access target user's data
+- This function is shared across all API modules - do NOT create local `_check_user_access` copies
 
 ### Recommendation System
 - Multi-algorithm with dynamic weights: difficulty_based, frequency_based, learning_history, deep_learning, collaborative, random_exploration
@@ -126,12 +143,27 @@ python -c "from tools.database import test_connection; test_connection()"
 
 Required in `.env`:
 - `DB_HOST`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`: MySQL connection
+- `DB_POOL_SIZE`: Connection pool size (optional, default 10)
 - `SECRET_KEY`: Flask session signing
 - `JWT_SECRET_KEY`: JWT token signing
+- `JWT_EXPIRATION_HOURS`: Token validity period (optional, default 24)
 - `ADMIN_USERS`: Comma-separated usernames for admin operations (optional)
 
 Optional:
 - `SMARTVOCAB_SKIP_DL_INIT=1`: Skip PyTorch model loading during tests (faster startup)
+
+## Troubleshooting
+
+| Issue | Solution |
+|-------|----------|
+| Login returns 500 error | Check if request body is double-stringified in `api-client.js` |
+| Dashboard blank after login | Clear browser cache, check console for JS errors |
+| `JWT_SECRET_KEY` error in production | Set strong key: `openssl rand -hex 32` |
+| PyTorch import fails | System falls back to traditional recommendations automatically |
+| Database connection fails | Verify `.env` has correct `DB_*` values, run connection test command |
+| PyTorch model fails to load | Check `models/` directory for `.pth` files; system falls back to traditional recommendations |
+| Tests fail with import errors | Ensure `pip install -r requirements.txt` includes `werkzeug<3` |
+| Frontend shows blank page | Check browser console for JS errors; clear localStorage |
 
 ## Code Standards
 
@@ -144,6 +176,13 @@ Optional:
 ### Logging
 - Use `logging.getLogger(__name__)` for logging, never `print()`
 - Database uses connection pool - no manual connection management needed
+- Use `@handle_api_error` decorator on API endpoints for consistent error handling
+
+### Caching
+- Use `tools/memory_cache.py` for frequently accessed data
+- `@cached(ttl_seconds)` decorator for function result caching
+- Cache keys: `make_word_key()`, `make_user_stats_key()`, `make_recommendation_key()`
+- Invalidate with `invalidate_user_cache(user_id)` when user data changes
 
 ### Testing
 - Unit tests in `tests/` directory (pytest)
@@ -152,5 +191,31 @@ Optional:
 - Production mode (`APP_ENV=production`) enforces strong JWT/secret keys
 
 ### Frontend
+- **ES Module**: `main.js` is loaded as type="module", imports from `js/api-client.js`
 - `api-client.js` handles 401 by clearing token and dispatching `auth:logout` event
 - All dynamic content must be HTML-escaped before insertion
+- `showPage()` manages page visibility via `.active` class
+- **API caching**: GET requests are cached for 2 minutes by default
+- **Modularity**: `main.js` is large (~3400 lines). For new features, prefer adding modules in `frontend/js/` and importing
+
+### Key Frontend Functions
+- `loadDashboard()`: Loads progress stats and recommendations
+- `loadFavoritesPage()`: Loads user's favorite words with search/filter
+- `loadProfilePage()`: Loads user info and achievements
+- `loadPlansPage()`: Loads active plan and plan history
+- `loadStatistics()`: Loads learning statistics with charts
+- `speakWord(word)`: Uses Web Speech API to pronounce words
+- `exportFavoritesCSV()`: Exports favorites to CSV file
+- `updateExampleSection(word)`: Displays example sentence with highlighted word
+- `getDifficultyDescription(level)`: Returns difficulty label (入门/基础/中级/高级)
+
+### UI Components
+- **Word Card**: Shows word, phonetic, example sentence, pronunciation button
+- **Gate Card**: Shows level name, difficulty stars, progress bar, status badges
+- **Example Section**: Collapsible example sentence with word highlighting
+
+### Performance Features
+- **Lazy Loading**: Pages only load data on first visit (`pageLoaded` Set)
+- **Web Worker**: Background thread for filtering/sorting/statistics (`js/worker.js`); use `window.workerClient.filter()` / `.stats()` / `.sort()` with auto-fallback
+- **API Cache**: 2-minute TTL for GET requests
+- **Skeleton Loading**: Animated placeholders during data fetch

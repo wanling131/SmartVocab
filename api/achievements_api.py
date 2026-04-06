@@ -6,7 +6,7 @@ import logging
 from flask import Blueprint, request
 from tools.achievements_crud import UserAchievementsCRUD, UserStreakCRUD, LearningReportsCRUD, AchievementService
 from .utils import APIResponse, handle_api_error
-from .auth_middleware import require_auth, get_current_user
+from .auth_middleware import require_auth, check_user_access
 
 logger = logging.getLogger(__name__)
 
@@ -17,20 +17,12 @@ reports_crud = LearningReportsCRUD()
 achievement_service = AchievementService()
 
 
-def _check_user_access(user_id):
-    """检查当前用户是否有权访问指定用户的数据"""
-    current_user = get_current_user()
-    if not current_user or current_user.get('user_id') != user_id:
-        return False
-    return True
-
-
 @achievements_bp.route('/<int:user_id>', methods=['GET'])
 @handle_api_error
 @require_auth
 def get_user_achievements(user_id):
     """获取用户成就列表"""
-    if not _check_user_access(user_id):
+    if not check_user_access(user_id):
         return APIResponse.error('无权访问', 403)
 
     achievements = user_achievements_crud.get_user_achievements(user_id)
@@ -49,7 +41,7 @@ def get_user_achievements(user_id):
 @require_auth
 def get_user_streak(user_id):
     """获取用户连续学习天数"""
-    if not _check_user_access(user_id):
+    if not check_user_access(user_id):
         return APIResponse.error('无权访问', 403)
 
     streak = user_streak_crud.get_current_streak(user_id)
@@ -61,7 +53,7 @@ def get_user_streak(user_id):
 @require_auth
 def update_user_streak(user_id):
     """更新连续学习记录"""
-    if not _check_user_access(user_id):
+    if not check_user_access(user_id):
         return APIResponse.error('无权访问', 403)
 
     new_streak = user_streak_crud.update_streak(user_id)
@@ -85,7 +77,7 @@ def update_user_streak(user_id):
 @require_auth
 def get_user_reports(user_id):
     """获取用户学习报告列表"""
-    if not _check_user_access(user_id):
+    if not check_user_access(user_id):
         return APIResponse.error('无权访问', 403)
 
     limit = request.args.get('limit', 10, type=int)
@@ -98,7 +90,7 @@ def get_user_reports(user_id):
 @require_auth
 def get_weekly_report(user_id):
     """获取/生成周报告"""
-    if not _check_user_access(user_id):
+    if not check_user_access(user_id):
         return APIResponse.error('无权访问', 403)
 
     from datetime import date, timedelta

@@ -118,3 +118,40 @@ def update_profile(user_id):
     for k in ['password_hash', 'model_filename']:
         updated.pop(k, None)
     return APIResponse.success(updated, "更新成功")
+
+
+@auth_bp.route('/password/<int:user_id>', methods=['PUT'])
+@handle_api_error
+@require_auth
+def change_password(user_id):
+    """修改密码"""
+    # 验证当前用户只能修改自己的密码
+    current_user = get_current_user()
+    if current_user['user_id'] != user_id:
+        return APIResponse.error('无权修改', 403)
+
+    data = request.get_json()
+    old_password = data.get('old_password')
+    new_password = data.get('new_password')
+
+    if not old_password or not new_password:
+        return APIResponse.error('旧密码和新密码不能为空', 400)
+
+    if len(new_password) < 6:
+        return APIResponse.error('新密码至少需要6个字符', 400)
+
+    # 验证旧密码
+    result = user_auth.login(current_user['username'], old_password)
+    if not result['success']:
+        return APIResponse.error('旧密码错误', 400)
+
+    # 更新密码
+    from tools.users_crud import UsersCRUD
+    crud = UsersCRUD()
+
+    # 生成新密码哈希
+    import bcrypt
+    password_hash = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+    crud.update(user_id, password_hash=password_hash)
+
+    return APIResponse.success({}, "密码修改成功")

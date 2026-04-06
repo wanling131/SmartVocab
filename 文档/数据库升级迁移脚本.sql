@@ -133,3 +133,20 @@ CREATE TABLE IF NOT EXISTS user_learning_plans (
     KEY idx_user_active (user_id, is_active),
     CONSTRAINT fk_ulplan_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户学习计划表(计划词库/每日单词数等)';
+
+-- --------------------------------------------
+-- 10. 创建 user_favorite_words 表（用户收藏单词）
+-- --------------------------------------------
+CREATE TABLE IF NOT EXISTS user_favorite_words (
+    id INT AUTO_INCREMENT PRIMARY KEY COMMENT '收藏ID',
+    user_id INT NOT NULL COMMENT '用户ID',
+    word_id INT NOT NULL COMMENT '词汇ID',
+    note VARCHAR(500) DEFAULT NULL COMMENT '收藏备注',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '收藏时间',
+    updated_at DATETIME DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    UNIQUE KEY uk_user_word (user_id, word_id),
+    KEY idx_user (user_id),
+    KEY idx_created (created_at),
+    CONSTRAINT fk_fav_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT fk_fav_word FOREIGN KEY (word_id) REFERENCES words(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户收藏单词表';
