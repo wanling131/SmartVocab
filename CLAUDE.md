@@ -76,13 +76,14 @@ python -c "from tools.database import test_connection; test_connection()"
 
 - **`frontend/`**: Single-page application
   - `index.html`: All pages (auth, dashboard, learning, statistics, plans, levels, evaluation, profile, favorites)
-  - `main.js`: ES module entry point with all page logic (includes `escapeHtml`, `safeHtml` for XSS prevention)
-  - `js/api-client.js`: API request wrapper with JWT handling and 2-min cache
+  - `main.js`: ES module entry point with all page logic (~3800 lines)
+  - `js/api-client.js`: API request wrapper with JWT handling, 2-min cache, request deduplication
   - `js/utils.js`: ES module with shared utilities (`escapeHtml`, `safeHtml`, `showToast`, `animateNumber`, etc.)
+  - `js/charts.js`: Chart.js wrapper module for data visualization (progress, difficulty, radar charts)
   - `js/worker.js`: Web Worker for background filtering/sorting/statistics
   - `js/worker-client.js`: `WorkerClient` class wraps Web Worker with auto-fallback
   - `js/components/`: Page-specific modules (achievements.js, toast.js)
-  - `styles.css`: Global styles with CSS animations
+  - `styles.css`: Global styles with CSS variables and animations
 
 ### Database
 
@@ -124,7 +125,11 @@ python -c "from tools.database import test_connection; test_connection()"
 ### Recommendation System
 - Multi-algorithm with dynamic weights: difficulty_based, frequency_based, learning_history, deep_learning, collaborative, random_exploration
 - Weights are normalized and adjusted based on user history
-- PyTorch dual-tower neural network (falls back to traditional if unavailable)
+- **Deep Learning Model** (`core/recommendation/deep_learning_recommender.py`):
+  - PyTorch dual-tower neural network with LayerNorm (NOT BatchNorm - supports batch=1 inference)
+  - 25-dimensional word/user feature vectors
+  - Cross-attention mechanism between user and word encoders
+  - Falls back to traditional recommendations if PyTorch unavailable
 - User-specific models trained after 50 learning records
 - Cold-start handling for new users
 
@@ -162,8 +167,10 @@ Optional:
 | PyTorch import fails | System falls back to traditional recommendations automatically |
 | Database connection fails | Verify `.env` has correct `DB_*` values, run connection test command |
 | PyTorch model fails to load | Check `models/` directory for `.pth` files; system falls back to traditional recommendations |
+| Model key mismatch error | Old model was BatchNorm+20dim, new is LayerNorm+25dim; delete old `.pth` and retrain |
 | Tests fail with import errors | Ensure `pip install -r requirements.txt` includes `werkzeug<3` |
 | Frontend shows blank page | Check browser console for JS errors; clear localStorage |
+| Charts not rendering | Ensure Chart.js CDN loaded; check `window.ChartModule` exists |
 
 ## Code Standards
 
@@ -203,9 +210,11 @@ Optional:
 - `loadFavoritesPage()`: Loads user's favorite words with search/filter
 - `loadProfilePage()`: Loads user info and achievements
 - `loadPlansPage()`: Loads active plan and plan history
-- `loadStatistics()`: Loads learning statistics with charts
+- `loadStatistics()`: Loads learning statistics with Chart.js visualizations
+- `loadAdvancedCharts()`: Initializes Chart.js charts (trend, difficulty, POS, radar)
 - `speakWord(word)`: Uses Web Speech API to pronounce words
 - `exportFavoritesCSV()`: Exports favorites to CSV file
+- `exportLearningReportCSV/JSON/PDF()`: Export learning reports in multiple formats
 - `updateExampleSection(word)`: Displays example sentence with highlighted word
 - `getDifficultyDescription(level)`: Returns difficulty label (入门/基础/中级/高级)
 
@@ -217,5 +226,6 @@ Optional:
 ### Performance Features
 - **Lazy Loading**: Pages only load data on first visit (`pageLoaded` Set)
 - **Web Worker**: Background thread for filtering/sorting/statistics (`js/worker.js`); use `window.workerClient.filter()` / `.stats()` / `.sort()` with auto-fallback
-- **API Cache**: 2-minute TTL for GET requests
+- **API Cache**: 2-minute TTL for GET requests, request deduplication for concurrent identical requests
 - **Skeleton Loading**: Animated placeholders during data fetch
+- **Chart.js Integration**: `js/charts.js` provides `ChartModule` with pre-configured chart types (line, bar, doughnut, radar) matching dark theme
