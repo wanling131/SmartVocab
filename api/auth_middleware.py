@@ -87,11 +87,17 @@ def get_current_user() -> dict:
         用户信息字典，或 None（未认证）
     """
     auth_header = request.headers.get('Authorization', '')
+    logger.debug(f"Authorization header: {auth_header[:30] if auth_header else 'None'}...")
     if not auth_header.startswith('Bearer '):
+        logger.warning(f"Invalid auth header format: {auth_header[:30] if auth_header else 'None'}")
         return None
 
     token = auth_header[7:]  # 移除 'Bearer ' 前缀
     payload = verify_token(token)
+    if payload:
+        logger.debug(f"Token verified for user: {payload.get('username')}")
+    else:
+        logger.warning(f"Token verification failed")
     return payload
 
 

@@ -3847,8 +3847,26 @@ function initEventListeners() {
 
 // 初始化应用
 document.addEventListener("DOMContentLoaded", () => {
+  // 尝试从localStorage恢复用户状态
+  const storedUser = localStorage.getItem("currentUser")
+  const storedToken = localStorage.getItem("auth_token")
+  if (storedUser && storedToken) {
+    try {
+      currentUser = JSON.parse(storedUser)
+    } catch (e) {
+      localStorage.removeItem("currentUser")
+      localStorage.removeItem("auth_token")
+    }
+  }
+
   initAuth()
   initEventListeners()
+
+  // 如果有保存的用户状态，自动跳转到dashboard
+  if (currentUser && currentUser.id) {
+    showPage("dashboard")
+    loadDashboard()
+  }
 
   // 添加网络状态监听
   window.addEventListener('online', () => {

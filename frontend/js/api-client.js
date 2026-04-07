@@ -146,3 +146,117 @@ export async function apiRequest(endpoint, options = {}) {
 
   return requestPromise
 }
+
+// ==================== 高级封装 ====================
+
+/**
+ * 通用API调用封装（带加载状态和错误处理）
+ * @param {string} endpoint - API端点
+ * @param {Object} options - 配置选项
+ * @returns {Promise<Object>} API响应
+ */
+export async function fetchWithState(endpoint, options = {}) {
+  const { showSpinner = true, errorMessage = '操作失败' } = options
+
+  if (showSpinner && typeof window.showLoading === 'function') {
+    window.showLoading()
+  }
+
+  try {
+    const result = await apiRequest(endpoint, options)
+
+    // 显示错误提示
+    if (!result.success && result.message && typeof window.showToast === 'function') {
+      window.showToast(result.message, 'error')
+    }
+
+    return result
+  } catch (error) {
+    if (typeof window.showToast === 'function') {
+      window.showToast(error.message || errorMessage, 'error')
+    }
+    return { success: false, message: error.message || errorMessage }
+  } finally {
+    if (showSpinner && typeof window.hideLoading === 'function') {
+      window.hideLoading()
+    }
+  }
+}
+
+/**
+ * 用户相关API快捷方法集合
+ */
+export const userApi = {
+  // 学习进度
+  getProgress: (userId) => fetchWithState(`/learning/progress/${userId}`),
+
+  // 学习统计
+  getStats: (userId) => fetchWithState(`/learning/statistics/${userId}`),
+
+  // 学习记录
+  getRecords: (userId, limit = 1000) =>
+    fetchWithState(`/learning/records/${userId}?limit=${limit}`),
+
+  // 复习单词
+  getReviewWords: (userId, limit = 100) =>
+    fetchWithState(`/learning/review-words/${userId}?limit=${limit}`),
+
+  // 收藏列表
+  getFavorites: (userId) => fetchWithState(`/favorites/${userId}`),
+
+  // 收藏ID列表（轻量）
+  getFavoriteIds: (userId) => fetchWithState(`/favorites/${userId}/ids`),
+
+  // 推荐单词
+  getRecommendations: (userId, limit = 50, algorithm = 'mixed') =>
+    fetchWithState(`/recommendations/${userId}?limit=${limit}&algorithm=${algorithm}`),
+
+  // 用户成就
+  getAchievements: (userId) => fetchWithState(`/achievements/${userId}`),
+
+  // 学习计划
+  getPlans: (userId) => fetchWithState(`/plans?user_id=${userId}`),
+
+  // 等级进度
+  getLevelProgress: (userId) => fetchWithState(`/levels/progress/${userId}`)
+}
+
+// ==================== 缓存预热 ====================
+
+/**
+ * 预热用户常用数据缓存
+ * @param {number} userId - 用户ID
+ */
+export async function warmupUserCache(userId) {
+  const endpoints = [
+    `/learning/progress/${userId}`,
+    `/learning/statistics/${userId}`,
+    `/recommendations/${userId}?limit=50`,
+    `/favorites/${userId}/ids`
+  ]
+
+  // 并行预加载，不阻塞UI，静默失败
+  Promise.all(
+    endpoints.map(ep =>
+      apiRequest(ep, { useCache: true }).catch(() => null)
+    )
+  ).then(() => {
+    console.log('[Cache] 用户数据预热完成')
+  })
+}
+
+/**
+ * 登录成功后的初始化
+ * @param {Object} user - 用户对象
+ */
+export function onLoginSuccess(user) {
+  // 保存用户信息
+  if (user) {
+    localStorage.setItem('currentUser', JSON.stringify(user))
+  }
+
+  // 预热缓存
+  if (user?.id) {
+    warmupUserCache(user.id)
+  }
+}
