@@ -114,6 +114,7 @@
         .main-container {
             display: flex;
             min-height: 100vh;
+            height: 100vh;
             position: relative;
             z-index: 1;
         }
@@ -121,6 +122,9 @@
         /* 左侧品牌区 */
         .brand-section {
             flex: 1;
+            height: 100vh;
+            position: sticky;
+            top: 0;
             background: linear-gradient(135deg, var(--klein-blue) 0%, var(--klein-dark) 100%);
             display: flex;
             flex-direction: column;
