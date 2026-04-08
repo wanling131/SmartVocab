@@ -270,6 +270,7 @@
             padding: 60px;
             background: var(--morandi-cream);
             position: relative;
+            min-height: 100vh; /* 鷻加最小高度防止布局抖动 */
         }
 
         /* 手绘风格卡片 */
@@ -378,6 +379,43 @@
 
         .form-input::placeholder {
             color: var(--text-light);
+        }
+
+        /* 密码输入框容器 */
+        .password-input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .password-input-wrapper .form-input {
+            flex: 1;
+            padding-right: 48px; /* 为眼睛图标留出空间 */
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 18px;
+            color: var(--text-muted);
+            transition: color 0.3s ease;
+            padding: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .password-toggle:hover {
+            color: var(--klein-blue);
+        }
+
+        .password-toggle.active {
+            color: var(--klein-blue);
         }
 
         /* 手绘风格输入框装饰 */
@@ -747,8 +785,9 @@
                     </div>
                     <div class="form-group">
                         <label class="form-label">密码</label>
-                        <div class="input-wrapper">
+                        <div class="input-wrapper password-wrapper">
                             <input type="password" class="form-input" id="login-password" placeholder="请输入密码" autocomplete="current-password">
+                            <button type="button" class="password-toggle" onclick="togglePasswordVisibility('login-password', this)" aria-label="显示密码">👁</button>
                             <div class="sketch-line"></div>
                         </div>
                     </div>
@@ -759,7 +798,7 @@
                     <div class="divider"><span>或者</span></div>
 
                     <div class="card-footer">
-                        <p>还没有账户？ <a href="#" id="switch-to-register">立即注册</a></p>
+                        <p>首次使用？ <a href="#" id="switch-to-register">创建新账户</a></p>
                     </div>
                 </div>
 
@@ -781,15 +820,17 @@
                     </div>
                     <div class="form-group">
                         <label class="form-label">密码</label>
-                        <div class="input-wrapper">
+                        <div class="input-wrapper password-input-wrapper">
                             <input type="password" class="form-input" id="register-password" placeholder="至少 6 个字符" autocomplete="new-password">
+                            <button type="button" class="password-toggle" onclick="togglePasswordVisibility('register-password', this)" aria-label="显示密码">👁</button>
                             <div class="sketch-line"></div>
                         </div>
                     </div>
                     <div class="form-group">
                         <label class="form-label">确认密码</label>
-                        <div class="input-wrapper">
+                        <div class="input-wrapper password-input-wrapper">
                             <input type="password" class="form-input" id="register-confirm" placeholder="再次输入密码" autocomplete="new-password">
+                            <button type="button" class="password-toggle" onclick="togglePasswordVisibility('register-confirm', this)" aria-label="显示密码">👁</button>
                             <div class="sketch-line"></div>
                         </div>
                     </div>
@@ -800,7 +841,7 @@
                     <div class="divider"><span>或者</span></div>
 
                     <div class="card-footer">
-                        <p>已有账户？ <a href="#" id="switch-to-login">立即登录</a></p>
+                        <p>已有账户？ <a href="#" id="switch-to-login">返回登录</a></p>
                     </div>
                 </div>
             </div>
@@ -836,6 +877,18 @@
         const loginForm = document.getElementById('login-form');
         const registerForm = document.getElementById('register-form');
 
+        // 密码可见性切换
+        function togglePasswordVisibility(inputId, button) {
+            const input = document.getElementById(inputId);
+            if (!input) return;
+
+            const isPassword = input.type === 'password';
+            input.type = isPassword ? 'text' : 'password';
+            button.textContent = isPassword ? '🙈' : '👁';
+            button.classList.toggle('active', isPassword);
+            button.setAttribute('aria-label', isPassword ? '隐藏密码' : '显示密码');
+        }
+
         function switchTab(tab) {
             tabBtns.forEach(btn => {
                 btn.classList.toggle('active', btn.dataset.tab === tab);
@@ -852,6 +905,10 @@
             } else {
                 cardTitle.textContent = '创建账户';
                 cardSubtitle.textContent = '开启您的智能学习之旅';
+                // 切换到注册时自动聚焦到第一个输入框
+                setTimeout(() => {
+                    document.getElementById('register-username')?.focus();
+                }, 100);
             }
         }
 
@@ -867,6 +924,10 @@
         document.getElementById('switch-to-login').addEventListener('click', (e) => {
             e.preventDefault();
             switchTab('login');
+            // 切换到登录时自动聚焦
+            setTimeout(() => {
+                document.getElementById('login-username')?.focus();
+            }, 100);
         });
 
         // API 基础地址
