@@ -38,7 +38,7 @@
 
         body {
             font-family: 'Nunito', -apple-system, sans-serif;
-            background: var(--morandi-cream);
+            background: #EBF0F9;
             min-height: 100vh;
             color: var(--text-dark);
             position: relative;
@@ -274,12 +274,12 @@
 
         .stat-card {
             background: white;
-            border-radius: 20px;
+            border-radius: 20px 12px 20px 12px;
             padding: 28px;
             position: relative;
             overflow: hidden;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
-            border: 1px solid var(--morandi-rose);
+            box-shadow: 3px 3px 0 var(--morandi-lavender);
+            border: 2px dashed var(--morandi-rose);
             transition: all 0.3s ease;
         }
 
@@ -360,10 +360,10 @@
         /* 卡片 */
         .card {
             background: white;
-            border-radius: 24px;
+            border-radius: 24px 14px 24px 14px;
             padding: 28px;
-            border: 1px solid var(--morandi-rose);
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+            border: 2px dashed var(--morandi-rose);
+            box-shadow: 3px 3px 0 var(--morandi-lavender);
             position: relative;
         }
 
@@ -374,7 +374,7 @@
             border: 2px dashed var(--morandi-mist);
             border-radius: 28px;
             pointer-events: none;
-            opacity: 0.5;
+            opacity: 0;
         }
 
         .card-header {
@@ -412,9 +412,9 @@
         }
 
         .word-item {
-            background: var(--morandi-cream);
-            border: 1px solid var(--morandi-beige);
-            border-radius: 16px;
+            background: rgba(235, 240, 249, 0.4);
+            border: 2px dashed var(--morandi-beige);
+            border-radius: 14px 8px 14px 8px;
             padding: 18px 20px;
             display: flex;
             justify-content: space-between;
@@ -459,9 +459,9 @@
         }
 
         .quick-card {
-            background: var(--morandi-cream);
-            border: 1px solid var(--morandi-beige);
-            border-radius: 18px;
+            background: rgba(235, 240, 249, 0.5);
+            border: 2px dashed var(--morandi-beige);
+            border-radius: 18px 10px 18px 10px;
             padding: 24px;
             transition: all 0.3s ease;
         }
@@ -625,7 +625,9 @@
         </a>
         <div class="nav-menu" role="menubar">
             <a href="dashboard.html" class="nav-link active" role="menuitem" aria-current="page">🏠 首页</a>
-            <a href="learning.html" class="nav-link" role="menuitem">📖 学习</a>
+            <a href="plans.html" class="nav-link" role="menuitem">📋 计划</a>
+            <a href="levels.html" class="nav-link" role="menuitem">🎮 闯关</a>
+            <a href="evaluation.html" class="nav-link" role="menuitem">📝 测试</a>
             <a href="statistics.html" class="nav-link" role="menuitem">📊 统计</a>
             <a href="favorites.html" class="nav-link" role="menuitem">⭐ 收藏</a>
             <a href="profile.html" class="nav-link" role="menuitem">👤 我的</a>
@@ -822,14 +824,6 @@
             const div = document.createElement('div');
             div.textContent = str;
             return div.innerHTML;
-        }
-
-        function debounce(func, wait) {
-            let timeout;
-            return function(...args) {
-                clearTimeout(timeout);
-                timeout = setTimeout(() => func.apply(this, args), wait);
-            };
         }
 
         async function loadRecommendations() {

@@ -62,19 +62,36 @@ class RecommendationEngine:
         self.words_crud = WordsCRUD()
         self.recommendations_crud = RecommendationsCRUD()
 
-        # 基础推荐算法权重
-        self.base_weights = {
-            'difficulty_based': 0.25,      # 基于难度的推荐
-            'frequency_based': 0.20,       # 基于词频的推荐
-            'learning_history': 0.20,      # 基于学习历史的推荐
-            'deep_learning': 0.25,         # 深度学习推荐
-            'random_exploration': 0.10,    # 随机探索
-            'collaborative': 0.15,         # 协同过滤（新增）
-        }
+        # 从配置文件读取基础算法权重（支持动态配置）
+        config_weights = RECOMMENDATION_CONFIG.get("algorithm_weights", {})
+        if config_weights:
+            # 映射配置键名到内部键名
+            self.base_weights = {
+                'difficulty_based': config_weights.get('difficulty_based', 0.21),
+                'frequency_based': config_weights.get('frequency_based', 0.17),
+                'learning_history': config_weights.get('learning_history', 0.17),
+                'deep_learning': config_weights.get('deep_learning', 0.25),
+                'collaborative': config_weights.get('collaborative', 0.13),
+                'random_exploration': config_weights.get('random_exploration', 0.07),
+            }
+            logger.info(f"从配置文件加载算法权重: {self.base_weights}")
+        else:
+            # 默认权重（总和应为1.0）
+            self.base_weights = {
+                'difficulty_based': 0.21,      # 基于难度的推荐
+                'frequency_based': 0.17,       # 基于词频的推荐
+                'learning_history': 0.17,      # 基于学习历史的推荐
+                'deep_learning': 0.25,         # 深度学习推荐
+                'collaborative': 0.13,         # 协同过滤推荐
+                'random_exploration': 0.07     # 随机探索
+            }
+            logger.info("使用默认算法权重")
 
-        # 归一化权重
+        # 归一化权重（确保总和为1.0）
         total = sum(self.base_weights.values())
-        self.base_weights = {k: v / total for k, v in self.base_weights.items()}
+        if abs(total - 1.0) > 0.001:  # 如果总和不为1.0，进行归一化
+            self.base_weights = {k: v / total for k, v in self.base_weights.items()}
+            logger.info(f"权重已归一化，原总和: {total:.3f}")
 
         # 初始化深度学习推荐器
         self.deep_learning_recommender = None

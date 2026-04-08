@@ -74,6 +74,20 @@ def verify_token():
     }, "Token 有效")
 
 
+@auth_bp.route('/profile', methods=['GET'])
+@handle_api_error
+@require_auth
+def get_current_profile():
+    """获取当前登录用户信息（从 JWT token 解析，无需传 user_id）"""
+    user = get_current_user()
+    info = user_auth.get_user_info(user['user_id'])
+    if not info:
+        return APIResponse.error('用户不存在', 404)
+    for k in ['password_hash', 'model_filename']:
+        info.pop(k, None)
+    return APIResponse.success(info, "获取个人信息成功")
+
+
 @auth_bp.route('/profile/<int:user_id>', methods=['GET'])
 @handle_api_error
 @require_auth

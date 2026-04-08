@@ -108,6 +108,16 @@ RECOMMENDATION_CONFIG = {
     "max_recommendations": 50,          # 最大推荐数量
     "min_score_threshold": 0.3,         # 最小推荐分数阈值
 
+    # 基础算法权重（总和应为1.0，会自动归一化）
+    "algorithm_weights": {
+        "difficulty_based": 0.21,       # 基于难度的推荐
+        "frequency_based": 0.17,        # 基于词频的推荐
+        "learning_history": 0.17,       # 基于学习历史的推荐
+        "deep_learning": 0.25,          # 深度学习推荐
+        "collaborative": 0.13,          # 协同过滤推荐
+        "random_exploration": 0.07      # 随机探索
+    },
+
     # 动态权重调整参数
     "dynamic_weights": {
         "enabled": True,                 # 是否启用动态权重

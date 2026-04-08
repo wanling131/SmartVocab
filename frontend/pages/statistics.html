@@ -11,7 +11,7 @@
     <style>
         body {
             font-family: 'Nunito', -apple-system, sans-serif;
-            background: var(--morandi-cream);
+            background: #EBF0F9;
             color: var(--text-dark);
             min-height: 100vh;
             position: relative;
@@ -112,10 +112,11 @@
 
         .stat-card {
             background: white;
-            border-radius: 16px;
+            border-radius: 16px 10px 16px 10px;
             padding: 24px;
             text-align: center;
-            border: 1px solid var(--morandi-rose);
+            border: 2px dashed var(--morandi-rose);
+            box-shadow: 3px 3px 0 var(--morandi-lavender);
             transition: all 0.3s ease;
         }
 
@@ -164,9 +165,10 @@
 
         .chart-card {
             background: white;
-            border-radius: 16px;
+            border-radius: 20px 12px 20px 12px;
             padding: 24px;
-            border: 1px solid var(--morandi-rose);
+            border: 2px dashed var(--morandi-rose);
+            box-shadow: 3px 3px 0 var(--morandi-lavender);
         }
 
         .chart-header {
@@ -189,9 +191,10 @@
 
         .full-chart {
             background: white;
-            border-radius: 16px;
+            border-radius: 20px 12px 20px 12px;
             padding: 24px;
-            border: 1px solid var(--morandi-rose);
+            border: 2px dashed var(--morandi-rose);
+            box-shadow: 3px 3px 0 var(--morandi-lavender);
             margin-bottom: 20px;
         }
 
@@ -273,9 +276,12 @@
         </a>
         <div class="nav-menu" role="menubar">
             <a href="dashboard.html" class="nav-link" role="menuitem">🏠 首页</a>
-            <a href="learning.html" class="nav-link" role="menuitem">📖 学习</a>
+            <a href="plans.html" class="nav-link" role="menuitem">📋 计划</a>
+            <a href="levels.html" class="nav-link" role="menuitem">🎮 闯关</a>
+            <a href="evaluation.html" class="nav-link" role="menuitem">📝 测试</a>
             <a href="statistics.html" class="nav-link active" role="menuitem" aria-current="page">📊 统计</a>
             <a href="favorites.html" class="nav-link" role="menuitem">⭐ 收藏</a>
+            <a href="profile.html" class="nav-link" role="menuitem">👤 我的</a>
         </div>
         <div class="nav-user">
             <span class="user-name" id="username-display">用户</span>
@@ -372,7 +378,7 @@
     <script>
         const API_BASE = window.location.hostname === 'localhost'
             ? 'http://localhost:5000/api'
-            : '/api';
+            : `http://${window.location.hostname}:5000/api`;
 
         let currentUser = null;
         let charts = {};

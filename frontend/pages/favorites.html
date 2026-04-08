@@ -14,7 +14,7 @@
         /* Page-Specific Styles */
         body {
             font-family: 'Nunito', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background: var(--morandi-cream);
+            background: #EBF0F9;
             color: var(--text-dark);
             min-height: 100vh;
             overflow-x: hidden;
@@ -146,19 +146,35 @@
         .page-header {
             margin-bottom: 32px;
             animation: fadeIn 0.5s ease;
+            position: relative;
         }
 
         .page-title {
-            font-size: 36px;
-            font-weight: 800;
+            font-family: 'Caveat', cursive;
+            font-size: 42px;
+            font-weight: 700;
             color: var(--klein-blue);
             display: flex;
             align-items: center;
             gap: 12px;
+            letter-spacing: 3px;
+        }
+
+        /* 手绘装饰星 — 标题右上角 */
+        .page-header::after {
+            content: '✦';
+            position: absolute;
+            top: -8px;
+            right: 8px;
+            font-size: 36px;
+            color: var(--accent-amber);
+            opacity: 0.5;
+            animation: float 4s ease-in-out infinite;
+            transform-origin: center;
         }
 
         .page-title-icon {
-            font-size: 32px;
+            display: none;
         }
 
         .page-subtitle {
@@ -172,15 +188,30 @@
             font-weight: 700;
         }
 
-        /* Filters Section - White Card with Rose Border */
+        /* Filters Section — 手绘便利贴风格 */
         .filters-section {
             background: white;
-            border-radius: 24px;
+            border-radius: 28px 14px 28px 14px;
             padding: 28px;
             margin-bottom: 32px;
-            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
-            border: 2px solid var(--morandi-rose);
+            box-shadow: 3px 3px 0 var(--morandi-lavender);
+            border: 2px dashed var(--morandi-lavender);
             animation: fadeIn 0.6s ease;
+            position: relative;
+        }
+
+        /* 手绘装饰 — 左下角虚线圆圈 */
+        .filters-section::before {
+            content: '';
+            position: absolute;
+            bottom: -12px;
+            left: 20px;
+            width: 50px;
+            height: 50px;
+            border: 2px dashed var(--morandi-rose);
+            border-radius: 50%;
+            opacity: 0.4;
+            pointer-events: none;
         }
 
         .filter-row {
@@ -209,8 +240,8 @@
 
         .filter-tag {
             padding: 8px 18px;
-            background: var(--morandi-beige);
-            border: 2px solid transparent;
+            background: transparent;
+            border: 2px solid var(--morandi-lavender);
             border-radius: 20px;
             font-size: 13px;
             font-weight: 600;
@@ -221,7 +252,8 @@
         }
 
         .filter-tag:hover {
-            background: var(--morandi-rose);
+            background: rgba(184, 180, 200, 0.15);
+            border-color: var(--morandi-lavender);
             transform: translateY(-2px);
         }
 
@@ -250,8 +282,8 @@
         .search-input {
             width: 100%;
             padding: 16px 20px 16px 48px;
-            background: var(--morandi-cream);
-            border: 2px solid var(--morandi-beige);
+            background: rgba(235, 240, 249, 0.5);
+            border: 2px dashed var(--morandi-beige);
             border-radius: 16px;
             font-size: 15px;
             color: var(--text-dark);
@@ -262,6 +294,7 @@
         .search-input:focus {
             outline: none;
             border-color: var(--klein-blue);
+            border-style: solid;
             background: white;
             box-shadow: 0 0 0 4px rgba(0, 47, 167, 0.1);
         }
@@ -278,21 +311,34 @@
             animation: fadeIn 0.7s ease;
         }
 
-        /* Favorite Card - White with Rose Border */
+        /* Favorite Card — 手绘便利贴 */
         .favorite-card {
             background: white;
-            border-radius: 20px;
+            border-radius: 24px 12px 24px 12px;
             padding: 24px;
             position: relative;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-            border: 2px solid var(--morandi-rose);
+            box-shadow: 3px 3px 0 var(--morandi-lavender);
+            border: 2px dashed var(--morandi-rose);
             transition: all 0.3s ease;
+            overflow: hidden;
         }
 
         .favorite-card:hover {
-            transform: translateY(-6px);
+            transform: translateY(-6px) rotate(0deg);
             box-shadow: 0 12px 32px rgba(0, 47, 167, 0.12);
             border-color: var(--klein-blue);
+        }
+
+        /* 手绘装饰 — 卡片右下角波浪涂鸦 */
+        .favorite-card::after {
+            content: '〰';
+            position: absolute;
+            bottom: 8px;
+            right: 12px;
+            font-size: 18px;
+            color: var(--morandi-rose);
+            opacity: 0.35;
+            pointer-events: none;
         }
 
         .favorite-header {
@@ -363,8 +409,9 @@
             line-height: 1.6;
             margin-bottom: 16px;
             padding: 12px;
-            background: var(--morandi-cream);
-            border-radius: 12px;
+            background: rgba(235, 240, 249, 0.4);
+            border-radius: 10px 14px 10px 14px;
+            border-left: 3px solid var(--morandi-lavender);
         }
 
         .favorite-meta {
@@ -508,7 +555,7 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
-        /* Card Entrance Animation */
+        /* Card Entrance Animation — 模拟手贴便利贴 */
         .favorite-card {
             animation: cardEnter 0.4s ease backwards;
         }
@@ -516,12 +563,21 @@
         @keyframes cardEnter {
             from {
                 opacity: 0;
-                transform: translateY(20px) scale(0.95);
+                transform: translateY(20px) scale(0.95) rotate(-1.5deg);
             }
             to {
                 opacity: 1;
-                transform: translateY(0) scale(1);
+                transform: translateY(0) scale(1) rotate(0deg);
             }
+        }
+
+        /* 奇数卡片微右倾 */
+        .favorite-card:nth-child(odd) {
+            transform: rotate(0.5deg);
+        }
+        /* 偶数卡片微左倾 */
+        .favorite-card:nth-child(even) {
+            transform: rotate(-0.5deg);
         }
     </style>
 </head>
@@ -721,7 +777,7 @@
                     </div>
                     <div class="favorite-phonetic">
                         ${escapeHtml(f.phonetic || '')}
-                        <button class="speak-btn" onclick="speakWord('${escapeHtml(f.word)}')" title="发音">
+                        <button class="speak-btn" data-word="${escapeHtml(f.word)}" title="发音">
                             🔊
                         </button>
                     </div>
@@ -748,6 +804,12 @@
                 showToast('操作失败', 'error');
             }
         };
+
+        // Speak button — event delegation (avoids inline onclick XSS)
+        document.getElementById('favorites-grid').addEventListener('click', (e) => {
+            const btn = e.target.closest('.speak-btn');
+            if (btn) speakWord(btn.dataset.word);
+        });
 
         // Difficulty filter
         document.querySelectorAll('#difficulty-filters .filter-tag').forEach(tag => {

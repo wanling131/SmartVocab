@@ -1,245 +1,153 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+本文件为 Claude Code (claude.ai/code) 在本仓库中工作时提供指导。
 
-## Project Overview
+## 项目概述
 
-SmartVocab is an intelligent English vocabulary learning system with deep learning-based recommendations. It uses a Flask backend with MySQL database and a vanilla JavaScript frontend with a **Klein Blue + Morandi hand-drawn design system**.
+SmartVocab 是一个智能英语词汇学习系统，集成 PyTorch 深度学习推荐。后端使用 Flask + MySQL，前端为多页原生 JS 应用，采用克莱因蓝 + 莫兰迪手绘风格设计体系。
 
-## Common Commands
+## 常用命令
 
 ```bash
-# Install dependencies
+# 安装依赖
 pip install -r requirements.txt
 
-# Run all unit tests (pytest)
+# 运行全部单元测试（179 个测试）
 python -m pytest tests/ -v
 
-# Run specific test file
+# 运行单个测试文件 / 单个测试
 python -m pytest tests/test_auth.py -v
-
-# Run single test
 python -m pytest tests/test_auth.py::TestJWTToken::test_generate_token -v
 
-# Run tests without loading DL model (faster)
+# 跳过深度学习模型加载运行测试（更快）
 SMARTVOCAB_SKIP_DL_INIT=1 python -m pytest tests/ -v
 
-# Run E2E tests (Playwright)
+# 运行 E2E 测试（Playwright）
 cd tests/e2e && npx playwright test
 
-# Start development server
+# 启动开发服务器
 python main.py
 
-# Start production server (Gunicorn)
-set APP_ENV=production
-gunicorn -w 4 -b 0.0.0.0:5000 wsgi:app
-
-# Database connection test
+# 数据库连接测试
 python -c "from tools.database import test_connection; test_connection()"
+
+# 生产环境启动（Gunicorn）
+APP_ENV=production SECRET_KEY=your_key gunicorn -w 4 -b 0.0.0.0:5000 --timeout 120 wsgi:app
 ```
 
-## Architecture
+## 架构
 
-### Backend Structure
+### 后端（`api/`）
 
-- **`api/`**: Flask Blueprint REST API endpoints
-  - `api_launcher.py`: Registers all blueprints, Flask app factory
-  - Each `*_api.py` is a Blueprint with related endpoints
-  - `auth_middleware.py`: JWT token generation/validation, `@require_auth` decorator
-  - `utils.py`: `APIResponse` helper class, `@handle_api_error` decorator
+Flask 应用在 `api_launcher.py` 中组装。每个 `*_api.py` 是一个蓝图：
 
-- **`core/`**: Business logic layer
-  - `auth/`: User authentication with bcrypt
-  - `recommendation/`: Multi-algorithm recommendation engine + PyTorch deep learning model
-  - `learning/`: Learning record management
-  - `forgetting_curve/`: Ebbinghaus forgetting curve calculations
-  - `vocabulary/`: Vocabulary learning sessions
-  - `evaluation/`: Level test paper generation and scoring
+| 蓝图 | 前缀 | 关键端点 |
+|------|------|----------|
+| `auth_api` | `/api/auth` | `/login`、`/register`、`/profile`（无参数，从 JWT 获取）、`/profile/<id>`、`/password/<id>` |
+| `vocabulary_api` | `/api/vocabulary` | `/start-session`、`/current-word`、`/submit-answer`、`/import`、`/export`、`/words` CRUD（管理员） |
+| `learning_api` | `/api/learning` | `/progress/<uid>`、`/records/<uid>`、`/review-words/<uid>`、`/forgetting-curve/<uid>` |
+| `recommendation_api` | `/api/recommendations` | `/<uid>?limit=&algorithm=` |
+| `plans_api` | `/api/plans` | `?user_id=`（GET 列表）、POST 创建、`/<id>/deactivate`、`/<id>/activate` |
+| `evaluation_api` | `/api/evaluation` | `/start`、`/submit`、`/history/<uid>` |
+| `levels_api` | `/api/levels` | `/gates`（公开）、`/gates/<uid>`（含进度）、`/progress/<uid>`、`/unlock` |
+| `favorites_api` | `/api/favorites` | `/<uid>`、`/<uid>/ids`、`/<uid>/word/<wid>` |
+| `achievements_api` | `/api/achievements` | `/<uid>`、`/<uid>/streak`、`/<uid>/reports` |
+| `health_api` | `/api/health` | `/`、`/db`、`/cache`、`/metrics` |
 
-- **`tools/`**: Database CRUD operations
-  - `database.py`: MySQL connection pool singleton
-  - `base_crud.py`: Base CRUD class with common operations
-  - `*_crud.py`: Table-specific CRUD classes
-  - `migrate_db.py`: Database schema migration helper
-  - `memory_cache.py`: TTL + LRU memory cache with decorator support
+### 核心业务逻辑（`core/`）
 
-- **`models/`**: Trained PyTorch model files (`.pth`)
-  - `deep_learning_recommender.pth`: Global recommendation model
-  - `deep_learning_recommender_user_<id>.pth`: User-specific models
+- `auth/user_auth.py`：bcrypt 密码哈希，登录/注册
+- `recommendation/recommendation_engine.py`：多算法动态权重推荐（6 种算法，权重配置在 `config.py`）
+- `recommendation/deep_learning_recommender.py`：PyTorch 双塔神经网络，LayerNorm，25 维特征，交叉注意力机制。PyTorch 不可用时自动降级为传统推荐
+- `learning/learning_record_manager.py`：学习记录 CRUD
+- `forgetting_curve/forgetting_curve_manager.py`：艾宾浩斯遗忘曲线计算，复习调度
+- `vocabulary/vocabulary_learning_manager.py`：学习会话、题目生成、答案提交
+- `evaluation/`：测试试卷生成与评分
 
-- **`config.py`**: Configuration constants (`APP_CONFIG`, `LEARNING_PARAMS`, etc.)
+### 工具层（`tools/`）
 
-### Frontend Structure (Multi-Page Architecture)
+- `database.py`：MySQL 连接池单例（`DatabaseManager`）。`get_database_context()` 返回上下文管理器
+- `base_crud.py`：基类，提供 `execute_query()`、`execute_update()`、`execute_insert()`、`build_update_query(allowed_fields=)`（白名单过滤）
+- `*_crud.py`：继承 `BaseCRUD` 的表级 CRUD 类
+- `memory_cache.py`：TTL + LRU 缓存，`@cached(ttl_seconds)` 装饰器
 
-- **`frontend/`**: Multi-page application with Klein Blue + Morandi design
-  - `pages/`: 11 independent HTML pages
-    - `login.html`: Login/Register with split layout (brand + form)
-    - `dashboard.html`: Home, progress stats, AI recommendations
-    - `learning.html`: Word learning, quiz, review
-    - `statistics.html`: Charts, progress visualization
-    - `plans.html`: Learning plan management
-    - `levels.html`: Gamification, level gates, unlock
-    - `evaluation.html`: Level tests
-    - `favorites.html`: Favorite words collection
-    - `profile.html`: User profile, achievements, settings
-    - `login-dark.html`: Backup (original dark theme)
-    - `statistics-neu.html`: Backup (neumorphism style)
-  - `styles/`: Shared stylesheets
-    - `klein-morandi.css`: **Design system** with CSS variables, components, animations
-    - `neu.css`: Backup neumorphism styles
-  - `components/`: Shared HTML components
-    - `navbar.html`: Navigation component
-  - `js/`: JavaScript modules
-    - `api-client.js`: API request wrapper with JWT handling, 2-min cache, request deduplication
-    - `utils.js`: Shared utilities (`escapeHtml`, `safeHtml`, `showToast`, `animateNumber`)
-    - `charts.js`: Chart.js wrapper for visualizations
-    - `worker.js`: Web Worker for background tasks
-    - `worker-client.js`: WorkerClient with auto-fallback
+### 前端（`frontend/`）
 
-### Design System (Klein Blue + Morandi)
+多页架构，克莱因蓝 + 莫兰迪手绘风格设计：
 
-**CSS Variables** (defined in `klein-morandi.css`):
+- `pages/`：11 个独立 HTML 页面（login、dashboard、learning、statistics、plans、levels、evaluation、favorites、profile + 2 个备份）
+- `styles/klein-morandi.css`：共享设计系统（CSS 变量、组件、动画）
+- `js/api-client.js`：API 封装，含 JWT 处理、2 分钟 GET 缓存、请求去重。导出 `apiRequest()`、`fetchWithState()`、`userApi.*`
+- `js/utils.js`：`escapeHtml()`、`showToast()`、`animateNumber()` 等工具函数
+
+**重要不一致性**：部分页面（`dashboard.html`、`learning.html`、`statistics.html`）使用内联 `<script>` 并重复了 API/认证函数。其余页面（`favorites.html`、`plans.html`、`levels.html`、`evaluation.html`、`profile.html`）使用 ES 模块从 `js/api-client.js` 和 `js/utils.js` 导入。
+
+## 关键模式
+
+### 认证
+- JWT 令牌通过 `auth_middleware.py` 管理：`generate_token()`、`verify_token()`、`@require_auth` 装饰器
+- `check_user_access(user_id)` 验证当前用户是否有权访问目标用户数据 —— 所有模块共享此函数，**不要**创建本地副本
+- 前端将令牌存储在 `localStorage` 的 `auth_token` 中
+
+### 权限
+- 管理员操作（单词导入/导出/CRUD）由 `ADMIN_USERS` 环境变量控制（逗号分隔的用户名）
+- 当 `ADMIN_USERS` 未设置时，管理员操作**默认拒绝**（安全默认值）
+
+### SQL 安全
+- 使用参数化查询：`execute_query(query, params)` —— 始终将用户输入作为参数传入，**禁止**字符串拼接
+- `build_update_query()` 接受 `allowed_fields` 白名单 —— 使用它防止列名注入
+
+### XSS 防护
+- 模板字面量中显示用户内容时，**必须**使用 `escapeHtml()`
+- 对于包含动态数据的 `onclick` 处理器，使用 `data-*` 属性 + 事件委托代替内联字符串
+- 导入 `js/utils.js` 的页面可直接使用 `escapeHtml`；内联脚本的页面需自行定义
+
+### 数据库初始化
+1. 创建 MySQL 数据库（如 `smartvocab`）
+2. 运行 `文档/数据库建表脚本.sql` 创建基础表结构
+3. 运行 `文档/数据库升级迁移脚本.sql` 进行增量更新
+4. 或使用 `python tools/migrate_db.py` 编程式迁移
+
+### 前端设计体系
+`klein-morandi.css` 中的 CSS 变量：
 ```css
-:root {
-    --klein-blue: #002FA7;      /* Primary brand color */
-    --klein-light: #1a4fd0;     /* Lighter variant */
-    --klein-dark: #001d6c;      /* Darker variant */
-    --morandi-cream: #F5F0E8;   /* Background */
-    --morandi-rose: #D4C4B5;    /* Borders, accents */
-    --morandi-beige: #E8DFD4;   /* Secondary backgrounds */
-    --accent-coral: #E07A5F;    /* CTAs, errors */
-    --accent-amber: #F2A03D;    /* Highlights */
-    --accent-sage: #6B8E6B;     /* Success */
-}
+--klein-blue: #002FA7;      /* 主品牌色 */
+--klein-light: #1a4fd0;
+--morandi-cream: #F5F0E8;   /* 温暖背景色 */
+--morandi-rose: #D4C4B5;    /* 边框色 */
+--morandi-lavender: #B8B4C8; /* 阴影、强调色 */
+--accent-coral: #E07A5F;    /* 行动按钮、错误色 */
 ```
 
-**Key Design Elements**:
-- Floating hand-drawn letters (Caveat font) as background decoration
-- White cards with Morandi rose borders and soft shadows
-- Gradient buttons (Klein Blue to Klein Light) with shimmer animation
-- Dashed border effects for hand-drawn aesthetic
-- `:focus-visible` styles for accessibility
+手绘风格元素：不对称 `border-radius`（如 `24px 14px`）、`dashed` 虚线边框、硬偏移 `box-shadow`（如 `3px 3px 0`）、Caveat 手写字体用于装饰文字。
 
-### Database
+### 推荐系统
+- 6 种算法，权重在 `config.py` 的 `RECOMMENDATION_CONFIG` 中配置：
+  - difficulty_based（0.21）、frequency_based（0.17）、learning_history（0.17）、deep_learning（0.25）、collaborative（0.13）、random_exploration（0.07）
+- 新用户冷启动处理
+- 用户积累 50 条学习记录后训练个性化深度学习模型
 
-16 tables: `users`, `words`, `user_learning_records`, `learning_sessions`, `recommendations`, `evaluation_papers`, `evaluation_paper_items`, `evaluation_results`, `level_gates`, `user_level_progress`, `user_learning_plans`, `user_achievements`, `user_streaks`, `learning_reports`, `user_favorite_words`
+## 环境变量
 
-### API Modules
+`.env` 中必需：
+- `DB_HOST`、`DB_USER`、`DB_PASSWORD`、`DB_NAME`：MySQL 连接
+- `SECRET_KEY`：Flask 会话签名（生产环境必须为强随机值）
+- `JWT_SECRET_KEY`：JWT 签名（生产环境至少 32 字符）
+- `ADMIN_USERS`：逗号分隔的管理员用户名（单词管理功能必需）
 
-| Module | Endpoints | Description |
-|--------|-----------|-------------|
-| Auth | `/api/auth/login`, `/register`, `/profile`, `/password/<user_id>` | JWT authentication, password change |
-| Vocabulary | `/api/vocabulary/...`, `/words`, `/words/<id>` | Learning sessions, import/export, word CRUD (admin) |
-| Learning | `/api/learning/...` | Records, forgetting curve |
-| Recommendation | `/api/recommendations/<user_id>` | Smart word recommendations with algorithm selection |
-| Plans | `/api/plans` | Learning plan CRUD |
-| Evaluation | `/api/evaluation/...` | Level tests |
-| Levels | `/api/levels/...` | Gate progress, unlock |
-| Achievements | `/api/achievements/<user_id>` | User achievements, streak, reports |
-| Favorites | `/api/favorites/<user_id>`, `/api/favorites/<user_id>/ids`, `/api/favorites/<user_id>/word/<id>` | Word favorites CRUD, quick ID check |
-| Health | `/api/health`, `/api/health/db`, `/api/health/cache`, `/api/health/metrics` | System status, DB/cache checks, metrics |
+重要可选项：
+- `SMARTVOCAB_SKIP_DL_INIT=1`：跳过 PyTorch 加载以加速测试
+- `APP_ENV=production`：启用生产环境安全检查
+- `CORS_ORIGINS`：逗号分隔的允许来源（生产环境使用实际域名）
+- `LOG_LEVEL`：DEBUG/INFO/WARNING/ERROR
 
-## Key Patterns
+## 常见问题排查
 
-### Database Setup
-1. Create MySQL database (e.g., `smartvocab`)
-2. Run `文档/数据库建表脚本.sql` for base schema
-3. Run `文档/数据库升级迁移脚本.sql` for incremental updates (favorites, achievements, etc.)
-4. Or use `python tools/migrate_db.py` for programmatic migration
-
-### Authentication Flow
-1. User login/register returns JWT token
-2. Frontend stores token in `localStorage` as `auth_token`
-3. All protected API calls include `Authorization: Bearer <token>`
-4. Backend uses `@require_auth` decorator to validate
-
-### Permission Check
-- Use `check_user_access(user_id)` from `api/auth_middleware.py` to verify current user can access target user's data
-- This function is shared across all API modules - do NOT create local `_check_user_access` copies
-
-### Recommendation System
-- Multi-algorithm with dynamic weights: difficulty_based, frequency_based, learning_history, deep_learning, collaborative, random_exploration
-- Weights are normalized and adjusted based on user history
-- **Deep Learning Model** (`core/recommendation/deep_learning_recommender.py`):
-  - PyTorch dual-tower neural network with LayerNorm (NOT BatchNorm - supports batch=1 inference)
-  - 25-dimensional word/user feature vectors
-  - Cross-attention mechanism between user and word encoders
-  - Falls back to traditional recommendations if PyTorch unavailable
-- User-specific models trained after 50 learning records
-- Cold-start handling for new users
-
-### Learning Session Flow
-1. `POST /api/vocabulary/start-session` creates session
-2. `POST /api/vocabulary/current-word` gets current word with question
-3. `POST /api/vocabulary/submit-answer` submits answer, updates mastery
-4. Repeat until complete
-
-### Question Types
-- `choice`: Multiple choice with 4 options
-- `translation`: User types Chinese translation
-- `spelling`: User types English word from Chinese definition
-
-## Environment Variables
-
-Required in `.env`:
-- `DB_HOST`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`: MySQL connection
-- `DB_POOL_SIZE`: Connection pool size (optional, default 10)
-- `SECRET_KEY`: Flask session signing
-- `JWT_SECRET_KEY`: JWT token signing
-- `JWT_EXPIRATION_HOURS`: Token validity period (optional, default 24)
-- `ADMIN_USERS`: Comma-separated usernames for admin operations (optional)
-
-Optional:
-- `SMARTVOCAB_SKIP_DL_INIT=1`: Skip PyTorch model loading during tests (faster startup)
-
-## Troubleshooting
-
-| Issue | Solution |
-|-------|----------|
-| Login returns 500 error | Check if request body is double-stringified in `api-client.js` |
-| Dashboard blank after login | Clear browser cache, check console for JS errors
-| `JWT_SECRET_KEY` error in production | Set strong key: `openssl rand -hex 32` |
-| PyTorch import fails | System falls back to traditional recommendations automatically |
-| Database connection fails | Verify `.env` has correct `DB_*` values, run connection test command |
-| PyTorch model fails to load | Check `models/` directory for `.pth` files; system falls back to traditional recommendations |
-| Model key mismatch error | Old model was BatchNorm+20dim, new is LayerNorm+25dim; delete old `.pth` and retrain |
-| Tests fail with import errors | Ensure `pip install -r requirements.txt` includes `werkzeug<3` |
-| Frontend shows blank page | Check browser console for JS errors; clear localStorage |
-| Charts not rendering | Ensure Chart.js CDN loaded; check `window.ChartModule` exists |
-| CSS variables not working | Ensure `klein-morandi.css` has variables wrapped in `:root { }` |
-| Token not found after login | Check `localStorage` uses `auth_token` key, not `token` |
-
-## Code Standards
-
-### Security
-- **XSS Prevention**: Use `escapeHtml()` function for all user-displayed content
-- **SQL Injection**: Use parameterized queries via `execute_query(query, params)`; whitelist validation for dynamic column names
-- **Authentication**: All sensitive endpoints must use `@require_auth` decorator
-- **Input Validation**: Empty answers return `False` in answer checking
-
-### Logging
-- Use `logging.getLogger(__name__)` for logging, never `print()`
-- Database uses connection pool - no manual connection management needed
-- Use `@handle_api_error` decorator on API endpoints for consistent error handling
-
-### Caching
-- Use `tools/memory_cache.py` for frequently accessed data
-- `@cached(ttl_seconds)` decorator for function result caching
-- Cache keys: `make_word_key()`, `make_user_stats_key()`, `make_recommendation_key()`
-- Invalidate with `invalidate_user_cache(user_id)` when user data changes
-
-### Testing
-- Unit tests in `tests/` directory (pytest)
-- E2E tests in `tests/e2e/specs/` (Playwright)
-- Test user: `e2e_tester` / `TestPass123`
-- Production mode (`APP_ENV=production`) enforces strong JWT/secret keys
-
-### Frontend Standards
-- **ES Modules**: Use `import`/`export` syntax; `api-client.js` exports `apiRequest`, `getToken`, etc.
-- **Token Storage**: Always use `auth_token` as localStorage key
-- **API Request Body**: Pass objects directly to `apiRequest`, NOT `JSON.stringify()` (it handles serialization)
-- **XSS Prevention**: Use `escapeHtml()` from `utils.js` for all user content
-- **ARIA**: Add `role`, `aria-label`, `aria-current` attributes for accessibility
-- **Focus States**: Use `:focus-visible` for keyboard navigation styling
-- **Responsive**: Add `@media (max-width: 768px)` breakpoints for mobile
-- **Page Structure**: Each page has inline `<style>` for page-specific CSS + shared `klein-morandi.css` import
+| 问题 | 解决方案 |
+|------|----------|
+| 生产环境 `JWT_SECRET_KEY` 错误 | 设置强密钥：`openssl rand -hex 32` |
+| PyTorch 导入失败 | 系统自动降级为传统推荐算法 |
+| 模型键不匹配 | 旧模型为 BatchNorm+20 维，新模型为 LayerNorm+25 维；删除旧 `.pth` 文件重新训练 |
+| 测试导入错误 | 确保 `requirements.txt` 中包含 `werkzeug<3` |
+| 前端页面空白 | 清除 localStorage，检查浏览器控制台 |
+| CSS 变量不生效 | 确保 `klein-morandi.css` 已导入且变量在 `:root { }` 中定义 |

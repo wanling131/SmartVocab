@@ -124,8 +124,8 @@ class TestAdminPermission:
             importlib.reload(api.vocabulary_api)
 
             from api.vocabulary_api import _is_admin
-            # 未配置时返回 True（向后兼容）
-            assert _is_admin() is True
+            # 未配置时返回 False（安全默认值）
+            assert _is_admin() is False
         finally:
             if original:
                 os.environ["ADMIN_USERS"] = original

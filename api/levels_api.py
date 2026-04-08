@@ -33,6 +33,28 @@ def get_gates():
     return APIResponse.success(gates, "获取关卡列表成功")
 
 
+@levels_bp.route('/gates/<int:user_id>', methods=['GET'])
+@handle_api_error
+@require_auth
+def get_gates_with_progress(user_id):
+    """获取关卡列表（含用户进度）"""
+    if not check_user_access(user_id):
+        return APIResponse.error('无权访问', 403)
+    gates = gates_crud.list_all() or []
+    progress = progress_crud.get_by_user(user_id) or []
+    progress_map = {p['gate_id']: p for p in progress}
+    result = []
+    for gate in gates:
+        p = progress_map.get(gate['id'], {})
+        result.append({
+            **gate,
+            'is_unlocked': p.get('is_unlocked', gate.get('order_index', 1) == 1),
+            'is_completed': p.get('is_completed', False),
+            'user_score': p.get('best_score'),
+        })
+    return APIResponse.success(result, "获取关卡列表成功")
+
+
 @levels_bp.route('/progress/<int:user_id>', methods=['GET'])
 @handle_api_error
 @require_auth

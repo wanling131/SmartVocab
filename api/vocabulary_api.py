@@ -5,6 +5,7 @@
 
 import csv
 import io
+import logging
 import os
 from typing import Any, Dict, Optional, Union
 
@@ -16,6 +17,8 @@ from tools.words_crud import WordsCRUD
 
 from .auth_middleware import get_current_user, require_auth, check_user_access
 from .utils import APIResponse, handle_api_error
+
+logger = logging.getLogger(__name__)
 
 # 创建蓝图
 vocabulary_bp = Blueprint('vocabulary', __name__, url_prefix='/api/vocabulary')
@@ -50,8 +53,8 @@ def _is_admin() -> bool:
         bool: 是否为管理员。
     """
     if not ADMIN_USERS:
-        # 未配置 ADMIN_USERS 时，允许所有登录用户访问（向后兼容）
-        return True
+        logger.warning("ADMIN_USERS 未配置，拒绝管理员操作。请在 .env 中设置 ADMIN_USERS")
+        return False
     current = get_current_user()
     if not current:
         return False

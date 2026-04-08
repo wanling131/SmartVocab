@@ -35,7 +35,7 @@
         }
 
         body {
-            background: var(--morandi-cream);
+            background: #EBF0F9;
             min-height: 100vh;
             position: relative;
         }
@@ -188,11 +188,10 @@
         /* Level Card */
         .level-card {
             background: white;
-            border-radius: 24px;
+            border-radius: 24px 14px 24px 14px;
             padding: 28px;
-            box-shadow:
-                0 4px 20px rgba(0, 0, 0, 0.06),
-                0 0 0 1px var(--morandi-rose);
+            box-shadow: 3px 3px 0 var(--morandi-lavender);
+            border: 2px dashed var(--morandi-rose);
             position: relative;
             overflow: hidden;
             transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
@@ -881,7 +880,10 @@
         // Unlock level with animation
         async function unlockLevel(gateId) {
             try {
-                const result = await apiRequest(`/levels/${gateId}/unlock`, { method: 'POST' });
+                const result = await apiRequest('/levels/unlock', {
+                    method: 'POST',
+                    body: JSON.stringify({ gate_id: gateId })
+                });
 
                 if (result.success) {
                     // Add celebration animation

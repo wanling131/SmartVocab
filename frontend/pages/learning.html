@@ -28,7 +28,7 @@
 
         body {
             font-family: 'Nunito', -apple-system, sans-serif;
-            background: var(--morandi-cream);
+            background: #EBF0F9;
             min-height: 100vh;
             color: var(--text-dark);
             position: relative;
@@ -187,11 +187,11 @@
         /* 进度条 */
         .progress-section {
             background: white;
-            border-radius: 20px;
+            border-radius: 20px 12px 20px 12px;
             padding: 24px;
             margin-bottom: 24px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-            border: 1px solid var(--morandi-rose);
+            box-shadow: 3px 3px 0 var(--morandi-lavender);
+            border: 2px dashed var(--morandi-rose);
         }
 
         .progress-header {
@@ -236,11 +236,11 @@
         /* 单词卡片 */
         .word-card {
                 background: white;
-                border-radius: 24px;
+                border-radius: 24px 14px 24px 14px;
                 padding: 40px;
                 text-align: center;
-                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
-                border: 2px solid var(--morandi-rose);
+                box-shadow: 3px 3px 0 var(--morandi-lavender);
+                border: 2px dashed var(--morandi-rose);
                 position: relative;
             }
 
@@ -271,10 +271,11 @@
         /* 选择题区域 */
         .choice-section {
                 background: white;
-                border-radius: 20px;
+                border-radius: 20px 12px 20px 12px;
                 padding: 30px;
                 margin-top: 24px;
-                border: 2px solid var(--morandi-rose);
+                box-shadow: 3px 3px 0 var(--morandi-lavender);
+                border: 2px dashed var(--morandi-rose);
             }
 
         .choice-title {
@@ -299,9 +300,9 @@
 
         .choice-option {
                 padding: 16px 20px;
-                background: var(--morandi-cream);
-                border: 2px solid var(--morandi-beige);
-                border-radius: 14px;
+                background: rgba(235, 240, 249, 0.5);
+                border: 2px dashed var(--morandi-beige);
+                border-radius: 12px;
                 cursor: pointer;
                 transition: all 0.3s ease;
                 font-size: 15px;
@@ -332,10 +333,11 @@
         /* 翻译题区域 */
         .translation-section {
                 background: white;
-                border-radius: 20px;
+                border-radius: 20px 12px 20px 12px;
                 padding: 30px;
                 margin-top: 24px;
-                border: 2px solid var(--morandi-rose);
+                box-shadow: 3px 3px 0 var(--morandi-lavender);
+                border: 2px dashed var(--morandi-rose);
                 display: none;
             }
 
@@ -543,9 +545,12 @@
         </a>
         <div class="nav-menu" role="menubar">
             <a href="dashboard.html" class="nav-link" role="menuitem">🏠 首页</a>
-            <a href="learning.html" class="nav-link active" role="menuitem" aria-current="page">📖 学习</a>
+            <a href="plans.html" class="nav-link" role="menuitem">📋 计划</a>
+            <a href="levels.html" class="nav-link" role="menuitem">🎮 闯关</a>
+            <a href="evaluation.html" class="nav-link" role="menuitem">📝 测试</a>
             <a href="statistics.html" class="nav-link" role="menuitem">📊 统计</a>
             <a href="favorites.html" class="nav-link" role="menuitem">⭐ 收藏</a>
+            <a href="profile.html" class="nav-link" role="menuitem">👤 我的</a>
         </div>
         <div class="nav-user">
             <span class="user-name" id="username-display">用户</span>
@@ -557,7 +562,7 @@
         <!-- 进度条 -->
         <div class="progress-section">
             <div class="progress-header">
-                <span class="progress-text">学习进度:span>
+                <span class="progress-text">学习进度:</span>
                 <span class="progress-text"><span id="current-index">0</span> / <span id="total-count">0</span></span>
             </div>
             <div class="progress-bar">
@@ -615,7 +620,14 @@
     <script>
         const API_BASE = window.location.hostname === 'localhost'
             ? 'http://localhost:5000/api'
-            : '/api';
+            : `http://${window.location.hostname}:5000/api`;
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
 
         let currentUser = null;
         let words = [];
@@ -751,7 +763,7 @@
                     const correctAnswer = result.data.question.correct_answer;
 
                     container.innerHTML = options.map((opt, i) => `
-                        <div class="choice-option" onclick="selectChoice(${i}, '${correctAnswer}')">${opt}</div>
+                        <div class="choice-option" onclick="selectChoice(${i}, ${JSON.stringify(correctAnswer)})">${escapeHtml(opt)}</div>
                     `).join('');
                 } else {
                     container.innerHTML = '<div class="choice-option">加载失败</div>';

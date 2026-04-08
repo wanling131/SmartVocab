@@ -181,7 +181,9 @@ body::before {
 
 .page.active {
   display: block;
-  animation: pageEnter 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  opacity: 1;
+  transform: translateY(0);
+  visibility: visible;
 }
 
 @keyframes pageEnter {
@@ -214,7 +216,7 @@ body::before {
 /* === 认证页面 === */
 #auth-page {
   min-height: 100vh;
-  display: flex;
+  display: none;
   align-items: center;
   justify-content: center;
   padding: var(--space-5);
@@ -223,6 +225,7 @@ body::before {
 
 #auth-page.active {
   display: flex;
+  opacity: 1;
 }
 
 .auth-container {

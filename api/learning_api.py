@@ -69,6 +69,18 @@ def get_forgetting_curve(user_id):
     return APIResponse.success(curve_data, "获取遗忘曲线数据成功")
 
 
+@learning_bp.route('/review-words/<int:user_id>', methods=['GET'])
+@handle_api_error
+@require_auth
+def get_review_words(user_id):
+    """获取待复习单词列表"""
+    if not check_user_access(user_id):
+        return APIResponse.error('无权访问', 403)
+    limit = request.args.get('limit', 100, type=int)
+    review_words = forgetting_curve_manager.get_review_words(user_id, limit=limit)
+    return APIResponse.success({'words': review_words}, "获取待复习单词成功")
+
+
 @learning_bp.route('/record/<int:record_id>', methods=['GET'])
 @handle_api_error
 @require_auth

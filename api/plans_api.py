@@ -28,6 +28,21 @@ def get_plans(user_id):
     return APIResponse.success(plans, "获取计划列表成功")
 
 
+@plans_bp.route('', methods=['GET'])
+@handle_api_error
+@require_auth
+def get_plans_by_query():
+    """通过 query param 获取用户计划列表（兼容前端调用）"""
+    user_id = request.args.get('user_id', type=int)
+    if not user_id:
+        return APIResponse.error('user_id 参数不能为空', 400)
+    if not check_user_access(user_id):
+        return APIResponse.error('无权访问', 403)
+    limit = request.args.get('limit', 50, type=int)
+    plans = plans_crud.get_by_user(user_id, limit)
+    return APIResponse.success(plans, "获取计划列表成功")
+
+
 @plans_bp.route('/<int:user_id>/active', methods=['GET'])
 @handle_api_error
 @require_auth
@@ -121,6 +136,38 @@ def delete_plan(plan_id):
 
     plans_crud.deactivate(plan_id)
     return APIResponse.success(None, "计划已停用")
+
+
+@plans_bp.route('/<int:plan_id>/deactivate', methods=['POST'])
+@handle_api_error
+@require_auth
+def deactivate_plan(plan_id):
+    """停用计划"""
+    plan = plans_crud.read(plan_id)
+    if not plan:
+        return APIResponse.error("计划不存在", 404)
+    if not check_user_access(plan['user_id']):
+        return APIResponse.error('无权操作', 403)
+    plans_crud.deactivate(plan_id)
+    return APIResponse.success(None, "计划已停用")
+
+
+@plans_bp.route('/<int:plan_id>/activate', methods=['POST'])
+@handle_api_error
+@require_auth
+def activate_plan(plan_id):
+    """激活计划"""
+    plan = plans_crud.read(plan_id)
+    if not plan:
+        return APIResponse.error("计划不存在", 404)
+    if not check_user_access(plan['user_id']):
+        return APIResponse.error('无权操作', 403)
+    # 先停用当前生效的计划
+    active = plans_crud.get_active_plan(plan['user_id'])
+    if active:
+        plans_crud.deactivate(active['id'])
+    plans_crud.update(plan_id, is_active=True)
+    return APIResponse.success(None, "计划已激活")
 
 
 @plans_bp.route('/<int:user_id>/start-learning', methods=['POST'])

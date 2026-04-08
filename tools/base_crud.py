@@ -122,27 +122,35 @@ class BaseCRUD:
             self.logger.error(f"插入执行失败: {e}, SQL: {query}, 参数: {params}")
             return None
     
-    def build_update_query(self, fields: Dict[str, Any], where_clause: str = "id = %s") -> tuple:
+    def build_update_query(self, fields: Dict[str, Any], where_clause: str = "id = %s",
+                          allowed_fields: List[str] = None) -> tuple:
         """
         构建更新查询语句
-        
+
         Args:
             fields (Dict[str, Any]): 要更新的字段和值
             where_clause (str): WHERE子句
-            
+            allowed_fields (List[str]): 允许更新的字段白名单，None表示不限制
+
         Returns:
             tuple: (query, params)
         """
         if not fields:
             return "", ()
-        
+
         set_clauses = []
         values = []
-        
+
         for field, value in fields.items():
+            # 白名单过滤：只允许合法列名
+            if allowed_fields and field not in allowed_fields:
+                continue
             set_clauses.append(f"{field} = %s")
             values.append(value)
-        
+
+        if not set_clauses:
+            return "", ()
+
         query = f"UPDATE {self.table_name} SET {', '.join(set_clauses)} WHERE {where_clause}"
         return query, tuple(values)
     

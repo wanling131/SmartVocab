@@ -44,7 +44,7 @@
 
         body {
             font-family: 'Nunito', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background: var(--morandi-cream);
+            background: #EBF0F9;
             color: var(--text-dark);
             min-height: 100vh;
             overflow-x: hidden;
@@ -236,10 +236,10 @@
         /* Test Card Base */
         .test-card {
             background: white;
-            border-radius: 24px;
+            border-radius: 24px 14px 24px 14px;
             padding: 40px;
-            box-shadow: 0 8px 40px rgba(0, 0, 0, 0.06);
-            border: 1px solid var(--morandi-rose);
+            box-shadow: 3px 3px 0 var(--morandi-lavender);
+            border: 2px dashed var(--morandi-rose);
             animation: fadeIn 0.4s ease;
         }
 
@@ -1006,7 +1006,7 @@
 
     <script type="module">
         import { apiRequest, getToken, clearToken } from '../js/api-client.js';
-        import { showToast } from '../js/utils.js';
+        import { showToast, escapeHtml } from '../js/utils.js';
 
         // Check login status
         const token = getToken();
@@ -1079,7 +1079,7 @@
             document.getElementById('eval-progress-text').textContent = `0/${totalQuestions}`;
 
             try {
-                const result = await apiRequest('/evaluation/papers/generate', {
+                const result = await apiRequest('/evaluation/start', {
                     method: 'POST',
                     body: JSON.stringify({
                         user_id: currentUser.id,
@@ -1107,8 +1107,8 @@
                 <div class="question-card" data-question="${index}">
                     <div class="question-header">
                         <span class="question-number">${index + 1}</span>
-                        <span class="question-word">${q.word}</span>
-                        ${q.phonetic ? `<span class="question-phonetic">/${q.phonetic}/</span>` : ''}
+                        <span class="question-word">${escapeHtml(q.word)}</span>
+                        ${q.phonetic ? `<span class="question-phonetic">/${escapeHtml(q.phonetic)}/</span>` : ''}
                     </div>
                     <div class="options-grid">
                         ${q.options.map((opt, optIndex) => `
@@ -1120,7 +1120,7 @@
                                        value="${optIndex}">
                                 <label for="q${index}_opt${optIndex}" class="option-label">
                                     <span class="option-marker">${optionMarkers[optIndex]}</span>
-                                    <span class="option-text">${opt}</span>
+                                    <span class="option-text">${escapeHtml(opt)}</span>
                                 </label>
                             </div>
                         `).join('')}
@@ -1156,7 +1156,7 @@
                 document.getElementById('submit-eval-btn').disabled = true;
                 document.getElementById('submit-eval-btn').innerHTML = '<span>⏳</span> 提交中...';
 
-                const result = await apiRequest('/evaluation/papers/submit', {
+                const result = await apiRequest('/evaluation/submit', {
                     method: 'POST',
                     body: JSON.stringify({
                         user_id: currentUser.id,
