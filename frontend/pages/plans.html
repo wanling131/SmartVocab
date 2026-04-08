@@ -204,11 +204,11 @@
             font-size: 24px;
         }
 
-        /* Buttons */
+        /* Buttons - 手绘风药丸形状 */
         .btn {
-            padding: 10px 20px;
+            padding: 12px 24px;
             border: none;
-            border-radius: 12px;
+            border-radius: 16px;
             font-size: 14px;
             font-weight: 600;
             cursor: pointer;
@@ -216,53 +216,72 @@
             font-family: inherit;
             display: inline-flex;
             align-items: center;
-            gap: 6px;
+            gap: 8px;
         }
 
         .btn-primary {
             background: linear-gradient(135deg, var(--klein-blue), var(--klein-light));
             color: white;
-            box-shadow: 0 4px 12px rgba(0, 47, 167, 0.2);
+            box-shadow: 4px 4px 0px var(--morandi-rose);
+            border: 2px solid transparent;
         }
 
         .btn-primary:hover {
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(0, 47, 167, 0.3);
+            box-shadow: 6px 6px 0px var(--morandi-rose);
+        }
+
+        .btn-primary:active {
+            transform: translateY(1px);
+            box-shadow: 2px 2px 0px var(--morandi-rose);
         }
 
         .btn-secondary {
-            background: var(--morandi-beige);
-            color: var(--text-dark);
-            border: 2px solid var(--morandi-rose);
+            background: var(--morandi-cream);
+            color: var(--text-muted);
+            border: 2px solid var(--morandi-beige);
+            box-shadow: none;
         }
 
         .btn-secondary:hover {
-            background: var(--morandi-rose);
+            background: #e8f4ff;
+            border-color: var(--klein-blue);
+            color: var(--klein-blue);
         }
 
         .btn-ghost {
-            background: transparent;
+            background: var(--morandi-cream);
             color: var(--text-muted);
-            border: 2px solid var(--morandi-rose);
+            border: 2px solid var(--morandi-beige);
+            box-shadow: none;
         }
 
         .btn-ghost:hover {
-            background: var(--morandi-rose);
-            color: var(--text-dark);
+            background: #e8f4ff;
+            border-color: var(--klein-blue);
+            color: var(--klein-blue);
         }
 
         .btn-sm {
-            padding: 8px 14px;
+            padding: 8px 16px;
             font-size: 12px;
+            border-radius: 14px;
         }
 
         .btn-danger {
             background: var(--accent-coral);
             color: white;
+            box-shadow: 3px 3px 0px #c96a52;
         }
 
         .btn-danger:hover {
-            background: #c96a52;
+            transform: translateY(-2px);
+            box-shadow: 5px 5px 0px #c96a52;
+        }
+
+        .btn-danger:active {
+            transform: translateY(1px);
+            box-shadow: 2px 2px 0px #c96a52;
         }
 
         /* Current Plan Card */
@@ -625,18 +644,19 @@
             width: 100%;
             padding: 14px 18px;
             border: 2px solid var(--morandi-beige);
-            border-radius: 12px;
+            border-radius: 14px;
             font-size: 15px;
             color: var(--text-dark);
-            background: white;
+            background: #F9F7F2;  /* 淡米黄色背景 */
             transition: all 0.3s ease;
             font-family: inherit;
         }
 
         .form-input:focus,
         .form-select:focus {
-            outline: none;
-            border-color: var(--klein-blue);
+            outline: none;  /* 去掉浏览器默认轮廓线 */
+            border-color: var(--klein-blue);  /* 克莱因蓝边框 */
+            background: white;
             box-shadow: 0 0 0 4px rgba(0, 47, 167, 0.1);
         }
 
@@ -651,6 +671,62 @@
             background-repeat: no-repeat;
             background-position: right 16px center;
             padding-right: 40px;
+        }
+
+        /* 数字输入组件 - 手绘风加减器 */
+        .number-input-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 0;
+        }
+
+        .number-input-wrapper .form-input {
+            text-align: center;
+            flex: 1;
+            border-radius: 0 !important;
+            pointer-events: none;  /* 禁止直接输入 */
+            padding: 14px 12px;
+        }
+
+        .number-btn {
+            width: 44px;
+            height: 48px;
+            border: 2px solid var(--morandi-beige);
+            background: var(--morandi-cream);
+            color: var(--klein-blue);
+            font-size: 20px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: inherit;
+        }
+
+        .number-btn-minus {
+            border-radius: 14px 0 0 14px;
+            border-right: none;
+        }
+
+        .number-btn-plus {
+            border-radius: 0 14px 14px 0;
+            border-left: none;
+        }
+
+        .number-btn:hover {
+            background: var(--klein-blue);
+            color: white;
+            border-color: var(--klein-blue);
+        }
+
+        .number-btn:active {
+            transform: scale(0.95);
+        }
+
+        .number-btn:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(0, 47, 167, 0.2);
         }
 
         .form-actions {
@@ -836,11 +912,19 @@
                     </div>
                     <div class="form-group">
                         <label class="form-label" for="plan-daily-new">🌟 每日新学单词</label>
-                        <input type="number" id="plan-daily-new" class="form-input" value="20" min="5" max="100">
+                        <div class="number-input-wrapper">
+                            <button type="button" class="number-btn number-btn-minus" data-target="plan-daily-new" data-step="5" data-min="5" data-max="100">−</button>
+                            <input type="number" id="plan-daily-new" class="form-input" value="20" min="5" max="100" readonly>
+                            <button type="button" class="number-btn number-btn-plus" data-target="plan-daily-new" data-step="5" data-min="5" data-max="100">+</button>
+                        </div>
                     </div>
                     <div class="form-group">
                         <label class="form-label" for="plan-daily-review">🔄 每日复习单词</label>
-                        <input type="number" id="plan-daily-review" class="form-input" value="20" min="5" max="100">
+                        <div class="number-input-wrapper">
+                            <button type="button" class="number-btn number-btn-minus" data-target="plan-daily-review" data-step="5" data-min="5" data-max="100">−</button>
+                            <input type="number" id="plan-daily-review" class="form-input" value="20" min="5" max="100" readonly>
+                            <button type="button" class="number-btn number-btn-plus" data-target="plan-daily-review" data-step="5" data-min="5" data-max="100">+</button>
+                        </div>
                     </div>
                 </div>
                 <div class="form-actions">
@@ -998,11 +1082,11 @@
             } else {
                 activePlanDisplay.innerHTML = `
                     <div class="empty-state">
-                        <div class="empty-icon">📋</div>
-                        <h3 class="empty-title">暂无生效计划</h3>
-                        <p class="empty-text">创建一个学习计划，开始你的词汇之旅吧！</p>
+                        <div class="empty-icon">🌱</div>
+                        <h3 class="empty-title" style="color: var(--text-muted);">还没有生效的计划</h3>
+                        <p class="empty-text">快去创建一个吧！制定计划，追踪进度，成就更好的自己。</p>
                         <button class="btn btn-primary" onclick="document.getElementById('plan-name').focus()">
-                            ✨ 创建计划
+                            ✨ 立即创建
                         </button>
                     </div>
                 `;
@@ -1041,9 +1125,9 @@
             } else {
                 historyList.innerHTML = `
                     <div class="empty-state">
-                        <div class="empty-icon">📜</div>
-                        <h3 class="empty-title">暂无历史计划</h3>
-                        <p class="empty-text">完成或停用的计划将显示在这里</p>
+                        <div class="empty-icon">📭</div>
+                        <h3 class="empty-title" style="color: var(--text-muted);">还没有历史计划</h3>
+                        <p class="empty-text">完成或停用的计划将显示在这里，继续加油吧！</p>
                     </div>
                 `;
             }
@@ -1142,6 +1226,37 @@
                 showToast('操作失败，请稍后重试', 'error');
             }
         }
+
+        // 数字加减按钮事件 - 使用事件委托
+        document.addEventListener('click', (e) => {
+            const btn = e.target.closest('.number-btn');
+            if (!btn) return;
+
+            const targetId = btn.dataset.target;
+            if (!targetId) return;
+
+            const input = document.getElementById(targetId);
+            if (!input) return;
+
+            const step = parseInt(btn.dataset.step) || 5;
+            const min = parseInt(btn.dataset.min) || 5;
+            const max = parseInt(btn.dataset.max) || 100;
+            let value = parseInt(input.value) || min;
+
+            if (btn.classList.contains('number-btn-plus')) {
+                value = Math.min(value + step, max);
+            } else {
+                value = Math.max(value - step, min);
+            }
+
+            input.value = value;
+
+            // 添加点击反馈动画
+            input.style.transform = 'scale(1.05)';
+            setTimeout(() => {
+                input.style.transform = 'scale(1)';
+            }, 100);
+        });
 
         // 退出
         document.getElementById('logout-btn').addEventListener('click', () => {
