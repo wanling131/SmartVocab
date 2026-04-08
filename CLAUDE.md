@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-SmartVocab is an intelligent English vocabulary learning system with deep learning-based recommendations. It uses a Flask backend with MySQL database and a vanilla JavaScript frontend.
+SmartVocab is an intelligent English vocabulary learning system with deep learning-based recommendations. It uses a Flask backend with MySQL database and a vanilla JavaScript frontend with a **Klein Blue + Morandi hand-drawn design system**.
 
 ## Common Commands
 
@@ -26,9 +26,6 @@ SMARTVOCAB_SKIP_DL_INIT=1 python -m pytest tests/ -v
 
 # Run E2E tests (Playwright)
 cd tests/e2e && npx playwright test
-
-# Run E2E tests with UI (headed mode)
-cd tests/e2e && npx playwright test --headed
 
 # Start development server
 python main.py
@@ -72,18 +69,56 @@ python -c "from tools.database import test_connection; test_connection()"
 
 - **`config.py`**: Configuration constants (`APP_CONFIG`, `LEARNING_PARAMS`, etc.)
 
-### Frontend Structure
+### Frontend Structure (Multi-Page Architecture)
 
-- **`frontend/`**: Single-page application
-  - `index.html`: All pages (auth, dashboard, learning, statistics, plans, levels, evaluation, profile, favorites)
-  - `main.js`: ES module entry point with all page logic (~3800 lines)
-  - `js/api-client.js`: API request wrapper with JWT handling, 2-min cache, request deduplication
-  - `js/utils.js`: ES module with shared utilities (`escapeHtml`, `safeHtml`, `showToast`, `animateNumber`, etc.)
-  - `js/charts.js`: Chart.js wrapper module for data visualization (progress, difficulty, radar charts)
-  - `js/worker.js`: Web Worker for background filtering/sorting/statistics
-  - `js/worker-client.js`: `WorkerClient` class wraps Web Worker with auto-fallback
-  - `js/components/`: Page-specific modules (achievements.js, toast.js)
-  - `styles.css`: Global styles with CSS variables and animations
+- **`frontend/`**: Multi-page application with Klein Blue + Morandi design
+  - `pages/`: 11 independent HTML pages
+    - `login.html`: Login/Register with split layout (brand + form)
+    - `dashboard.html`: Home, progress stats, AI recommendations
+    - `learning.html`: Word learning, quiz, review
+    - `statistics.html`: Charts, progress visualization
+    - `plans.html`: Learning plan management
+    - `levels.html`: Gamification, level gates, unlock
+    - `evaluation.html`: Level tests
+    - `favorites.html`: Favorite words collection
+    - `profile.html`: User profile, achievements, settings
+    - `login-dark.html`: Backup (original dark theme)
+    - `statistics-neu.html`: Backup (neumorphism style)
+  - `styles/`: Shared stylesheets
+    - `klein-morandi.css`: **Design system** with CSS variables, components, animations
+    - `neu.css`: Backup neumorphism styles
+  - `components/`: Shared HTML components
+    - `navbar.html`: Navigation component
+  - `js/`: JavaScript modules
+    - `api-client.js`: API request wrapper with JWT handling, 2-min cache, request deduplication
+    - `utils.js`: Shared utilities (`escapeHtml`, `safeHtml`, `showToast`, `animateNumber`)
+    - `charts.js`: Chart.js wrapper for visualizations
+    - `worker.js`: Web Worker for background tasks
+    - `worker-client.js`: WorkerClient with auto-fallback
+
+### Design System (Klein Blue + Morandi)
+
+**CSS Variables** (defined in `klein-morandi.css`):
+```css
+:root {
+    --klein-blue: #002FA7;      /* Primary brand color */
+    --klein-light: #1a4fd0;     /* Lighter variant */
+    --klein-dark: #001d6c;      /* Darker variant */
+    --morandi-cream: #F5F0E8;   /* Background */
+    --morandi-rose: #D4C4B5;    /* Borders, accents */
+    --morandi-beige: #E8DFD4;   /* Secondary backgrounds */
+    --accent-coral: #E07A5F;    /* CTAs, errors */
+    --accent-amber: #F2A03D;    /* Highlights */
+    --accent-sage: #6B8E6B;     /* Success */
+}
+```
+
+**Key Design Elements**:
+- Floating hand-drawn letters (Caveat font) as background decoration
+- White cards with Morandi rose borders and soft shadows
+- Gradient buttons (Klein Blue to Klein Light) with shimmer animation
+- Dashed border effects for hand-drawn aesthetic
+- `:focus-visible` styles for accessibility
 
 ### Database
 
@@ -114,7 +149,7 @@ python -c "from tools.database import test_connection; test_connection()"
 
 ### Authentication Flow
 1. User login/register returns JWT token
-2. Frontend stores token in `localStorage`
+2. Frontend stores token in `localStorage` as `auth_token`
 3. All protected API calls include `Authorization: Bearer <token>`
 4. Backend uses `@require_auth` decorator to validate
 
@@ -162,7 +197,7 @@ Optional:
 | Issue | Solution |
 |-------|----------|
 | Login returns 500 error | Check if request body is double-stringified in `api-client.js` |
-| Dashboard blank after login | Clear browser cache, check console for JS errors |
+| Dashboard blank after login | Clear browser cache, check console for JS errors
 | `JWT_SECRET_KEY` error in production | Set strong key: `openssl rand -hex 32` |
 | PyTorch import fails | System falls back to traditional recommendations automatically |
 | Database connection fails | Verify `.env` has correct `DB_*` values, run connection test command |
@@ -171,11 +206,13 @@ Optional:
 | Tests fail with import errors | Ensure `pip install -r requirements.txt` includes `werkzeug<3` |
 | Frontend shows blank page | Check browser console for JS errors; clear localStorage |
 | Charts not rendering | Ensure Chart.js CDN loaded; check `window.ChartModule` exists |
+| CSS variables not working | Ensure `klein-morandi.css` has variables wrapped in `:root { }` |
+| Token not found after login | Check `localStorage` uses `auth_token` key, not `token` |
 
 ## Code Standards
 
 ### Security
-- **XSS Prevention**: Use `escapeHtml()` function in `frontend/main.js` for all user-displayed content
+- **XSS Prevention**: Use `escapeHtml()` function for all user-displayed content
 - **SQL Injection**: Use parameterized queries via `execute_query(query, params)`; whitelist validation for dynamic column names
 - **Authentication**: All sensitive endpoints must use `@require_auth` decorator
 - **Input Validation**: Empty answers return `False` in answer checking
@@ -197,35 +234,12 @@ Optional:
 - Test user: `e2e_tester` / `TestPass123`
 - Production mode (`APP_ENV=production`) enforces strong JWT/secret keys
 
-### Frontend
-- **ES Module**: `main.js` is loaded as type="module", imports from `js/api-client.js`
-- `api-client.js` handles 401 by clearing token and dispatching `auth:logout` event
-- All dynamic content must be HTML-escaped before insertion
-- `showPage()` manages page visibility via `.active` class
-- **API caching**: GET requests are cached for 2 minutes by default
-- **Modularity**: `main.js` is large (~3400 lines). For new features, prefer adding modules in `frontend/js/` and importing
-
-### Key Frontend Functions
-- `loadDashboard()`: Loads progress stats and recommendations
-- `loadFavoritesPage()`: Loads user's favorite words with search/filter
-- `loadProfilePage()`: Loads user info and achievements
-- `loadPlansPage()`: Loads active plan and plan history
-- `loadStatistics()`: Loads learning statistics with Chart.js visualizations
-- `loadAdvancedCharts()`: Initializes Chart.js charts (trend, difficulty, POS, radar)
-- `speakWord(word)`: Uses Web Speech API to pronounce words
-- `exportFavoritesCSV()`: Exports favorites to CSV file
-- `exportLearningReportCSV/JSON/PDF()`: Export learning reports in multiple formats
-- `updateExampleSection(word)`: Displays example sentence with highlighted word
-- `getDifficultyDescription(level)`: Returns difficulty label (入门/基础/中级/高级)
-
-### UI Components
-- **Word Card**: Shows word, phonetic, example sentence, pronunciation button
-- **Gate Card**: Shows level name, difficulty stars, progress bar, status badges
-- **Example Section**: Collapsible example sentence with word highlighting
-
-### Performance Features
-- **Lazy Loading**: Pages only load data on first visit (`pageLoaded` Set)
-- **Web Worker**: Background thread for filtering/sorting/statistics (`js/worker.js`); use `window.workerClient.filter()` / `.stats()` / `.sort()` with auto-fallback
-- **API Cache**: 2-minute TTL for GET requests, request deduplication for concurrent identical requests
-- **Skeleton Loading**: Animated placeholders during data fetch
-- **Chart.js Integration**: `js/charts.js` provides `ChartModule` with pre-configured chart types (line, bar, doughnut, radar) matching dark theme
+### Frontend Standards
+- **ES Modules**: Use `import`/`export` syntax; `api-client.js` exports `apiRequest`, `getToken`, etc.
+- **Token Storage**: Always use `auth_token` as localStorage key
+- **API Request Body**: Pass objects directly to `apiRequest`, NOT `JSON.stringify()` (it handles serialization)
+- **XSS Prevention**: Use `escapeHtml()` from `utils.js` for all user content
+- **ARIA**: Add `role`, `aria-label`, `aria-current` attributes for accessibility
+- **Focus States**: Use `:focus-visible` for keyboard navigation styling
+- **Responsive**: Add `@media (max-width: 768px)` breakpoints for mobile
+- **Page Structure**: Each page has inline `<style>` for page-specific CSS + shared `klein-morandi.css` import
