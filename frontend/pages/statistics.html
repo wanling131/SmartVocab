@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="SmartVocab 学习统计 - 数据可视化分析">
+    <title>学习统计 - SmartVocab</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23002FA7'/><text x='16' y='21' font-family='Arial' font-size='16' font-weight='bold' fill='white' text-anchor='middle'>SV</text></svg>">
+    <link rel="stylesheet" href="../styles/klein-morandi.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <style>
+        body {
+            font-family: 'Nunito', -apple-system, sans-serif;
+            background: var(--morandi-cream);
+            color: var(--text-dark);
+            min-height: 100vh;
+            position: relative;
+        }
+
+        .bg-decoration {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            overflow: hidden;
+            z-index: 0;
+        }
+
+        .hand-letter {
+            font-family: 'Caveat', cursive;
+            font-size: 48px;
+            font-weight: 600;
+            color: var(--klein-blue);
+            opacity: 0.1;
+            position: absolute;
+            animation: float 6s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0) rotate(var(--rotation, 0deg)); }
+            50% { transform: translateY(-15px) rotate(calc(var(--rotation, 0deg) + 3deg)); }
+        }
+
+        .letter-A { top: 5%; left: 3%; --rotation: -12deg; }
+        .letter-B { top: 20%; right: 5%; --rotation: 8deg; font-size: 36px; }
+        .letter-C { top: 40%; left: 2%; --rotation: 5deg; font-size: 52px; }
+        .letter-D { top: 65%; right: 3%; --rotation: -10deg; }
+        .letter-E { top: 85%; left: 6%; --rotation: 15deg; font-size: 38px; }
+
+        .stats-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 40px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .page-header {
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .page-title {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--text-dark);
+        }
+
+        .page-subtitle {
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        .period-selector {
+            display: flex;
+            gap: 8px;
+            background: white;
+            border-radius: 12px;
+            padding: 4px;
+            border: 1px solid var(--morandi-rose);
+        }
+
+        .period-btn {
+            padding: 10px 16px;
+            background: transparent;
+            border: none;
+            border-radius: 8px;
+            color: var(--text-muted);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        .period-btn:hover {
+            color: var(--text-dark);
+        }
+
+        .period-btn.active {
+            background: var(--klein-blue);
+            color: white;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            text-align: center;
+            border: 1px solid var(--morandi-rose);
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+        }
+
+        .stat-icon {
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+
+        .stat-value {
+            font-size: 36px;
+            font-weight: 800;
+            color: var(--klein-blue);
+        }
+
+        .stat-label {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        .stat-trend {
+            font-size: 12px;
+            font-weight: 600;
+            margin-top: 8px;
+        }
+
+        .stat-trend.up {
+            color: var(--accent-sage);
+        }
+
+        .stat-trend.down {
+            color: var(--accent-coral);
+        }
+
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .chart-card {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            border: 1px solid var(--morandi-rose);
+        }
+
+        .chart-header {
+            margin-bottom: 20px;
+        }
+
+        .chart-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-dark);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .chart-container {
+            height: 300px;
+            position: relative;
+        }
+
+        .full-chart {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            border: 1px solid var(--morandi-rose);
+            margin-bottom: 20px;
+        }
+
+        .full-chart .chart-container {
+            height: 350px;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            padding: 16px 24px;
+            border-radius: 12px;
+            font-weight: 600;
+            z-index: 1000;
+            transform: translateX(120%);
+            transition: transform 0.3s ease;
+            background: white;
+            border: 1px solid var(--morandi-rose);
+        }
+
+        .toast.show {
+            transform: translateX(0);
+        }
+
+        .toast.success {
+            border-left: 4px solid var(--accent-sage);
+        }
+
+        .toast.error {
+            border-left: 4px solid var(--accent-coral);
+        }
+
+        /* 响应式布局 */
+        @media (max-width: 1024px) {
+            .charts-grid { grid-template-columns: 1fr; }
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        @media (max-width: 768px) {
+            .stats-container { padding: 20px 16px; }
+            .page-header { flex-direction: column; gap: 16px; align-items: flex-start; }
+            .period-selector { width: 100%; justify-content: center; }
+            .period-btn { padding: 8px 12px; font-size: 12px; }
+            .chart-container { height: 250px; }
+            .stat-value { font-size: 28px; }
+            .stat-card { padding: 16px; }
+            .navbar { padding: 12px 16px; }
+            .nav-menu { display: none; }
+        }
+
+        @media (max-width: 480px) {
+            .page-title { font-size: 22px; }
+            .stats-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
+            .stat-card { padding: 12px; }
+            .stat-value { font-size: 24px; }
+            .stat-label { font-size: 11px; }
+            .chart-container { height: 200px; }
+            .full-chart { padding: 16px; }
+            .chart-card { padding: 16px; }
+        }
+    </style>
+</head>
+<body>
+    <!-- 背景装饰 -->
+    <div class="bg-decoration">
+        <span class="hand-letter letter-A">A</span>
+        <span class="hand-letter letter-B">B</span>
+        <span class="hand-letter letter-C">C</span>
+        <span class="hand-letter letter-D">D</span>
+        <span class="hand-letter letter-E">E</span>
+    </div>
+
+    <!-- 导航栏 -->
+    <nav class="navbar" role="navigation" aria-label="主导航">
+        <a href="dashboard.html" class="nav-brand">
+            <div class="nav-logo">SV</div>
+            <span class="nav-title">SmartVocab</span>
+        </a>
+        <div class="nav-menu" role="menubar">
+            <a href="dashboard.html" class="nav-link" role="menuitem">🏠 首页</a>
+            <a href="learning.html" class="nav-link" role="menuitem">📖 学习</a>
+            <a href="statistics.html" class="nav-link active" role="menuitem" aria-current="page">📊 统计</a>
+            <a href="favorites.html" class="nav-link" role="menuitem">⭐ 收藏</a>
+        </div>
+        <div class="nav-user">
+            <span class="user-name" id="username-display">用户</span>
+            <button class="btn btn-ghost" onclick="logout()" aria-label="退出登录">退出</button>
+        </div>
+    </nav>
+
+    <main class="stats-container">
+        <!-- 页面标题 -->
+        <div class="page-header">
+            <div>
+                <h1 class="page-title">📊 学习统计</h1>
+                <p class="page-subtitle">AI 驱动的智能数据分析</p>
+            </div>
+            <div class="period-selector">
+                <button class="period-btn active" data-period="7">本周</button>
+                <button class="period-btn" data-period="30">本月</button>
+                <button class="period-btn" data-period="90">季度</button>
+            </div>
+        </div>
+
+        <!-- 统计卡片 -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon">📚</div>
+                <div class="stat-value" id="stat-words">0</div>
+                <div class="stat-label">学习词汇</div>
+                <div class="stat-trend up" id="trend-words">+0%</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">✅</div>
+                <div class="stat-value" id="stat-learned">0</div>
+                <div class="stat-label">已掌握</div>
+                <div class="stat-trend up" id="trend-learned">+0%</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">🔥</div>
+                <div class="stat-value" id="stat-streak">0</div>
+                <div class="stat-label">连续天数</div>
+                <div class="stat-trend up" id="trend-streak">+0%</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">⏱</div>
+                <div class="stat-value" id="stat-time">0h</div>
+                <div class="stat-label">学习时长</div>
+                <div class="stat-trend up" id="trend-time">+0%</div>
+            </div>
+        </div>
+
+        <!-- 图表网格 -->
+        <div class="charts-grid">
+            <div class="chart-card">
+                <div class="chart-header">
+                    <h3 class="chart-title">📈 学习趋势</h3>
+                </div>
+                <div class="chart-container">
+                    <canvas id="trend-chart"></canvas>
+                </div>
+            </div>
+            <div class="chart-card">
+                <div class="chart-header">
+                    <h3 class="chart-title">📊 醉度分布</h3>
+                </div>
+                <div class="chart-container">
+                    <canvas id="difficulty-chart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- 雷达图 -->
+        <div class="full-chart">
+            <div class="chart-header">
+                <h3 class="chart-title">🎯 能力雷达图</h3>
+            </div>
+            <div class="chart-container">
+                <canvas id="radar-chart"></canvas>
+            </div>
+        </div>
+
+        <!-- 词性分布 -->
+        <div class="full-chart">
+            <div class="chart-header">
+                <h3 class="chart-title">📝 词性分布</h3>
+            </div>
+            <div class="chart-container">
+                <canvas id="pos-chart"></canvas>
+            </div>
+        </div>
+    </main>
+
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
+
+    <script>
+        const API_BASE = window.location.hostname === 'localhost'
+            ? 'http://localhost:5000/api'
+            : '/api';
+
+        let currentUser = null;
+        let charts = {};
+        let currentPeriod = 7;
+
+        function getToken() { return localStorage.getItem('auth_token'); }
+        function clearToken() { localStorage.removeItem('auth_token'); localStorage.removeItem('currentUser'); }
+        function getUserId() { return localStorage.getItem('userId'); }
+        async function apiRequest(endpoint, options = {}) {
+            const token = getToken();
+            try {
+                const res = await fetch(API_BASE + endpoint, {
+                    method: options.method || 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                    },
+                    body: options.body
+                });
+                if (res.status === 401) { clearToken(); window.location.href = 'login.html'; return { success: false }; }
+                return await res.json();
+            } catch (e) {
+                return { success: false, message: '网络错误' };
+            }
+        }
+
+        function showToast(msg, type = 'success') {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.className = `toast ${type} show`;
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+        async function init() {
+            const token = getToken();
+            if (!token) { window.location.href = 'login.html'; return; }
+            const result = await apiRequest('/auth/profile');
+            if (!result.success) { window.location.href = 'login.html'; return; }
+            currentUser = result.data;
+            document.getElementById('username-display').textContent = currentUser.username;
+            loadStats();
+            initCharts();
+            initPeriodButtons();
+        }
+        async function loadStats() {
+            const result = await apiRequest(`/learning/progress/${currentUser.id}?days=${currentPeriod}`);
+            if (result.success) {
+                const data = result.data || {};
+                document.getElementById('stat-words').textContent = data.total_words || 0;
+                document.getElementById('stat-learned').textContent = data.learned_words || 0;
+                document.getElementById('stat-streak').textContent = data.streak_days || 0;
+                document.getElementById('stat-time').textContent = formatTime(data.total_minutes || 0);
+                if (data.trends) {
+                    document.getElementById('trend-words').textContent = `+${data.trends.words_trend || 0}%`;
+                    document.getElementById('trend-learned').textContent = `+${data.trends.learned_trend || 0}%`;
+                }
+            }
+        }
+        function formatTime(minutes) {
+            if (minutes < 60) return `${minutes}m`;
+            const hours = Math.floor(minutes / 60);
+            const mins = minutes % 60;
+            return `${hours}h ${mins}m`;
+        }
+        function initCharts() {
+            const kleinBlue = '#002FA7';
+            const kleinLight = '#1a4fd0';
+            const coral = '#E07A5F';
+            const sage = '#6B8E6B';
+            const amber = '#F2A03D';
+            // 趋势图
+            const trendCtx = document.getElementById('trend-chart').getContext('2d');
+            charts.trend = new Chart(trendCtx, {
+                type: 'line',
+                data: {
+                    labels: getLast7Days(),
+                    datasets: [{
+                        label: '学习词汇',
+                        data: [12, 18, 25, 32, 45, 28, 15],
+                        borderColor: kleinBlue,
+                        backgroundColor: `${kleinBlue}20`,
+                        tension: 0.4,
+                        fill: true
+                    }, {
+                        label: '已掌握',
+                        data: [8, 12, 18, 20, 25, 18, 22],
+                        borderColor: sage,
+                        backgroundColor: `${sage}20`,
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { position: 'top' } },
+                    scales: { y: { beginAtZero: true } }
+                }
+            });
+            // 难度分布图
+            const diffCtx = document.getElementById('difficulty-chart').getContext('2d');
+            charts.difficulty = new Chart(diffCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['初级', '中级', '高级'],
+                    datasets: [{
+                        data: [35, 45, 20],
+                        backgroundColor: [kleinBlue, kleinLight, coral],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { position: 'bottom' } },
+                    cutout: '70%'
+                }
+            });
+            // 雷达图
+            const radarCtx = document.getElementById('radar-chart').getContext('2d');
+            charts.radar = new Chart(radarCtx, {
+                type: 'radar',
+                data: {
+                    labels: ['听力', '阅读', '写作', '口语', '词汇'],
+                    datasets: [{
+                        label: '掌握度',
+                        data: [75, 82, 68, 70, 85],
+                        borderColor: kleinBlue,
+                        backgroundColor: `${kleinBlue}33`,
+                        borderWidth: 2,
+                        pointBackgroundColor: 'white'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        r: {
+                            angleLines: { display: true },
+                            suggestedMin: 0,
+                            suggestedMax: 100
+                        }
+                    }
+                }
+            });
+            // 词性分布图
+            const posCtx = document.getElementById('pos-chart').getContext('2d');
+            charts.pos = new Chart(posCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['名词', '动词', '形容词', '副词', '介词', '连词'],
+                    datasets: [{
+                        label: '数量',
+                        data: [120, 85, 45, 30, 15, 10],
+                        backgroundColor: [kleinBlue, kleinLight, coral, amber, sage, '#9B8AA6'],
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true } }
+                }
+            });
+        }
+        function getLast7Days() {
+            const days = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+            return days;
+        }
+        function initPeriodButtons() {
+            document.querySelectorAll('.period-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    currentPeriod = parseInt(this.dataset.period);
+                    loadStats();
+                });
+            });
+        }
+        function logout() {
+            clearToken();
+            window.location.href = 'login.html';
+        }
+        init();
+    </script>
+</body>
+</html>

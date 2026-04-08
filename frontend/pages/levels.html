@@ -1,0 +1,937 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="SmartVocab 闯关模式 - 挑战关卡，逐步提升">
+    <title>闯关模式 - SmartVocab</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23002FA7'/><text x='16' y='20' font-family='Arial' font-size='18' font-weight='bold' fill='white' text-anchor='middle'>S</text></svg>">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&family=Caveat:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../styles/klein-morandi.css">
+    <style>
+        /* Page-specific styles for Levels Page */
+
+        :root {
+            --klein-blue: #002FA7;
+            --klein-light: #1a4fd0;
+            --klein-dark: #001d6c;
+            --klein-rgb: 0, 47, 167;
+
+            --morandi-cream: #F5F0E8;
+            --morandi-beige: #E8DFD4;
+            --morandi-rose: #D4C4B5;
+            --morandi-sage: #B8C4B8;
+            --morandi-mist: #C5CED3;
+            --morandi-lavender: #B8B4C8;
+
+            --accent-coral: #E07A5F;
+            --accent-amber: #F2A03D;
+            --accent-sage: #6B8E6B;
+            --accent-lavender: #9B8AA6;
+
+            --text-dark: #2D3436;
+            --text-muted: #636E72;
+            --text-light: #B2BEC3;
+        }
+
+        body {
+            background: var(--morandi-cream);
+            min-height: 100vh;
+            position: relative;
+        }
+
+        /* Floating Hand-letter Decorations */
+        .hand-letter {
+            font-family: 'Caveat', cursive;
+            font-size: 56px;
+            font-weight: 600;
+            color: var(--klein-blue);
+            opacity: 0.08;
+            position: fixed;
+            pointer-events: none;
+            z-index: 0;
+            animation: float 8s ease-in-out infinite;
+        }
+        .hand-letter:nth-child(1) { top: 10%; left: 5%; animation-delay: 0s; --rotation: -5deg; }
+        .hand-letter:nth-child(2) { top: 25%; right: 8%; animation-delay: 2s; --rotation: 8deg; }
+        .hand-letter:nth-child(3) { top: 50%; left: 3%; animation-delay: 4s; --rotation: -3deg; }
+        .hand-letter:nth-child(4) { top: 70%; right: 5%; animation-delay: 1s; --rotation: 6deg; }
+        .hand-letter:nth-child(5) { top: 85%; left: 10%; animation-delay: 3s; --rotation: -8deg; }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0) rotate(var(--rotation, 0deg)); }
+            50% { transform: translateY(-20px) rotate(calc(var(--rotation, 0deg) + 5deg)); }
+        }
+
+        /* Wave Decoration */
+        .wave-decoration {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 120px;
+            pointer-events: none;
+            z-index: 0;
+            opacity: 0.3;
+        }
+
+        /* Main Container */
+        .levels-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Page Header */
+        .page-header {
+            text-align: center;
+            margin-bottom: 48px;
+            position: relative;
+        }
+
+        .page-header::after {
+            content: '';
+            position: absolute;
+            bottom: -16px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80px;
+            height: 4px;
+            background: linear-gradient(90deg, var(--klein-blue), var(--accent-amber));
+            border-radius: 2px;
+        }
+
+        .page-title {
+            font-size: 36px;
+            font-weight: 800;
+            color: var(--klein-blue);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+        }
+
+        .page-title .icon {
+            font-size: 40px;
+            animation: bounce 2s ease-in-out infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
+        }
+
+        .page-subtitle {
+            font-family: 'Caveat', cursive;
+            font-size: 22px;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        /* Path/Journey Visualization */
+        .journey-path {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 40px;
+            padding: 20px;
+        }
+
+        .journey-node {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--morandi-beige);
+            border: 3px solid var(--morandi-rose);
+            transition: all 0.3s ease;
+        }
+
+        .journey-node.completed {
+            background: var(--accent-sage);
+            border-color: var(--accent-sage);
+        }
+
+        .journey-node.current {
+            background: var(--klein-blue);
+            border-color: var(--klein-blue);
+            box-shadow: 0 0 0 4px rgba(0, 47, 167, 0.2);
+            animation: pulse-node 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse-node {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+        }
+
+        .journey-line {
+            width: 40px;
+            height: 3px;
+            background: var(--morandi-rose);
+            margin: 0 4px;
+            border-radius: 2px;
+        }
+
+        .journey-line.completed {
+            background: linear-gradient(90deg, var(--accent-sage), var(--morandi-sage));
+        }
+
+        /* Levels Grid */
+        .levels-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+            gap: 28px;
+        }
+
+        /* Level Card */
+        .level-card {
+            background: white;
+            border-radius: 24px;
+            padding: 28px;
+            box-shadow:
+                0 4px 20px rgba(0, 0, 0, 0.06),
+                0 0 0 1px var(--morandi-rose);
+            position: relative;
+            overflow: hidden;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+        }
+
+        .level-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 6px;
+            background: linear-gradient(90deg, var(--klein-blue), var(--klein-light));
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .level-card:hover {
+            transform: translateY(-6px);
+            box-shadow:
+                0 12px 40px rgba(0, 47, 167, 0.12),
+                0 0 0 2px var(--klein-light);
+        }
+
+        .level-card:hover::before {
+            opacity: 1;
+        }
+
+        /* Locked State */
+        .level-card.locked {
+            opacity: 0.65;
+            filter: grayscale(0.4);
+            cursor: not-allowed;
+        }
+
+        .level-card.locked:hover {
+            transform: none;
+            box-shadow:
+                0 4px 20px rgba(0, 0, 0, 0.06),
+                0 0 0 1px var(--morandi-rose);
+        }
+
+        .level-card.locked::after {
+            content: '🔒';
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 24px;
+            opacity: 0.6;
+        }
+
+        /* Completed State */
+        .level-card.completed {
+            border-color: var(--accent-sage);
+        }
+
+        .level-card.completed::before {
+            background: linear-gradient(90deg, var(--accent-sage), #8fbc8f);
+            opacity: 1;
+        }
+
+        .level-card.completed::after {
+            content: '✓';
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 32px;
+            height: 32px;
+            background: var(--accent-sage);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        /* Level Header */
+        .level-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 16px;
+        }
+
+        .level-order {
+            font-family: 'Caveat', cursive;
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--klein-blue);
+            background: rgba(0, 47, 167, 0.08);
+            padding: 4px 12px;
+            border-radius: 12px;
+        }
+
+        /* Difficulty Stars */
+        .level-difficulty {
+            display: flex;
+            gap: 4px;
+        }
+
+        .difficulty-star {
+            font-size: 16px;
+            color: var(--morandi-beige);
+            transition: all 0.3s ease;
+        }
+
+        .difficulty-star.filled {
+            color: var(--accent-amber);
+            text-shadow: 0 0 8px rgba(242, 160, 61, 0.4);
+        }
+
+        /* Level Content */
+        .level-name {
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--text-dark);
+            margin-bottom: 8px;
+        }
+
+        .level-desc {
+            font-size: 14px;
+            color: var(--text-muted);
+            line-height: 1.6;
+            margin-bottom: 20px;
+            min-height: 44px;
+        }
+
+        /* Progress Section */
+        .level-progress {
+            margin-bottom: 20px;
+        }
+
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .progress-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .progress-text {
+            font-family: 'Caveat', cursive;
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--klein-blue);
+        }
+
+        .progress-bar-wrapper {
+            height: 12px;
+            background: var(--morandi-beige);
+            border-radius: 6px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .progress-bar-wrapper::before {
+            content: '';
+            position: absolute;
+            inset: 2px;
+            background: white;
+            border-radius: 4px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--klein-blue), var(--klein-light), var(--accent-amber));
+            border-radius: 6px;
+            transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            z-index: 1;
+        }
+
+        .progress-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.3) 50%, transparent 100%);
+            animation: shimmer 2s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        /* Status Badge */
+        .level-status {
+            margin-bottom: 20px;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .badge-success {
+            background: rgba(107, 142, 107, 0.15);
+            color: var(--accent-sage);
+            border: 1px solid var(--accent-sage);
+        }
+
+        .badge-locked {
+            background: rgba(99, 110, 114, 0.1);
+            color: var(--text-muted);
+            border: 1px solid var(--morandi-mist);
+        }
+
+        .badge-current {
+            background: rgba(0, 47, 167, 0.1);
+            color: var(--klein-blue);
+            border: 1px solid var(--klein-blue);
+        }
+
+        /* Action Buttons */
+        .level-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 14px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: inherit;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--klein-blue), var(--klein-light));
+            color: white;
+            box-shadow: 0 4px 16px rgba(0, 47, 167, 0.25);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 24px rgba(0, 47, 167, 0.35);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            background: var(--morandi-beige);
+            color: var(--text-dark);
+            border: 2px solid var(--morandi-rose);
+        }
+
+        .btn-secondary:hover {
+            background: var(--morandi-rose);
+        }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--klein-blue);
+            border: 2px solid var(--klein-blue);
+        }
+
+        .btn-ghost:hover {
+            background: var(--klein-blue);
+            color: white;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        /* Unlock Animation */
+        @keyframes unlock-celebration {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .level-card.unlocking {
+            animation: unlock-celebration 0.5s ease;
+        }
+
+        @keyframes confetti {
+            0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(-100px) rotate(360deg); opacity: 0; }
+        }
+
+        .confetti-particle {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            animation: confetti 1s ease-out forwards;
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 80px 20px;
+            background: white;
+            border-radius: 24px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+        }
+
+        .empty-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        .empty-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-dark);
+            margin-bottom: 8px;
+        }
+
+        .empty-text {
+            color: var(--text-muted);
+        }
+
+        /* Loading State */
+        .loading-state {
+            text-align: center;
+            padding: 80px 20px;
+        }
+
+        .loading-spinner {
+            width: 48px;
+            height: 48px;
+            border: 4px solid var(--morandi-beige);
+            border-top-color: var(--klein-blue);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .levels-container {
+                padding: 20px;
+            }
+
+            .page-title {
+                font-size: 28px;
+            }
+
+            .levels-grid {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+
+            .level-card {
+                padding: 24px;
+            }
+
+            .hand-letter {
+                font-size: 36px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Floating Hand-letter Decorations -->
+    <div class="hand-letter" style="--rotation: -5deg;">Level</div>
+    <div class="hand-letter" style="--rotation: 8deg;">闯关</div>
+    <div class="hand-letter" style="--rotation: -3deg;">Challenge</div>
+    <div class="hand-letter" style="--rotation: 6deg;">成长</div>
+    <div class="hand-letter" style="--rotation: -8deg;">进步</div>
+
+    <!-- Wave Decoration -->
+    <div class="wave-decoration">
+        <svg viewBox="0 0 1440 120" preserveAspectRatio="none">
+            <path fill="rgba(184, 196, 184, 0.3)" d="M0,64 C288,96 576,32 864,64 C1152,96 1440,32 1440,64 L1440,120 L0,120 Z"></path>
+            <path fill="rgba(212, 196, 181, 0.3)" d="M0,80 C360,120 720,40 1080,80 C1260,100 1440,60 1440,80 L1440,120 L0,120 Z"></path>
+        </svg>
+    </div>
+
+    <!-- Navigation Bar -->
+    <nav id="app-navbar" class="navbar">
+        <a href="dashboard.html" class="nav-brand">
+            <div class="nav-logo">S</div>
+            <span class="nav-title">SmartVocab</span>
+        </a>
+        <div class="nav-menu">
+            <a href="dashboard.html" class="nav-link" data-page="dashboard">
+                <span>🏠</span> 首页
+            </a>
+            <a href="plans.html" class="nav-link" data-page="plans">
+                <span>📋</span> 计划
+            </a>
+            <a href="levels.html" class="nav-link active" data-page="levels">
+                <span>🎮</span> 闯关
+            </a>
+            <a href="evaluation.html" class="nav-link" data-page="evaluation">
+                <span>📝</span> 测试
+            </a>
+            <a href="statistics.html" class="nav-link" data-page="statistics">
+                <span>📊</span> 统计
+            </a>
+            <a href="favorites.html" class="nav-link" data-page="favorites">
+                <span>⭐</span> 收藏
+            </a>
+            <a href="profile.html" class="nav-link" data-page="profile">
+                <span>👤</span> 我的
+            </a>
+        </div>
+        <div class="nav-user">
+            <span id="username-display" class="user-name"></span>
+            <button id="logout-btn" class="btn btn-ghost">退出</button>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="levels-container">
+        <!-- Page Header -->
+        <header class="page-header">
+            <h1 class="page-title">
+                <span class="icon">🎮</span>
+                闯关模式
+            </h1>
+            <p class="page-subtitle">按顺序通关，解锁更多关卡，成为词汇大师！</p>
+        </header>
+
+        <!-- Journey Path Visualization -->
+        <div class="journey-path" id="journey-path">
+            <!-- Dynamically generated -->
+        </div>
+
+        <!-- Levels Grid -->
+        <section class="levels-grid" id="levels-grid">
+            <div class="loading-state">
+                <div class="loading-spinner"></div>
+                <p style="color: var(--text-muted);">加载关卡中...</p>
+            </div>
+        </section>
+    </main>
+
+    <script type="module">
+        import { apiRequest, getToken, clearToken } from '../js/api-client.js';
+        import { showToast, escapeHtml } from '../js/utils.js';
+
+        // Check login status
+        const token = getToken();
+        if (!token) {
+            window.location.href = 'login.html';
+        }
+
+        let currentUser = null;
+        let gatesData = [];
+
+        // Load user profile
+        async function loadUserProfile() {
+            try {
+                const result = await apiRequest('/auth/profile');
+                if (result.success) {
+                    currentUser = result.data;
+                    document.getElementById('username-display').textContent = currentUser.username;
+                    loadLevels();
+                }
+            } catch (err) {
+                console.error('加载用户信息失败:', err);
+                showToast('加载用户信息失败', 'error');
+            }
+        }
+
+        // Load levels/gates
+        async function loadLevels() {
+            if (!currentUser) return;
+
+            try {
+                const result = await apiRequest(`/levels/gates/${currentUser.id}`);
+                if (result.success) {
+                    gatesData = result.data || [];
+                    renderJourneyPath(gatesData);
+                    renderLevels(gatesData);
+                }
+            } catch (err) {
+                console.error('加载关卡失败:', err);
+                showToast('加载关卡失败', 'error');
+            }
+        }
+
+        // Render journey path visualization
+        function renderJourneyPath(gates) {
+            const container = document.getElementById('journey-path');
+            if (!gates || gates.length === 0) {
+                container.style.display = 'none';
+                return;
+            }
+
+            let html = '';
+            gates.forEach((gate, index) => {
+                const isCompleted = gate.is_completed;
+                const isCurrent = gate.is_unlocked && !gate.is_completed;
+                const isLocked = !gate.is_unlocked;
+
+                if (index > 0) {
+                    const prevCompleted = gates[index - 1].is_completed;
+                    html += `<div class="journey-line ${prevCompleted ? 'completed' : ''}"></div>`;
+                }
+
+                let nodeClass = '';
+                if (isCompleted) nodeClass = 'completed';
+                else if (isCurrent) nodeClass = 'current';
+
+                html += `<div class="journey-node ${nodeClass}" title="${escapeHtml(gate.name)}"></div>`;
+            });
+
+            container.innerHTML = html;
+        }
+
+        // Render levels grid
+        function renderLevels(gates) {
+            const grid = document.getElementById('levels-grid');
+
+            if (!gates || gates.length === 0) {
+                grid.innerHTML = `
+                    <div class="empty-state" style="grid-column: 1 / -1;">
+                        <div class="empty-icon">🗺️</div>
+                        <h3 class="empty-title">暂无关卡</h3>
+                        <p class="empty-text">关卡正在准备中，请稍后再来！</p>
+                    </div>
+                `;
+                return;
+            }
+
+            grid.innerHTML = gates.map(gate => {
+                const isCompleted = gate.is_completed;
+                const isUnlocked = gate.is_unlocked;
+                const progress = gate.total_words > 0
+                    ? Math.round((gate.learned_words || 0) / gate.total_words * 100)
+                    : 0;
+                const difficulty = gate.difficulty_level || 1;
+
+                let cardClass = 'level-card';
+                if (isCompleted) cardClass += ' completed';
+                else if (!isUnlocked) cardClass += ' locked';
+
+                let statusBadge = '';
+                if (isCompleted) {
+                    statusBadge = `<span class="badge badge-success">✓ 已通关</span>`;
+                } else if (isUnlocked) {
+                    statusBadge = `<span class="badge badge-current">🔥 进行中</span>`;
+                } else {
+                    statusBadge = `<span class="badge badge-locked">🔒 未解锁</span>`;
+                }
+
+                const stars = Array.from({length: 5}, (_, i) =>
+                    `<span class="difficulty-star ${i < difficulty ? 'filled' : ''}">★</span>`
+                ).join('');
+
+                let actionButton = '';
+                if (isCompleted) {
+                    actionButton = `<button class="btn btn-secondary btn-start-level" data-gate-id="${gate.id}">
+                        🔄 复习
+                    </button>`;
+                } else if (isUnlocked) {
+                    actionButton = `<button class="btn btn-primary btn-start-level" data-gate-id="${gate.id}">
+                        🚀 开始学习
+                    </button>`;
+                } else {
+                    actionButton = `<button class="btn btn-ghost btn-unlock-level" data-gate-id="${gate.id}" ${!canUnlock(gate, gates) ? 'disabled' : ''}>
+                        🔓 解锁关卡
+                    </button>`;
+                }
+
+                return `
+                    <div class="${cardClass}" data-gate-id="${gate.id}">
+                        <div class="level-header">
+                            <span class="level-order">关卡 ${gate.order || gate.id}</span>
+                            <div class="level-difficulty">${stars}</div>
+                        </div>
+                        <h3 class="level-name">${escapeHtml(gate.name)}</h3>
+                        <p class="level-desc">${escapeHtml(gate.description || '挑战这个关卡，提升你的词汇量！')}</p>
+                        <div class="level-progress">
+                            <div class="progress-header">
+                                <span class="progress-label">学习进度</span>
+                                <span class="progress-text">${gate.learned_words || 0}/${gate.total_words || 0}</span>
+                            </div>
+                            <div class="progress-bar-wrapper">
+                                <div class="progress-fill" style="width: ${progress}%"></div>
+                            </div>
+                        </div>
+                        <div class="level-status">${statusBadge}</div>
+                        <div class="level-actions">${actionButton}</div>
+                    </div>
+                `;
+            }).join('');
+
+            // Add event listeners
+            attachEventListeners();
+        }
+
+        // Check if gate can be unlocked (previous gate completed)
+        function canUnlock(gate, allGates) {
+            if (gate.order === 1 || gate.id === 1) return true;
+            const prevGate = allGates.find(g =>
+                (g.order === gate.order - 1) || (g.id === gate.id - 1)
+            );
+            return prevGate && prevGate.is_completed;
+        }
+
+        // Attach event listeners to buttons
+        function attachEventListeners() {
+            // Start level buttons
+            document.querySelectorAll('.btn-start-level').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    e.stopPropagation();
+                    const gateId = btn.dataset.gateId;
+                    await startLevel(gateId);
+                });
+            });
+
+            // Unlock level buttons
+            document.querySelectorAll('.btn-unlock-level').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    e.stopPropagation();
+                    const gateId = btn.dataset.gateId;
+                    await unlockLevel(gateId);
+                });
+            });
+
+            // Card click (optional navigation)
+            document.querySelectorAll('.level-card:not(.locked)').forEach(card => {
+                card.addEventListener('click', () => {
+                    const gateId = card.dataset.gateId;
+                    const gate = gatesData.find(g => g.id == gateId);
+                    if (gate && gate.is_unlocked) {
+                        startLevel(gateId);
+                    }
+                });
+            });
+
+            // Keyboard navigation for level cards
+            document.querySelectorAll('.level-card').forEach(card => {
+                card.setAttribute('tabindex', '0');
+                card.setAttribute('role', 'button');
+                card.setAttribute('aria-label', `关卡: ${card.querySelector('.level-name')?.textContent || '未命名'}`);
+
+                card.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        card.click();
+                    }
+                });
+            });
+        }
+
+        // Start level
+        async function startLevel(gateId) {
+            const gate = gatesData.find(g => g.id == gateId);
+            if (!gate) return;
+
+            window.location.href = `learning.html?gate_id=${gateId}&difficulty=${gate.difficulty_level || 1}`;
+        }
+
+        // Unlock level with animation
+        async function unlockLevel(gateId) {
+            try {
+                const result = await apiRequest(`/levels/${gateId}/unlock`, { method: 'POST' });
+
+                if (result.success) {
+                    // Add celebration animation
+                    const card = document.querySelector(`.level-card[data-gate-id="${gateId}"]`);
+                    if (card) {
+                        card.classList.add('unlocking');
+                        createConfetti(card);
+                    }
+
+                    showToast('🎉 关卡已解锁！', 'success');
+
+                    // Reload after animation
+                    setTimeout(() => {
+                        loadLevels();
+                    }, 800);
+                } else {
+                    showToast(result.message || '解锁失败', 'error');
+                }
+            } catch (err) {
+                console.error('解锁失败:', err);
+                showToast('解锁失败，请稍后重试', 'error');
+            }
+        }
+
+        // Create confetti effect
+        function createConfetti(element) {
+            const colors = ['#E07A5F', '#F2A03D', '#6B8E6B', '#9B8AA6', '#002FA7'];
+            const rect = element.getBoundingClientRect();
+
+            for (let i = 0; i < 12; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'confetti-particle';
+                particle.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                particle.style.left = `${rect.left + rect.width / 2 + (Math.random() - 0.5) * 100}px`;
+                particle.style.top = `${rect.top + rect.height / 2}px`;
+                particle.style.animationDelay = `${Math.random() * 0.3}s`;
+                document.body.appendChild(particle);
+
+                setTimeout(() => particle.remove(), 1500);
+            }
+        }
+
+        // Logout handler
+        document.getElementById('logout-btn').addEventListener('click', () => {
+            clearToken();
+            window.location.href = 'login.html';
+        });
+
+        // Initialize
+        loadUserProfile();
+    </script>
+</body>
+</html>

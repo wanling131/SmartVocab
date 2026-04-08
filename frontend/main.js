@@ -1,23 +1,24 @@
 import { apiRequest, setToken, getToken, clearToken } from "./js/api-client.js"
-import { getCurrentUser } from "./js/utils.js"
-import { getCurrentUser as getStoredUser } from "./js/utils.js"
+import {
+  getCurrentUser,
+  escapeHtml,
+  animateNumber,
+  fadeIn,
+  fadeOut,
+  animateProgress,
+  typeWriter,
+  showToast as utilsShowToast,
+  showLoading as utilsShowLoading,
+  hideLoading as utilsHideLoading
+} from "./js/utils.js"
 
 // Web Worker 客户端（用于大量数据计算)
 let workerClient = null
 
-// ==================== 安全工具函数 ====================
-
-/**
- * HTML转义函数，防止XSS攻击
- * @param {string} str - 需要转义的字符串
- * @returns {string} - 转义后的安全字符串
- */
-function escapeHtml(str) {
-  if (str === null || str === undefined) return ''
-  const div = document.createElement('div')
-  div.textContent = String(str)
-  return div.innerHTML
-}
+// 重命名导入的工具函数以避免冲突
+const showToast = utilsShowToast || showToast
+const showLoading = utilsShowLoading || showLoading
+const hideLoading = utilsHideLoading || hideLoading
 
 /**
  * 安全地设置元素的innerHTML，自动转义所有变量
@@ -1686,12 +1687,25 @@ async function loadCurrentWord() {
 
     // 重置反馈
     document.getElementById("feedback-section").classList.add("hidden")
-  } else {
-    console.error("Failed to load current word:", result.message)
-    handleError("加载单词失败: " + result.message, "加载单词")
-    showPage("dashboard")
+  } else if (currentSession && currentSession.word_stages) {
+    const currentWordData = getCurrentSessionWord()
+    if (!currentWordData?.id) {
+      handleError("当前单词数据无效", "下一题")
+      return
+    }
+    const wordId = currentWordData.id
+    const currentStage = currentSession.word_stages[String(wordId)]  // 转换为字符串
+
+
+    if (currentStage === "choice") {
+      // 选择题刚完成，切换到翻译题阶段
+      showTranslationQuestion(currentWordData)
+      return
+    }
   }
-}
+
+  // 翻译题完成，移动到下一个单词
+  currentSession.current_word_index++
 
 function showChoiceQuestion(word) {
   if (!word || !Array.isArray(word.options) || word.options.length === 0) {

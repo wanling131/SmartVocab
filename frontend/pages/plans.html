@@ -1,0 +1,1156 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="SmartVocab 学习计划 - 制定和管理学习计划">
+    <title>学习计划 - SmartVocab</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23002FA7'/><text x='16' y='20' font-family='Arial' font-size='18' font-weight='bold' fill='white' text-anchor='middle'>S</text></svg>">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600;700&family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../styles/klein-morandi.css">
+    <style>
+        :root {
+            /* Klein Blue - 克莱因蓝 */
+            --klein-blue: #002FA7;
+            --klein-light: #1a4fd0;
+            --klein-dark: #001d6c;
+            --klein-rgb: 0, 47, 167;
+
+            /* Morandi Colors - 莫兰迪色系 */
+            --morandi-cream: #F5F0E8;
+            --morandi-beige: #E8DFD4;
+            --morandi-rose: #D4C4B5;
+            --morandi-sage: #B8C4B8;
+            --morandi-mist: #C5CED3;
+            --morandi-lavender: #B8B4C8;
+            --morandi-peach: #E8D4C4;
+
+            /* Accent Colors */
+            --accent-coral: #E07A5F;
+            --accent-amber: #F2A03D;
+            --accent-sage: #6B8E6B;
+            --accent-teal: #5B9B9A;
+
+            /* Text Colors */
+            --text-dark: #2D3436;
+            --text-muted: #636E72;
+            --text-light: #B2BEC3;
+        }
+
+        body {
+            font-family: 'Nunito', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: var(--morandi-cream);
+            color: var(--text-dark);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Background Decoration */
+        .bg-decoration {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            overflow: hidden;
+            z-index: 0;
+        }
+
+        .hand-letter {
+            font-family: 'Caveat', cursive;
+            font-size: 56px;
+            font-weight: 600;
+            color: var(--klein-blue);
+            opacity: 0.08;
+            position: absolute;
+            animation: float 6s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0) rotate(var(--rotation, 0deg)); }
+            50% { transform: translateY(-15px) rotate(calc(var(--rotation, 0deg) + 3deg)); }
+        }
+
+        /* Navbar */
+        .navbar {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--morandi-rose);
+            padding: 16px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .nav-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+        }
+
+        .nav-logo {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--klein-blue), var(--klein-light));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            color: white;
+            font-size: 18px;
+            box-shadow: 0 4px 12px rgba(0, 47, 167, 0.2);
+        }
+
+        .nav-title {
+            font-size: 22px;
+            font-weight: 800;
+            color: var(--klein-blue);
+        }
+
+        .nav-menu {
+            display: flex;
+            gap: 6px;
+        }
+
+        .nav-link {
+            color: var(--text-muted);
+            text-decoration: none;
+            padding: 10px 18px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .nav-link:hover {
+            background: var(--morandi-beige);
+            color: var(--text-dark);
+        }
+
+        .nav-link.active {
+            background: var(--klein-blue);
+            color: white;
+        }
+
+        .nav-user {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .user-name {
+            font-size: 14px;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        /* Main Container */
+        .plans-container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 40px;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Page Header */
+        .page-header {
+            margin-bottom: 40px;
+            text-align: center;
+        }
+
+        .page-title {
+            font-size: 36px;
+            font-weight: 800;
+            color: var(--klein-blue);
+            margin-bottom: 8px;
+        }
+
+        .page-subtitle {
+            color: var(--text-muted);
+            font-size: 16px;
+        }
+
+        /* Section Styles */
+        .section {
+            margin-bottom: 40px;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .section-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-dark);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section-title-icon {
+            font-size: 24px;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: inherit;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--klein-blue), var(--klein-light));
+            color: white;
+            box-shadow: 0 4px 12px rgba(0, 47, 167, 0.2);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 47, 167, 0.3);
+        }
+
+        .btn-secondary {
+            background: var(--morandi-beige);
+            color: var(--text-dark);
+            border: 2px solid var(--morandi-rose);
+        }
+
+        .btn-secondary:hover {
+            background: var(--morandi-rose);
+        }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--text-muted);
+            border: 2px solid var(--morandi-rose);
+        }
+
+        .btn-ghost:hover {
+            background: var(--morandi-rose);
+            color: var(--text-dark);
+        }
+
+        .btn-sm {
+            padding: 8px 14px;
+            font-size: 12px;
+        }
+
+        .btn-danger {
+            background: var(--accent-coral);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c96a52;
+        }
+
+        /* Current Plan Card */
+        .current-plan-card {
+            background: white;
+            border-radius: 24px;
+            padding: 32px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.06);
+            border: 2px solid var(--morandi-rose);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .current-plan-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--klein-blue), var(--accent-teal), var(--accent-sage));
+        }
+
+        .current-plan-card.active {
+            border-color: var(--accent-sage);
+            background: linear-gradient(135deg, white 0%, rgba(107, 142, 107, 0.05) 100%);
+        }
+
+        .plan-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 24px;
+        }
+
+        .plan-title-section {
+            flex: 1;
+        }
+
+        .plan-name {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-dark);
+            margin-bottom: 8px;
+        }
+
+        .plan-dataset-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            background: var(--morandi-beige);
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--klein-blue);
+        }
+
+        .plan-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        /* Progress Section */
+        .plan-progress {
+            margin-bottom: 24px;
+        }
+
+        .progress-bar-container {
+            background: var(--morandi-beige);
+            border-radius: 12px;
+            height: 12px;
+            overflow: hidden;
+            margin-bottom: 8px;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--klein-blue), var(--klein-light));
+            border-radius: 12px;
+            transition: width 0.5s ease;
+        }
+
+        .progress-text {
+            font-size: 13px;
+            color: var(--text-muted);
+            text-align: right;
+        }
+
+        /* Stats Grid */
+        .plan-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+
+        .plan-stat {
+            text-align: center;
+            padding: 20px;
+            background: var(--morandi-cream);
+            border-radius: 16px;
+            border: 1px solid var(--morandi-beige);
+        }
+
+        .plan-stat-icon {
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+
+        .plan-stat-value {
+            font-size: 28px;
+            font-weight: 800;
+            color: var(--klein-blue);
+        }
+
+        .plan-stat-label {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        /* Daily Goals */
+        .daily-goals {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .daily-goal-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 16px;
+            background: var(--morandi-cream);
+            border-radius: 12px;
+            border: 1px solid var(--morandi-beige);
+        }
+
+        .goal-icon {
+            width: 44px;
+            height: 44px;
+            background: linear-gradient(135deg, var(--klein-blue), var(--klein-light));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        .goal-info {
+            flex: 1;
+        }
+
+        .goal-label {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+
+        .goal-value {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-dark);
+        }
+
+        .goal-progress {
+            width: 60px;
+            height: 60px;
+            position: relative;
+        }
+
+        .goal-progress svg {
+            transform: rotate(-90deg);
+        }
+
+        .goal-progress-circle {
+            fill: none;
+            stroke: var(--morandi-beige);
+            stroke-width: 6;
+        }
+
+        .goal-progress-fill {
+            fill: none;
+            stroke: var(--klein-blue);
+            stroke-width: 6;
+            stroke-linecap: round;
+            transition: stroke-dashoffset 0.5s ease;
+        }
+
+        .goal-progress-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--klein-blue);
+        }
+
+        /* Plan Footer */
+        .plan-card-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 20px;
+            border-top: 1px solid var(--morandi-beige);
+        }
+
+        .plan-meta {
+            display: flex;
+            gap: 20px;
+        }
+
+        .plan-meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            background: white;
+            border-radius: 24px;
+            border: 2px dashed var(--morandi-rose);
+        }
+
+        .empty-icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+            opacity: 0.6;
+        }
+
+        .empty-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text-dark);
+            margin-bottom: 8px;
+        }
+
+        .empty-text {
+            color: var(--text-muted);
+            margin-bottom: 20px;
+        }
+
+        /* History Plans List */
+        .plans-list {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .plan-history-item {
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+            border: 1px solid var(--morandi-beige);
+            transition: all 0.3s ease;
+        }
+
+        .plan-history-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 24px rgba(0, 0, 0, 0.08);
+            border-color: var(--morandi-rose);
+        }
+
+        .history-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .history-item-name {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-dark);
+        }
+
+        .history-item-badge {
+            padding: 4px 10px;
+            background: var(--morandi-beige);
+            border-radius: 12px;
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .history-item-body {
+            display: flex;
+            gap: 24px;
+            margin-bottom: 12px;
+        }
+
+        .history-stat {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        .history-stat strong {
+            color: var(--klein-blue);
+            font-weight: 600;
+        }
+
+        .history-item-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 12px;
+            border-top: 1px solid var(--morandi-beige);
+        }
+
+        .history-date {
+            font-size: 12px;
+            color: var(--text-light);
+        }
+
+        /* Create Plan Form */
+        .create-plan-section {
+            background: white;
+            border-radius: 24px;
+            padding: 32px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.06);
+            border: 2px solid var(--morandi-rose);
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+
+        .form-group {
+            margin-bottom: 0;
+        }
+
+        .form-group.full-width {
+            grid-column: span 2;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+
+        .form-input,
+        .form-select {
+            width: 100%;
+            padding: 14px 18px;
+            border: 2px solid var(--morandi-beige);
+            border-radius: 12px;
+            font-size: 15px;
+            color: var(--text-dark);
+            background: white;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        .form-input:focus,
+        .form-select:focus {
+            outline: none;
+            border-color: var(--klein-blue);
+            box-shadow: 0 0 0 4px rgba(0, 47, 167, 0.1);
+        }
+
+        .form-input::placeholder {
+            color: var(--text-light);
+        }
+
+        .form-select {
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23636E72' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 16px center;
+            padding-right: 40px;
+        }
+
+        .form-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+
+        .btn-create {
+            padding: 14px 32px;
+            font-size: 15px;
+        }
+
+        /* Decorative Elements */
+        .decorative-line {
+            position: absolute;
+            width: 200px;
+            height: 3px;
+            background: linear-gradient(90deg, var(--klein-blue), transparent);
+            border-radius: 2px;
+            opacity: 0.1;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .navbar {
+                padding: 12px 20px;
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+
+            .nav-menu {
+                order: 3;
+                width: 100%;
+                justify-content: center;
+                flex-wrap: wrap;
+            }
+
+            .plans-container {
+                padding: 20px;
+            }
+
+            .page-title {
+                font-size: 28px;
+            }
+
+            .plan-stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .daily-goals {
+                grid-template-columns: 1fr;
+            }
+
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .form-group.full-width {
+                grid-column: span 1;
+            }
+
+            .history-item-body {
+                flex-direction: column;
+                gap: 8px;
+            }
+        }
+
+        /* Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-in {
+            animation: fadeInUp 0.5s ease forwards;
+        }
+
+        .animate-delay-1 { animation-delay: 0.1s; }
+        .animate-delay-2 { animation-delay: 0.2s; }
+        .animate-delay-3 { animation-delay: 0.3s; }
+    </style>
+</head>
+<body>
+    <!-- Background Decoration -->
+    <div class="bg-decoration">
+        <span class="hand-letter" style="top: 10%; left: 5%; --rotation: -15deg;">Plan</span>
+        <span class="hand-letter" style="top: 25%; right: 8%; --rotation: 12deg;">Learn</span>
+        <span class="hand-letter" style="top: 50%; left: 3%; --rotation: -8deg;">Goal</span>
+        <span class="hand-letter" style="top: 70%; right: 5%; --rotation: 20deg;">Grow</span>
+        <span class="hand-letter" style="bottom: 15%; left: 10%; --rotation: -5deg;">Study</span>
+        <span class="hand-letter" style="bottom: 30%; right: 12%; --rotation: 10deg;">Daily</span>
+    </div>
+
+    <!-- Navbar -->
+    <nav class="navbar">
+        <a href="dashboard.html" class="nav-brand">
+            <div class="nav-logo">S</div>
+            <span class="nav-title">SmartVocab</span>
+        </a>
+        <div class="nav-menu">
+            <a href="dashboard.html" class="nav-link" data-page="dashboard">🏠 首页</a>
+            <a href="plans.html" class="nav-link active" data-page="plans">📋 计划</a>
+            <a href="levels.html" class="nav-link" data-page="levels">🎮 闯关</a>
+            <a href="evaluation.html" class="nav-link" data-page="evaluation">📝 测试</a>
+            <a href="statistics.html" class="nav-link" data-page="statistics">📊 统计</a>
+            <a href="favorites.html" class="nav-link" data-page="favorites">⭐ 收藏</a>
+            <a href="profile.html" class="nav-link" data-page="profile">👤 我的</a>
+        </div>
+        <div class="nav-user">
+            <span id="username-display" class="user-name"></span>
+            <button id="logout-btn" class="btn btn-ghost btn-sm">退出</button>
+        </div>
+    </nav>
+
+    <main class="plans-container">
+        <!-- Page Header -->
+        <header class="page-header animate-in">
+            <h1 class="page-title">学习计划</h1>
+            <p class="page-subtitle">制定目标，追踪进度，成就更好的自己</p>
+        </header>
+
+        <!-- Current Active Plan -->
+        <section class="section animate-in animate-delay-1">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <span class="section-title-icon">📌</span>
+                    当前生效计划
+                </h2>
+                <button id="refresh-plans-btn" class="btn btn-secondary btn-sm">
+                    🔄 刷新
+                </button>
+            </div>
+            <div id="active-plan-display">
+                <!-- Will be populated by JavaScript -->
+            </div>
+        </section>
+
+        <!-- Plan History -->
+        <section class="section animate-in animate-delay-2">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <span class="section-title-icon">📜</span>
+                    历史计划
+                </h2>
+                <button id="refresh-history-btn" class="btn btn-secondary btn-sm">
+                    🔄 刷新
+                </button>
+            </div>
+            <div id="plans-history" class="plans-list">
+                <!-- Will be populated by JavaScript -->
+            </div>
+        </section>
+
+        <!-- Create New Plan -->
+        <section class="section animate-in animate-delay-3">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <span class="section-title-icon">✨</span>
+                    创建新计划
+                </h2>
+            </div>
+            <div class="create-plan-section">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label class="form-label" for="plan-dataset">📚 选择词库</label>
+                        <select id="plan-dataset" class="form-select">
+                            <option value="cet4">CET4 - 大学英语四级</option>
+                            <option value="cet6">CET6 - 大学英语六级</option>
+                            <option value="toefl">TOEFL - 托福</option>
+                            <option value="ielts">IELTS - 雅思</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="plan-name">📝 计划名称（可选）</label>
+                        <input type="text" id="plan-name" class="form-input" placeholder="例如：考研英语计划">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="plan-daily-new">🌟 每日新学单词</label>
+                        <input type="number" id="plan-daily-new" class="form-input" value="20" min="5" max="100">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="plan-daily-review">🔄 每日复习单词</label>
+                        <input type="number" id="plan-daily-review" class="form-input" value="20" min="5" max="100">
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button id="create-plan-btn" class="btn btn-primary btn-create">
+                        🚀 创建计划
+                    </button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script type="module">
+        import { apiRequest, getToken, clearToken } from '../js/api-client.js';
+        import { showToast, escapeHtml } from '../js/utils.js';
+
+        // 检查登录状态
+        const token = getToken();
+        if (!token) {
+            window.location.href = 'login.html';
+        }
+
+        let currentUser = null;
+
+        // 加载用户信息
+        async function loadUserProfile() {
+            try {
+                const result = await apiRequest('/auth/profile');
+                if (result.success) {
+                    currentUser = result.data;
+                    document.getElementById('username-display').textContent = currentUser.username;
+                    loadPlans();
+                }
+            } catch (err) {
+                console.error('加载用户信息失败:', err);
+            }
+        }
+
+        // 加载计划
+        async function loadPlans() {
+            try {
+                const result = await apiRequest(`/plans?user_id=${currentUser.id}`);
+                if (result.success) {
+                    const plans = result.data || [];
+                    renderPlans(plans);
+                }
+            } catch (err) {
+                console.error('加载计划失败:', err);
+            }
+        }
+
+        // 渲染计划列表
+        function renderPlans(plans) {
+            const activePlanDisplay = document.getElementById('active-plan-display');
+            const historyList = document.getElementById('plans-history');
+
+            const activePlan = plans.find(p => p.is_active);
+            const historyPlans = plans.filter(p => !p.is_active);
+
+            // 渲染当前计划
+            if (activePlan) {
+                const progressPercent = activePlan.total_words > 0
+                    ? Math.round((activePlan.learned_words || 0) / activePlan.total_words * 100)
+                    : 0;
+
+                activePlanDisplay.innerHTML = `
+                    <div class="current-plan-card active">
+                        <div class="plan-card-header">
+                            <div class="plan-title-section">
+                                <h3 class="plan-name">${escapeHtml(activePlan.name || '未命名计划')}</h3>
+                                <span class="plan-dataset-badge">
+                                    📚 ${activePlan.dataset}
+                                </span>
+                            </div>
+                            <div class="plan-actions">
+                                <button class="btn btn-danger btn-sm deactivate-plan" data-plan-id="${activePlan.id}">
+                                    ⏹ 停用
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="plan-progress">
+                            <div class="progress-bar-container">
+                                <div class="progress-bar-fill" style="width: ${progressPercent}%"></div>
+                            </div>
+                            <div class="progress-text">已完成 ${progressPercent}%</div>
+                        </div>
+
+                        <div class="plan-stats-grid">
+                            <div class="plan-stat">
+                                <div class="plan-stat-icon">🌟</div>
+                                <div class="plan-stat-value">${activePlan.daily_new_words || 0}</div>
+                                <div class="plan-stat-label">每日新词</div>
+                            </div>
+                            <div class="plan-stat">
+                                <div class="plan-stat-icon">🔄</div>
+                                <div class="plan-stat-value">${activePlan.daily_review_words || 0}</div>
+                                <div class="plan-stat-label">每日复习</div>
+                            </div>
+                            <div class="plan-stat">
+                                <div class="plan-stat-icon">📊</div>
+                                <div class="plan-stat-value">${activePlan.total_words || 0}</div>
+                                <div class="plan-stat-label">总词数</div>
+                            </div>
+                        </div>
+
+                        <div class="daily-goals">
+                            <div class="daily-goal-item">
+                                <div class="goal-icon">📝</div>
+                                <div class="goal-info">
+                                    <div class="goal-label">今日新学</div>
+                                    <div class="goal-value">${activePlan.today_new || 0} / ${activePlan.daily_new_words || 20}</div>
+                                </div>
+                                <div class="goal-progress">
+                                    <svg width="60" height="60" viewBox="0 0 60 60">
+                                        <circle class="goal-progress-circle" cx="30" cy="30" r="24"></circle>
+                                        <circle class="goal-progress-fill" cx="30" cy="30" r="24"
+                                            stroke-dasharray="150.8"
+                                            stroke-dashoffset="${150.8 * (1 - (activePlan.today_new || 0) / (activePlan.daily_new_words || 20))}">
+                                        </circle>
+                                    </svg>
+                                    <span class="goal-progress-text">${Math.round((activePlan.today_new || 0) / (activePlan.daily_new_words || 20) * 100)}%</span>
+                                </div>
+                            </div>
+                            <div class="daily-goal-item">
+                                <div class="goal-icon">🔁</div>
+                                <div class="goal-info">
+                                    <div class="goal-label">今日复习</div>
+                                    <div class="goal-value">${activePlan.today_review || 0} / ${activePlan.daily_review_words || 20}</div>
+                                </div>
+                                <div class="goal-progress">
+                                    <svg width="60" height="60" viewBox="0 0 60 60">
+                                        <circle class="goal-progress-circle" cx="30" cy="30" r="24"></circle>
+                                        <circle class="goal-progress-fill" cx="30" cy="30" r="24"
+                                            stroke-dasharray="150.8"
+                                            stroke-dashoffset="${150.8 * (1 - (activePlan.today_review || 0) / (activePlan.daily_review_words || 20))}">
+                                        </circle>
+                                    </svg>
+                                    <span class="goal-progress-text">${Math.round((activePlan.today_review || 0) / (activePlan.daily_review_words || 20) * 100)}%</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="plan-card-footer">
+                            <div class="plan-meta">
+                                <div class="plan-meta-item">
+                                    📅 创建于 ${new Date(activePlan.created_at).toLocaleDateString('zh-CN')}
+                                </div>
+                                <div class="plan-meta-item">
+                                    ✅ 已学习 ${activePlan.learned_words || 0} 词
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                activePlanDisplay.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">📋</div>
+                        <h3 class="empty-title">暂无生效计划</h3>
+                        <p class="empty-text">创建一个学习计划，开始你的词汇之旅吧！</p>
+                        <button class="btn btn-primary" onclick="document.getElementById('plan-name').focus()">
+                            ✨ 创建计划
+                        </button>
+                    </div>
+                `;
+            }
+
+            // 渲染历史计划
+            if (historyPlans.length > 0) {
+                historyList.innerHTML = historyPlans.map(plan => `
+                    <div class="plan-history-item">
+                        <div class="history-item-header">
+                            <h4 class="history-item-name">${escapeHtml(plan.name || '未命名')}</h4>
+                            <span class="history-item-badge">${plan.dataset}</span>
+                        </div>
+                        <div class="history-item-body">
+                            <div class="history-stat">
+                                🌟 每日新词: <strong>${plan.daily_new_words}</strong>
+                            </div>
+                            <div class="history-stat">
+                                🔄 每日复习: <strong>${plan.daily_review_words}</strong>
+                            </div>
+                            <div class="history-stat">
+                                📊 总词数: <strong>${plan.total_words || 0}</strong>
+                            </div>
+                            <div class="history-stat">
+                                ✅ 已学习: <strong>${plan.learned_words || 0}</strong>
+                            </div>
+                        </div>
+                        <div class="history-item-footer">
+                            <span class="history-date">📅 ${new Date(plan.created_at).toLocaleDateString('zh-CN')}</span>
+                            <button class="btn btn-secondary btn-sm reactivate-plan" data-plan-id="${plan.id}">
+                                🔄 重新激活
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                historyList.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">📜</div>
+                        <h3 class="empty-title">暂无历史计划</h3>
+                        <p class="empty-text">完成或停用的计划将显示在这里</p>
+                    </div>
+                `;
+            }
+
+            // Bind event handlers
+            bindPlanEventHandlers();
+        }
+
+        // Bind event handlers for plan actions
+        function bindPlanEventHandlers() {
+            // Deactivate plan buttons
+            document.querySelectorAll('.deactivate-plan').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    const planId = btn.dataset.planId;
+                    await deactivatePlan(planId);
+                });
+            });
+
+            // Reactivate plan buttons
+            document.querySelectorAll('.reactivate-plan').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    const planId = btn.dataset.planId;
+                    await reactivatePlan(planId);
+                });
+            });
+        }
+
+        // 刷新
+        document.getElementById('refresh-plans-btn').addEventListener('click', loadPlans);
+        document.getElementById('refresh-history-btn').addEventListener('click', loadPlans);
+
+        // 创建计划
+        document.getElementById('create-plan-btn').addEventListener('click', async () => {
+            const dataset = document.getElementById('plan-dataset').value;
+            const dailyNew = parseInt(document.getElementById('plan-daily-new').value);
+            const dailyReview = parseInt(document.getElementById('plan-daily-review').value);
+            let name = document.getElementById('plan-name').value;
+
+            if (!name) {
+                name = `学习计划 - ${new Date().toLocaleDateString('zh-CN')}`;
+            }
+
+            try {
+                const result = await apiRequest('/plans', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        user_id: currentUser.id,
+                        dataset,
+                        daily_new_words: dailyNew,
+                        daily_review_words: dailyReview,
+                        name
+                    })
+                });
+                if (result.success) {
+                    showToast('计划创建成功！', 'success');
+                    document.getElementById('plan-name').value = '';
+                    loadPlans();
+                } else {
+                    showToast(result.message || '创建失败', 'error');
+                }
+            } catch (err) {
+                showToast('创建失败，请稍后重试', 'error');
+            }
+        });
+
+        // 停用计划
+        async function deactivatePlan(planId) {
+            try {
+                const result = await apiRequest(`/plans/${planId}/deactivate`, {
+                    method: 'POST'
+                });
+                if (result.success) {
+                    showToast('计划已停用', 'success');
+                    loadPlans();
+                } else {
+                    showToast(result.message || '操作失败', 'error');
+                }
+            } catch (err) {
+                showToast('操作失败', 'error');
+            }
+        }
+
+        // 重新激活计划
+        async function reactivatePlan(planId) {
+            try {
+                const result = await apiRequest(`/plans/${planId}/activate`, {
+                    method: 'POST'
+                });
+                if (result.success) {
+                    showToast('计划已激活', 'success');
+                    loadPlans();
+                } else {
+                    showToast(result.message || '操作失败', 'error');
+                }
+            } catch (err) {
+                showToast('操作失败，请稍后重试', 'error');
+            }
+        }
+
+        // 退出
+        document.getElementById('logout-btn').addEventListener('click', () => {
+            clearToken();
+            window.location.href = 'login.html';
+        });
+
+        // 初始化
+        loadUserProfile();
+    </script>
+</body>
+</html>

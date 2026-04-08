@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>仪表盘 - SmartVocab</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23002FA7'/><text x='16' y='21' font-family='Arial' font-size='16' font-weight='bold' fill='white' text-anchor='middle'>SV</text></svg>">
+    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            /* Klein Blue */
+            --klein-blue: #002FA7;
+            --klein-light: #1a4fd0;
+            --klein-dark: #001d6c;
+
+            /* Morandi Colors */
+            --morandi-cream: #F5F0E8;
+            --morandi-beige: #E8DFD4;
+            --morandi-rose: #D4C4B5;
+            --morandi-sage: #B8C4B8;
+            --morandi-mist: #C5CED3;
+            --morandi-lavender: #B8B4C8;
+            --morandi-peach: #E8D4C4;
+
+            /* Accent Colors */
+            --accent-coral: #E07A5F;
+            --accent-amber: #F2A03D;
+            --accent-sage: #6B8E6B;
+            --accent-lavender: #9B8AA6;
+
+            /* Text */
+            --text-dark: #2D3436;
+            --text-muted: #636E72;
+            --text-light: #B2BEC3;
+        }
+
+        body {
+            font-family: 'Nunito', -apple-system, sans-serif;
+            background: var(--morandi-cream);
+            min-height: 100vh;
+            color: var(--text-dark);
+            position: relative;
+        }
+
+        /* 背景装饰 */
+        .bg-decoration {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            overflow: hidden;
+            z-index: 0;
+        }
+
+        .hand-letter {
+            font-family: 'Caveat', cursive;
+            font-size: 48px;
+            font-weight: 600;
+            color: var(--klein-blue);
+            opacity: 0.1;
+            position: absolute;
+            animation: float 6s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0) rotate(var(--rotation, 0deg)); }
+            50% { transform: translateY(-15px) rotate(calc(var(--rotation, 0deg) + 3deg)); }
+        }
+
+        .letter-A { top: 5%; left: 3%; --rotation: -12deg; }
+        .letter-B { top: 20%; right: 5%; --rotation: 8deg; font-size: 36px; }
+        .letter-C { top: 40%; left: 2%; --rotation: 5deg; font-size: 52px; }
+        .letter-D { top: 65%; right: 3%; --rotation: -10deg; }
+        .letter-E { top: 85%; left: 6%; --rotation: 15deg; font-size: 38px; }
+
+        /* 波浪线 */
+        .wave-line {
+            position: absolute;
+            width: 100%;
+            height: 40px;
+            opacity: 0.2;
+        }
+
+        .wave-1 { top: 15%; }
+        .wave-2 { top: 45%; }
+        .wave-3 { top: 75%; }
+
+        /* 导航栏 */
+        .navbar {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--morandi-rose);
+            padding: 16px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .nav-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+        }
+
+        .nav-logo {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--klein-blue), var(--klein-light));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            color: white;
+            font-size: 18px;
+            box-shadow: 0 4px 12px rgba(0, 47, 167, 0.2);
+        }
+
+        .nav-title {
+            font-size: 22px;
+            font-weight: 800;
+            color: var(--klein-blue);
+            letter-spacing: -0.5px;
+        }
+
+        .nav-menu {
+            display: flex;
+            gap: 6px;
+        }
+
+        .nav-link {
+            color: var(--text-muted);
+            text-decoration: none;
+            padding: 10px 18px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .nav-link:hover {
+            background: var(--morandi-beige);
+            color: var(--text-dark);
+        }
+
+        .nav-link.active {
+            background: var(--klein-blue);
+            color: white;
+        }
+
+        .nav-user {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .user-name {
+            font-size: 14px;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--text-muted);
+            border: 2px solid var(--morandi-rose);
+        }
+
+        .btn-ghost:hover {
+            background: var(--morandi-rose);
+            color: var(--text-dark);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--klein-blue), var(--klein-light));
+            color: white;
+            box-shadow: 0 4px 12px rgba(0, 47, 167, 0.2);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 47, 167, 0.3);
+        }
+
+        /* 主容器 */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 40px;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* 欢迎区 */
+        .welcome-section {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+        }
+
+        .welcome-text h1 {
+            font-size: 36px;
+            font-weight: 800;
+            color: var(--text-dark);
+            margin-bottom: 8px;
+        }
+
+        .welcome-text h1 span {
+            color: var(--klein-blue);
+        }
+
+        .welcome-text p {
+            color: var(--text-muted);
+            font-size: 16px;
+        }
+
+        .ai-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: linear-gradient(135deg, var(--klein-blue), var(--klein-light));
+            color: white;
+            padding: 12px 24px;
+            border-radius: 50px;
+            font-size: 14px;
+            font-weight: 600;
+            box-shadow: 0 8px 24px rgba(0, 47, 167, 0.25);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .ai-badge::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            animation: shimmer 3s infinite;
+        }
+
+        @keyframes shimmer {
+            to { left: 100%; }
+        }
+
+        /* 统计卡片网格 */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 24px;
+            margin-bottom: 40px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 20px;
+            padding: 28px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+            border: 1px solid var(--morandi-rose);
+            transition: all 0.3s ease;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+        }
+
+        .stat-card:nth-child(1)::before { background: var(--klein-blue); }
+        .stat-card:nth-child(2)::before { background: var(--accent-sage); }
+        .stat-card:nth-child(3)::before { background: var(--accent-amber); }
+        .stat-card:nth-child(4)::before { background: var(--accent-coral); }
+
+        .stat-card:hover {
+            transform: translateY(-6px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.08);
+        }
+
+        .stat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 16px;
+        }
+
+        .stat-icon {
+            width: 52px;
+            height: 52px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+
+        .stat-card:nth-child(1) .stat-icon { background: rgba(0, 47, 167, 0.1); }
+        .stat-card:nth-child(2) .stat-icon { background: rgba(107, 142, 107, 0.15); }
+        .stat-card:nth-child(3) .stat-icon { background: rgba(242, 160, 61, 0.15); }
+        .stat-card:nth-child(4) .stat-icon { background: rgba(224, 122, 95, 0.15); }
+
+        .stat-trend {
+            font-size: 12px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-weight: 700;
+        }
+
+        .stat-trend.up { background: rgba(107, 142, 107, 0.15); color: var(--accent-sage); }
+
+        .stat-value {
+            font-size: 40px;
+            font-weight: 800;
+            margin-bottom: 4px;
+        }
+
+        .stat-card:nth-child(1) .stat-value { color: var(--klein-blue); }
+        .stat-card:nth-child(2) .stat-value { color: var(--accent-sage); }
+        .stat-card:nth-child(3) .stat-value { color: var(--accent-amber); }
+        .stat-card:nth-child(4) .stat-value { color: var(--accent-coral); }
+
+        .stat-label {
+            font-size: 14px;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        /* 内容网格 */
+        .content-grid {
+            display: grid;
+            grid-template-columns: 1fr 380px;
+            gap: 28px;
+        }
+
+        /* 卡片 */
+        .card {
+            background: white;
+            border-radius: 24px;
+            padding: 28px;
+            border: 1px solid var(--morandi-rose);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+            position: relative;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            inset: -2px;
+            border: 2px dashed var(--morandi-mist);
+            border-radius: 28px;
+            pointer-events: none;
+            opacity: 0.5;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-dark);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card-title-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--klein-blue), var(--klein-light));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        /* 推荐列表 */
+        .word-list {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .word-item {
+            background: var(--morandi-cream);
+            border: 1px solid var(--morandi-beige);
+            border-radius: 16px;
+            padding: 18px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .word-item:hover {
+            background: white;
+            border-color: var(--klein-blue);
+            transform: translateX(8px);
+            box-shadow: 0 4px 16px rgba(0, 47, 167, 0.1);
+        }
+
+        .word-info h4 {
+            font-size: 17px;
+            font-weight: 700;
+            color: var(--klein-blue);
+            margin-bottom: 4px;
+        }
+
+        .word-info p {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        .word-badge {
+            font-size: 11px;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--klein-blue), var(--klein-light));
+            color: white;
+        }
+
+        /* 快速开始 */
+        .quick-start {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .quick-card {
+            background: var(--morandi-cream);
+            border: 1px solid var(--morandi-beige);
+            border-radius: 18px;
+            padding: 24px;
+            transition: all 0.3s ease;
+        }
+
+        .quick-card:hover {
+            background: white;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+        }
+
+        .quick-card h4 {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--text-dark);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .quick-card p {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-bottom: 18px;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+        }
+
+        .form-group select,
+        .form-group input {
+            width: 100%;
+            padding: 12px 14px;
+            background: white;
+            border: 2px solid var(--morandi-rose);
+            border-radius: 12px;
+            color: var(--text-dark);
+            font-size: 14px;
+            font-family: inherit;
+            transition: all 0.3s ease;
+        }
+
+        .form-group select:focus,
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--klein-blue);
+            box-shadow: 0 0 0 4px rgba(0, 47, 167, 0.1);
+        }
+
+        .review-stat {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px;
+            background: white;
+            border-radius: 14px;
+            margin-bottom: 16px;
+            border: 1px solid var(--morandi-beige);
+        }
+
+        .review-stat span:first-child {
+            color: var(--text-muted);
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .review-stat span:last-child {
+            font-size: 32px;
+            font-weight: 800;
+            color: var(--accent-amber);
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            padding: 16px 28px;
+            border-radius: 14px;
+            font-size: 14px;
+            font-weight: 600;
+            z-index: 10000;
+            animation: slideIn 0.4s ease;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+        }
+
+        .toast.success {
+            background: var(--accent-sage);
+            color: white;
+        }
+
+        .toast.error {
+            background: var(--accent-coral);
+            color: white;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        /* 响应式 */
+        @media (max-width: 1200px) {
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .content-grid { grid-template-columns: 1fr; }
+        }
+
+        @media (max-width: 768px) {
+            .navbar { padding: 12px 20px; flex-wrap: wrap; gap: 12px; }
+            .nav-menu { order: 3; width: 100%; justify-content: center; flex-wrap: wrap; }
+            .container { padding: 20px; }
+            .stats-grid { grid-template-columns: 1fr; }
+            .welcome-section { flex-direction: column; text-align: center; gap: 20px; }
+        }
+    </style>
+</head>
+<body>
+    <!-- 背景装饰 -->
+    <div class="bg-decoration">
+        <span class="hand-letter letter-A">A</span>
+        <span class="hand-letter letter-B">B</span>
+        <span class="hand-letter letter-C">C</span>
+        <span class="hand-letter letter-D">D</span>
+        <span class="hand-letter letter-E">E</span>
+
+        <div class="wave-line wave-1">
+            <svg viewBox="0 0 1200 40" preserveAspectRatio="none">
+                <path d="M0,20 Q150,10 300,20 T600,20 T900,20 T1200,20" stroke="#002FA7" stroke-width="2" fill="none" stroke-linecap="round"/>
+            </svg>
+        </div>
+        <div class="wave-line wave-2">
+            <svg viewBox="0 0 1200 40" preserveAspectRatio="none">
+                <path d="M0,20 Q150,30 300,20 T600,20 T900,20 T1200,20" stroke="#E07A5F" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-dasharray="6,4"/>
+            </svg>
+        </div>
+        <div class="wave-line wave-3">
+            <svg viewBox="0 0 1200 40" preserveAspectRatio="none">
+                <path d="M0,20 Q150,15 300,20 T600,20 T900,20 T1200,20" stroke="#6B8E6B" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+            </svg>
+        </div>
+    </div>
+
+    <!-- 导航栏 -->
+    <nav class="navbar" role="navigation" aria-label="主导航">
+        <a href="dashboard.html" class="nav-brand">
+            <div class="nav-logo">SV</div>
+            <span class="nav-title">SmartVocab</span>
+        </a>
+        <div class="nav-menu" role="menubar">
+            <a href="dashboard.html" class="nav-link active" role="menuitem" aria-current="page">🏠 首页</a>
+            <a href="learning.html" class="nav-link" role="menuitem">📖 学习</a>
+            <a href="statistics.html" class="nav-link" role="menuitem">📊 统计</a>
+            <a href="favorites.html" class="nav-link" role="menuitem">⭐ 收藏</a>
+            <a href="profile.html" class="nav-link" role="menuitem">👤 我的</a>
+        </div>
+        <div class="nav-user">
+            <span class="user-name" id="username-display">用户</span>
+            <button class="btn btn-ghost" onclick="logout()" aria-label="退出登录">退出</button>
+        </div>
+    </nav>
+
+    <main class="container">
+        <!-- 欢迎区 -->
+        <section class="welcome-section">
+            <div class="welcome-text">
+                <h1>👋 欢迎回来，<span id="welcome-name">学习者</span></h1>
+                <p>继续你的智能英语学习之旅</p>
+            </div>
+            <div class="ai-badge">
+                <span>✨</span>
+                <span>AI 智能推荐学习路径</span>
+            </div>
+        </section>
+
+        <!-- 统计卡片 -->
+        <section class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon">📚</div>
+                    <span class="stat-trend up">+12%</span>
+                </div>
+                <div class="stat-value" id="total-words">0</div>
+                <div class="stat-label">总词汇量</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon">✅</div>
+                    <span class="stat-trend up">+8%</span>
+                </div>
+                <div class="stat-value" id="learned-words">0</div>
+                <div class="stat-label">已掌握</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon">📖</div>
+                </div>
+                <div class="stat-value" id="learning-words">0</div>
+                <div class="stat-label">学习中</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon">🎯</div>
+                </div>
+                <div class="stat-value" id="mastery-rate">0%</div>
+                <div class="stat-label">掌握率</div>
+            </div>
+        </section>
+
+        <!-- 内容网格 -->
+        <div class="content-grid">
+            <!-- 智能推荐 -->
+            <section class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <span class="card-title-icon">🔥</span>
+                        智能推荐
+                    </h3>
+                    <button class="btn btn-ghost" onclick="refreshRecommendations()">🔄 刷新</button>
+                </div>
+                <div class="word-list" id="recommendations-list">
+                    <div class="word-item">
+                        <div class="word-info">
+                            <h4>加载中...</h4>
+                            <p>正在获取推荐</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 快速开始 -->
+            <section class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <span class="card-title-icon">🚀</span>
+                        快速开始
+                    </h3>
+                </div>
+                <div class="quick-start">
+                    <!-- 新词学习 -->
+                    <div class="quick-card">
+                        <h4>📝 新词学习</h4>
+                        <p>系统根据难度智能推荐</p>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>难度</label>
+                                <select id="difficulty">
+                                    <option value="1">初级</option>
+                                    <option value="2" selected>中级</option>
+                                    <option value="3">高级</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>数量</label>
+                                <input type="number" id="word-count" value="10" min="5" max="50">
+                            </div>
+                        </div>
+                        <button class="btn btn-primary" onclick="startLearning()" style="width:100%">🚀 开始学习</button>
+                    </div>
+
+                    <!-- 复习模式 -->
+                    <div class="quick-card">
+                        <h4>🔄 复习模式</h4>
+                        <p>基于艾宾浩斯遗忘曲线</p>
+                        <div class="review-stat">
+                            <span>待复习词汇</span>
+                            <span id="review-count">--</span>
+                        </div>
+                        <button class="btn btn-primary" onclick="startReview()" style="width:100%">🔄 开始复习</button>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <script>
+        const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:5000/api' : `http://${window.location.hostname}:5000/api`;
+
+        function getToken() { return localStorage.getItem('auth_token'); }
+        function clearToken() { localStorage.removeItem('auth_token'); localStorage.removeItem('currentUser'); }
+
+        async function apiRequest(endpoint, options = {}) {
+            const token = getToken();
+            try {
+                const res = await fetch(API_BASE + endpoint, {
+                    method: options.method || 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                    },
+                    body: options.body
+                });
+                if (res.status === 401) { clearToken(); window.location.href = 'login.html'; }
+                return await res.json();
+            } catch (e) { return { success: false, message: '网络错误' }; }
+        }
+
+        function showToast(msg, type = 'success') {
+            const t = document.createElement('div');
+            t.className = `toast ${type}`;
+            t.textContent = msg;
+            document.body.appendChild(t);
+            setTimeout(() => t.remove(), 3000);
+        }
+
+        // 防抖函数
+        function debounce(func, wait) {
+            let timeout;
+            return function(...args) {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => func.apply(this, args), wait);
+            };
+        }
+
+        let currentUser = null;
+
+        async function init() {
+            const token = getToken();
+            if (!token) { window.location.href = 'login.html'; return; }
+
+            const result = await apiRequest('/auth/profile');
+            if (!result.success) { window.location.href = 'login.html'; return; }
+
+            currentUser = result.data;
+            document.getElementById('username-display').textContent = currentUser.username;
+            document.getElementById('welcome-name').textContent = currentUser.username;
+
+            loadProgress();
+            loadRecommendations();
+            loadReviewCount();
+        }
+
+        async function loadProgress() {
+            const result = await apiRequest(`/learning/progress/${currentUser.id}`);
+            if (result.success) {
+                const d = result.data || {};
+                document.getElementById('total-words').textContent = d.total_words || 0;
+                document.getElementById('learned-words').textContent = d.learned_words || 0;
+                document.getElementById('learning-words').textContent = d.learning_words || 0;
+                document.getElementById('mastery-rate').textContent = (d.mastery_rate || 0) + '%';
+            }
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        function debounce(func, wait) {
+            let timeout;
+            return function(...args) {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => func.apply(this, args), wait);
+            };
+        }
+
+        async function loadRecommendations() {
+            const result = await apiRequest(`/recommendations/${currentUser.id}?limit=5`);
+            const list = document.getElementById('recommendations-list');
+
+            if (result.success && result.data?.recommendations?.length > 0) {
+                list.innerHTML = result.data.recommendations.map(w => `
+                    <div class="word-item" onclick="learnWord(${w.id})">
+                        <div class="word-info">
+                            <h4>${escapeHtml(w.word)}</h4>
+                            <p>${escapeHtml(w.translation) || ''}</p>
+                        </div>
+                        <span class="word-badge">${escapeHtml(w.recommendation_reason) || '推荐'}</span>
+                    </div>
+                `).join('');
+            } else {
+                list.innerHTML = '<div class="word-item"><div class="word-info"><h4>暂无推荐</h4><p>开始学习后获得推荐</p></div></div>';
+            }
+        }
+
+        async function loadReviewCount() {
+            const result = await apiRequest(`/learning/review-words/${currentUser.id}?limit=100`);
+            if (result.success) {
+                document.getElementById('review-count').textContent = result.data?.words?.length || 0;
+            }
+        }
+
+        const debouncedRefresh = debounce(loadRecommendations, 300);
+        function refreshRecommendations() { debouncedRefresh(); showToast('已刷新'); }
+
+        function startLearning() {
+            sessionStorage.setItem('learning_settings', JSON.stringify({
+                difficulty: document.getElementById('difficulty').value,
+                wordCount: document.getElementById('word-count').value
+            }));
+            window.location.href = 'learning.html';
+        }
+
+        function startReview() {
+            sessionStorage.setItem('review_mode', 'true');
+            window.location.href = 'learning.html';
+        }
+
+        function learnWord(id) { window.location.href = `learning.html?word_id=${id}`; }
+        function logout() { clearToken(); window.location.href = 'login.html'; }
+
+        init();
+    </script>
+</body>
+</html>

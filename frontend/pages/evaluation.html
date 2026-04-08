@@ -1,0 +1,1261 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="SmartVocab 等级测试 - 评估你的词汇水平">
+    <title>等级测试 - SmartVocab</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23002FA7'/><text x='16' y='20' font-family='Arial' font-size='18' font-weight='bold' fill='white' text-anchor='middle'>S</text></svg>">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../styles/klein-morandi.css">
+    <style>
+        :root {
+            /* Klein Blue - 克莱因蓝 */
+            --klein-blue: #002FA7;
+            --klein-light: #1a4fd0;
+            --klein-dark: #001d6c;
+            --klein-rgb: 0, 47, 167;
+
+            /* Morandi Colors - 莫兰迪色系 */
+            --morandi-cream: #F5F0E8;
+            --morandi-beige: #E8DFD4;
+            --morandi-rose: #D4C4B5;
+            --morandi-sage: #B8C4B8;
+            --morandi-mist: #C5CED3;
+            --morandi-lavender: #B8B4C8;
+            --morandi-peach: #E8D4C4;
+            --morandi-olive: #A8A698;
+
+            /* Accent Colors - 撞色 */
+            --accent-coral: #E07A5F;
+            --accent-amber: #F2A03D;
+            --accent-sage: #6B8E6B;
+            --accent-lavender: #9B8AA6;
+
+            /* Text Colors */
+            --text-dark: #2D3436;
+            --text-muted: #636E72;
+            --text-light: #B2BEC3;
+            --text-white: #FFFFFF;
+            --text-secondary: #8A8A8A;
+        }
+
+        body {
+            font-family: 'Nunito', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: var(--morandi-cream);
+            color: var(--text-dark);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Background Decoration */
+        .bg-decoration {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            overflow: hidden;
+            z-index: 0;
+        }
+
+        .hand-letter {
+            font-family: 'Caveat', cursive;
+            font-size: 56px;
+            font-weight: 600;
+            color: var(--klein-blue);
+            opacity: 0.08;
+            position: absolute;
+            animation: float 6s ease-in-out infinite;
+        }
+
+        .hand-letter:nth-child(1) { top: 10%; left: 5%; --rotation: -15deg; animation-delay: 0s; }
+        .hand-letter:nth-child(2) { top: 25%; right: 8%; --rotation: 12deg; animation-delay: 1s; }
+        .hand-letter:nth-child(3) { top: 50%; left: 3%; --rotation: -8deg; animation-delay: 2s; }
+        .hand-letter:nth-child(4) { top: 70%; right: 5%; --rotation: 20deg; animation-delay: 0.5s; }
+        .hand-letter:nth-child(5) { top: 85%; left: 10%; --rotation: -25deg; animation-delay: 1.5s; }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0) rotate(var(--rotation, 0deg)); }
+            50% { transform: translateY(-15px) rotate(calc(var(--rotation, 0deg) + 5deg)); }
+        }
+
+        /* Wave Decoration */
+        .wave-decoration {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 120px;
+            opacity: 0.12;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .wave-decoration svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Navbar */
+        .navbar {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--morandi-rose);
+            padding: 16px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .nav-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+        }
+
+        .nav-logo {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--klein-blue), var(--klein-light));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            color: white;
+            font-size: 18px;
+            box-shadow: 0 4px 12px rgba(0, 47, 167, 0.2);
+        }
+
+        .nav-title {
+            font-size: 22px;
+            font-weight: 800;
+            color: var(--klein-blue);
+        }
+
+        .nav-menu {
+            display: flex;
+            gap: 6px;
+        }
+
+        .nav-link {
+            color: var(--text-muted);
+            text-decoration: none;
+            padding: 10px 18px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .nav-link:hover {
+            background: var(--morandi-beige);
+            color: var(--text-dark);
+        }
+
+        .nav-link.active {
+            background: var(--klein-blue);
+            color: white;
+        }
+
+        .nav-user {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .user-name {
+            font-size: 14px;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        .btn-logout {
+            padding: 8px 16px;
+            background: transparent;
+            color: var(--text-muted);
+            border: 2px solid var(--morandi-rose);
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-logout:hover {
+            background: var(--accent-coral);
+            border-color: var(--accent-coral);
+            color: white;
+        }
+
+        /* Main Container */
+        .evaluation-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 24px;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Page Header */
+        .page-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .page-title {
+            font-size: 36px;
+            font-weight: 800;
+            color: var(--klein-blue);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+        }
+
+        .page-title-icon {
+            font-size: 40px;
+        }
+
+        .page-subtitle {
+            font-size: 16px;
+            color: var(--text-muted);
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        /* Test Card Base */
+        .test-card {
+            background: white;
+            border-radius: 24px;
+            padding: 40px;
+            box-shadow: 0 8px 40px rgba(0, 0, 0, 0.06);
+            border: 1px solid var(--morandi-rose);
+            animation: fadeIn 0.4s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Start Test Section */
+        .start-section {
+            text-align: center;
+        }
+
+        .start-icon {
+            width: 120px;
+            height: 120px;
+            background: linear-gradient(135deg, var(--morandi-beige), var(--morandi-rose));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 32px;
+            font-size: 56px;
+        }
+
+        .start-title {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--text-dark);
+            margin-bottom: 12px;
+        }
+
+        .start-description {
+            color: var(--text-muted);
+            font-size: 16px;
+            margin-bottom: 32px;
+            max-width: 400px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .settings-group {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+
+        .settings-label {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        .settings-input {
+            width: 80px;
+            padding: 12px 16px;
+            border: 2px solid var(--morandi-beige);
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--klein-blue);
+            text-align: center;
+            background: var(--morandi-cream);
+            transition: all 0.3s ease;
+        }
+
+        .settings-input:focus {
+            outline: none;
+            border-color: var(--klein-blue);
+            box-shadow: 0 0 0 4px rgba(0, 47, 167, 0.1);
+        }
+
+        .btn-start {
+            padding: 16px 48px;
+            background: linear-gradient(135deg, var(--klein-blue), var(--klein-light));
+            color: white;
+            border: none;
+            border-radius: 16px;
+            font-size: 18px;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 8px 24px rgba(0, 47, 167, 0.25);
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn-start:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 32px rgba(0, 47, 167, 0.35);
+        }
+
+        .btn-start:active {
+            transform: translateY(-1px);
+        }
+
+        /* Test Progress Section */
+        .test-section {
+            display: none;
+        }
+
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .progress-info {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .progress-badge {
+            background: var(--klein-blue);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 700;
+        }
+
+        .progress-bar-container {
+            flex: 1;
+            max-width: 300px;
+            height: 8px;
+            background: var(--morandi-beige);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--klein-blue), var(--klein-light));
+            border-radius: 4px;
+            transition: width 0.4s ease;
+        }
+
+        /* Timer */
+        .timer-display {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            background: var(--morandi-cream);
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--text-dark);
+        }
+
+        .timer-icon {
+            color: var(--accent-amber);
+        }
+
+        .timer-value {
+            color: var(--klein-blue);
+            min-width: 50px;
+        }
+
+        /* Question Container */
+        .questions-container {
+            margin-top: 24px;
+        }
+
+        /* Question Card */
+        .question-card {
+            background: var(--morandi-cream);
+            border-radius: 20px;
+            padding: 28px;
+            margin-bottom: 24px;
+            border: 2px solid var(--morandi-beige);
+            transition: all 0.3s ease;
+        }
+
+        .question-card:hover {
+            border-color: var(--morandi-rose);
+        }
+
+        .question-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .question-number {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--klein-blue), var(--klein-light));
+            color: white;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 16px;
+        }
+
+        .question-word {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-dark);
+        }
+
+        .question-phonetic {
+            font-size: 14px;
+            color: var(--text-muted);
+            margin-left: 8px;
+        }
+
+        /* Options */
+        .options-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+
+        .option-item {
+            position: relative;
+        }
+
+        .option-input {
+            position: absolute;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .option-label {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 16px 20px;
+            background: white;
+            border: 2px solid var(--morandi-beige);
+            border-radius: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 15px;
+            color: var(--text-dark);
+        }
+
+        .option-label:hover {
+            border-color: var(--klein-blue);
+            background: rgba(0, 47, 167, 0.03);
+        }
+
+        .option-input:checked + .option-label {
+            border-color: var(--klein-blue);
+            background: rgba(0, 47, 167, 0.08);
+            box-shadow: 0 4px 12px rgba(0, 47, 167, 0.15);
+        }
+
+        .option-marker {
+            width: 24px;
+            height: 24px;
+            border: 2px solid var(--morandi-sage);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--text-muted);
+            transition: all 0.3s ease;
+            flex-shrink: 0;
+        }
+
+        .option-input:checked + .option-label .option-marker {
+            background: var(--klein-blue);
+            border-color: var(--klein-blue);
+            color: white;
+        }
+
+        .option-text {
+            flex: 1;
+        }
+
+        /* Submit Section */
+        .submit-section {
+            display: flex;
+            justify-content: center;
+            margin-top: 32px;
+            padding-top: 24px;
+            border-top: 1px solid var(--morandi-beige);
+        }
+
+        .btn-submit {
+            padding: 16px 56px;
+            background: linear-gradient(135deg, var(--accent-sage), #5a7a5a);
+            color: white;
+            border: none;
+            border-radius: 16px;
+            font-size: 18px;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 8px 24px rgba(107, 142, 107, 0.3);
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn-submit:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 32px rgba(107, 142, 107, 0.4);
+        }
+
+        .btn-submit:disabled {
+            background: var(--morandi-beige);
+            color: var(--text-muted);
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+        }
+
+        /* Result Section */
+        .result-section {
+            display: none;
+            text-align: center;
+        }
+
+        .result-icon {
+            width: 140px;
+            height: 140px;
+            background: linear-gradient(135deg, var(--accent-amber), #e8943d);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 32px;
+            font-size: 64px;
+            box-shadow: 0 12px 40px rgba(242, 160, 61, 0.3);
+            animation: bounceIn 0.6s ease;
+        }
+
+        @keyframes bounceIn {
+            0% { transform: scale(0); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        .result-title {
+            font-size: 32px;
+            font-weight: 800;
+            color: var(--text-dark);
+            margin-bottom: 8px;
+        }
+
+        .result-subtitle {
+            font-size: 16px;
+            color: var(--text-muted);
+            margin-bottom: 32px;
+        }
+
+        /* Score Display */
+        .score-display {
+            display: flex;
+            justify-content: center;
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+
+        .score-item {
+            background: var(--morandi-cream);
+            border-radius: 20px;
+            padding: 24px 32px;
+            min-width: 140px;
+            border: 2px solid var(--morandi-beige);
+        }
+
+        .score-value {
+            font-size: 42px;
+            font-weight: 800;
+            color: var(--klein-blue);
+            line-height: 1;
+        }
+
+        .score-value.excellent {
+            color: var(--accent-sage);
+        }
+
+        .score-value.good {
+            color: var(--klein-blue);
+        }
+
+        .score-value.average {
+            color: var(--accent-amber);
+        }
+
+        .score-value.poor {
+            color: var(--accent-coral);
+        }
+
+        .score-label {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-top: 8px;
+            font-weight: 600;
+        }
+
+        /* Level Recommendation */
+        .level-recommendation {
+            background: linear-gradient(135deg, var(--morandi-beige), var(--morandi-rose));
+            border-radius: 20px;
+            padding: 28px;
+            margin-bottom: 32px;
+        }
+
+        .level-header {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .level-icon {
+            font-size: 28px;
+        }
+
+        .level-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-dark);
+        }
+
+        .level-name {
+            font-size: 28px;
+            font-weight: 800;
+            color: var(--klein-blue);
+            font-family: 'Caveat', cursive;
+        }
+
+        .level-description {
+            color: var(--text-muted);
+            font-size: 15px;
+            line-height: 1.6;
+        }
+
+        /* Result Stats */
+        .result-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+
+        .stat-item {
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            border: 1px solid var(--morandi-beige);
+        }
+
+        .stat-icon {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-dark);
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        /* Action Buttons */
+        .result-actions {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+        }
+
+        .btn-again {
+            padding: 14px 36px;
+            background: linear-gradient(135deg, var(--klein-blue), var(--klein-light));
+            color: white;
+            border: none;
+            border-radius: 14px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 6px 20px rgba(0, 47, 167, 0.25);
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-again:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0, 47, 167, 0.35);
+        }
+
+        .btn-dashboard {
+            padding: 14px 36px;
+            background: white;
+            color: var(--klein-blue);
+            border: 2px solid var(--klein-blue);
+            border-radius: 14px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+        }
+
+        .btn-dashboard:hover {
+            background: var(--klein-blue);
+            color: white;
+        }
+
+        /* Loading State */
+        .loading-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 60px;
+        }
+
+        .loading-spinner {
+            width: 48px;
+            height: 48px;
+            border: 4px solid var(--morandi-beige);
+            border-top-color: var(--klein-blue);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 16px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            color: var(--text-muted);
+            font-size: 15px;
+            font-weight: 600;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .navbar {
+                padding: 12px 20px;
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+
+            .nav-menu {
+                order: 3;
+                width: 100%;
+                justify-content: center;
+                flex-wrap: wrap;
+            }
+
+            .nav-link {
+                padding: 8px 12px;
+                font-size: 13px;
+            }
+
+            .evaluation-container {
+                padding: 24px 16px;
+            }
+
+            .page-title {
+                font-size: 28px;
+            }
+
+            .test-card {
+                padding: 24px;
+                border-radius: 20px;
+            }
+
+            .options-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .score-display {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .result-stats {
+                grid-template-columns: 1fr;
+            }
+
+            .result-actions {
+                flex-direction: column;
+            }
+
+            .btn-again, .btn-dashboard {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Background Decoration -->
+    <div class="bg-decoration">
+        <span class="hand-letter">A</span>
+        <span class="hand-letter">B</span>
+        <span class="hand-letter">C</span>
+        <span class="hand-letter">D</span>
+        <span class="hand-letter">E</span>
+    </div>
+
+    <!-- Wave Decoration -->
+    <div class="wave-decoration">
+        <svg viewBox="0 0 1440 120" preserveAspectRatio="none">
+            <path fill="#B8C4B8" d="M0,64 C480,150 960,-20 1440,64 L1440,120 L0,120 Z"></path>
+            <path fill="#D4C4B5" d="M0,80 C360,160 720,0 1440,80 L1440,120 L0,120 Z" opacity="0.5"></path>
+        </svg>
+    </div>
+
+    <!-- Navbar -->
+    <nav class="navbar">
+        <a href="dashboard.html" class="nav-brand">
+            <div class="nav-logo">S</div>
+            <span class="nav-title">SmartVocab</span>
+        </a>
+        <div class="nav-menu">
+            <a href="dashboard.html" class="nav-link" data-page="dashboard">🏠 首页</a>
+            <a href="plans.html" class="nav-link" data-page="plans">📋 计划</a>
+            <a href="levels.html" class="nav-link" data-page="levels">🎮 闯关</a>
+            <a href="evaluation.html" class="nav-link active" data-page="evaluation">📝 测试</a>
+            <a href="statistics.html" class="nav-link" data-page="statistics">📊 统计</a>
+            <a href="favorites.html" class="nav-link" data-page="favorites">⭐ 收藏</a>
+            <a href="profile.html" class="nav-link" data-page="profile">👤 我的</a>
+        </div>
+        <div class="nav-user">
+            <span id="username-display" class="user-name"></span>
+            <button id="logout-btn" class="btn-logout">退出</button>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="evaluation-container">
+        <!-- Page Header -->
+        <header class="page-header">
+            <h1 class="page-title">
+                <span class="page-title-icon">📝</span>
+                等级测试
+            </h1>
+            <p class="page-subtitle">测试你的词汇水平，获得个性化学习建议和等级推荐</p>
+        </header>
+
+        <!-- Start Test Section -->
+        <section id="eval-start" class="test-card start-section">
+            <div class="start-icon">🎯</div>
+            <h2 class="start-title">准备好挑战了吗？</h2>
+            <p class="start-description">选择题目数量开始测试，系统将根据你的答题情况评估词汇水平并推荐合适的学习等级</p>
+            <div class="settings-group">
+                <span class="settings-label">题目数量</span>
+                <input type="number" id="eval-question-count" class="settings-input" value="10" min="5" max="30">
+            </div>
+            <button id="start-eval-btn" class="btn-start">
+                <span>🚀</span>
+                开始测试
+            </button>
+        </section>
+
+        <!-- Test In Progress Section -->
+        <section id="eval-test" class="test-card test-section">
+            <div class="progress-header">
+                <div class="progress-info">
+                    <span class="progress-badge">
+                        <span id="eval-progress-text">0/10</span>
+                    </span>
+                    <div class="progress-bar-container">
+                        <div id="progress-bar-fill" class="progress-bar-fill" style="width: 0%"></div>
+                    </div>
+                </div>
+                <div class="timer-display">
+                    <span class="timer-icon">⏱️</span>
+                    <span id="timer-value" class="timer-value">00:00</span>
+                </div>
+            </div>
+            <div id="eval-questions-container" class="questions-container">
+                <!-- Questions will be rendered here -->
+            </div>
+            <div class="submit-section">
+                <button id="submit-eval-btn" class="btn-submit">
+                    <span>✅</span>
+                    提交答卷
+                </button>
+            </div>
+        </section>
+
+        <!-- Result Section -->
+        <section id="eval-result" class="test-card result-section">
+            <div class="result-icon">🏆</div>
+            <h2 class="result-title">测试完成！</h2>
+            <p class="result-subtitle">以下是你的测试结果和学习建议</p>
+
+            <div class="score-display">
+                <div class="score-item">
+                    <div id="eval-score" class="score-value">0%</div>
+                    <div class="score-label">总得分</div>
+                </div>
+                <div class="score-item">
+                    <div id="eval-correct" class="score-value">0</div>
+                    <div class="score-label">正确题数</div>
+                </div>
+                <div class="score-item">
+                    <div id="eval-total" class="score-value">0</div>
+                    <div class="score-label">总题数</div>
+                </div>
+            </div>
+
+            <div class="level-recommendation">
+                <div class="level-header">
+                    <span class="level-icon">📍</span>
+                    <span class="level-title">推荐等级</span>
+                </div>
+                <div id="eval-level" class="level-name">-</div>
+                <p id="level-description" class="level-description">根据你的测试表现，系统为你推荐了适合的学习等级</p>
+            </div>
+
+            <div class="result-stats">
+                <div class="stat-item">
+                    <div class="stat-icon">⏱️</div>
+                    <div id="stat-time" class="stat-value">--:--</div>
+                    <div class="stat-label">用时</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-icon">📊</div>
+                    <div id="stat-accuracy" class="stat-value">0%</div>
+                    <div class="stat-label">正确率</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-icon">🎯</div>
+                    <div id="stat-rank" class="stat-value">-</div>
+                    <div class="stat-label">表现评级</div>
+                </div>
+            </div>
+
+            <div class="result-actions">
+                <button id="eval-again-btn" class="btn-again">
+                    <span>🔄</span>
+                    再次测试
+                </button>
+                <a href="dashboard.html" class="btn-dashboard">
+                    <span>🏠</span>
+                    返回首页
+                </a>
+            </div>
+        </section>
+    </main>
+
+    <script type="module">
+        import { apiRequest, getToken, clearToken } from '../js/api-client.js';
+        import { showToast } from '../js/utils.js';
+
+        // Check login status
+        const token = getToken();
+        if (!token) {
+            window.location.href = 'login.html';
+        }
+
+        let currentUser = null;
+        let timerInterval = null;
+        let startTime = null;
+        let totalQuestions = 10;
+
+        // Load user profile
+        async function loadUserProfile() {
+            try {
+                const result = await apiRequest('/auth/profile');
+                if (result.success) {
+                    currentUser = result.data;
+                    document.getElementById('username-display').textContent = currentUser.username;
+                }
+            } catch (err) {
+                console.error('加载用户信息失败:', err);
+            }
+        }
+
+        // Timer functions
+        function startTimer() {
+            startTime = Date.now();
+            timerInterval = setInterval(updateTimer, 1000);
+        }
+
+        function updateTimer() {
+            const elapsed = Math.floor((Date.now() - startTime) / 1000);
+            const minutes = Math.floor(elapsed / 60).toString().padStart(2, '0');
+            const seconds = (elapsed % 60).toString().padStart(2, '0');
+            document.getElementById('timer-value').textContent = `${minutes}:${seconds}`;
+        }
+
+        function stopTimer() {
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+            const elapsed = Math.floor((Date.now() - startTime) / 1000);
+            const minutes = Math.floor(elapsed / 60).toString().padStart(2, '0');
+            const seconds = (elapsed % 60).toString().padStart(2, '0');
+            return `${minutes}:${seconds}`;
+        }
+
+        // Update progress
+        function updateProgress() {
+            const answered = document.querySelectorAll('input[name^="q"]:checked').length;
+            const percent = Math.round((answered / totalQuestions) * 100);
+            document.getElementById('eval-progress-text').textContent = `${answered}/${totalQuestions}`;
+            document.getElementById('progress-bar-fill').style.width = `${percent}%`;
+        }
+
+        // Start test
+        document.getElementById('start-eval-btn').addEventListener('click', async () => {
+            totalQuestions = parseInt(document.getElementById('eval-question-count').value) || 10;
+
+            // Validate input
+            if (totalQuestions < 5) totalQuestions = 5;
+            if (totalQuestions > 30) totalQuestions = 30;
+            document.getElementById('eval-question-count').value = totalQuestions;
+
+            document.getElementById('eval-start').style.display = 'none';
+            document.getElementById('eval-test').style.display = 'block';
+            document.getElementById('eval-test').classList.add('test-section');
+            document.getElementById('eval-progress-text').textContent = `0/${totalQuestions}`;
+
+            try {
+                const result = await apiRequest('/evaluation/papers/generate', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        user_id: currentUser.id,
+                        question_count: totalQuestions
+                    })
+                });
+                if (result.success) {
+                    totalQuestions = result.data.questions.length;
+                    renderQuestions(result.data.questions);
+                    startTimer();
+                }
+            } catch (err) {
+                showToast('生成试卷失败', 'error');
+                document.getElementById('eval-start').style.display = 'block';
+                document.getElementById('eval-test').style.display = 'none';
+            }
+        });
+
+        // Render questions
+        function renderQuestions(questions) {
+            const container = document.getElementById('eval-questions-container');
+            const optionMarkers = ['A', 'B', 'C', 'D'];
+
+            container.innerHTML = questions.map((q, index) => `
+                <div class="question-card" data-question="${index}">
+                    <div class="question-header">
+                        <span class="question-number">${index + 1}</span>
+                        <span class="question-word">${q.word}</span>
+                        ${q.phonetic ? `<span class="question-phonetic">/${q.phonetic}/</span>` : ''}
+                    </div>
+                    <div class="options-grid">
+                        ${q.options.map((opt, optIndex) => `
+                            <div class="option-item">
+                                <input type="radio"
+                                       id="q${index}_opt${optIndex}"
+                                       class="option-input"
+                                       name="q${index}"
+                                       value="${optIndex}">
+                                <label for="q${index}_opt${optIndex}" class="option-label">
+                                    <span class="option-marker">${optionMarkers[optIndex]}</span>
+                                    <span class="option-text">${opt}</span>
+                                </label>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `).join('');
+
+            // Add change listeners to update progress
+            document.querySelectorAll('input[name^="q"]').forEach(input => {
+                input.addEventListener('change', updateProgress);
+            });
+        }
+
+        // Submit answers
+        document.getElementById('submit-eval-btn').addEventListener('click', async () => {
+            const answers = [];
+            const totalAnswered = document.querySelectorAll('input[name^="q"]:checked').length;
+
+            if (totalAnswered < totalQuestions) {
+                const confirm = window.confirm(`你还有 ${totalQuestions - totalAnswered} 题未作答，确定要提交吗？`);
+                if (!confirm) return;
+            }
+
+            // Collect answers
+            for (let i = 0; i < totalQuestions; i++) {
+                const selected = document.querySelector(`input[name="q${i}"]:checked`);
+                answers.push(selected ? parseInt(selected.value) : -1);
+            }
+
+            const elapsedTime = stopTimer();
+
+            try {
+                document.getElementById('submit-eval-btn').disabled = true;
+                document.getElementById('submit-eval-btn').innerHTML = '<span>⏳</span> 提交中...';
+
+                const result = await apiRequest('/evaluation/papers/submit', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        user_id: currentUser.id,
+                        answers
+                    })
+                });
+
+                if (result.success) {
+                    showResult(result.data, elapsedTime);
+                }
+            } catch (err) {
+                showToast('提交失败', 'error');
+                document.getElementById('submit-eval-btn').disabled = false;
+                document.getElementById('submit-eval-btn').innerHTML = '<span>✅</span> 提交答卷';
+            }
+        });
+
+        // Show result
+        function showResult(result, elapsedTime) {
+            document.getElementById('eval-test').style.display = 'none';
+            document.getElementById('eval-result').style.display = 'block';
+
+            const score = result.score || 0;
+            const correct = result.correct_count || 0;
+            const total = result.total_count || totalQuestions;
+            const level = result.level || '未知';
+
+            // Update score display
+            const scoreEl = document.getElementById('eval-score');
+            scoreEl.textContent = `${score}%`;
+            scoreEl.className = 'score-value';
+            if (score >= 90) scoreEl.classList.add('excellent');
+            else if (score >= 70) scoreEl.classList.add('good');
+            else if (score >= 50) scoreEl.classList.add('average');
+            else scoreEl.classList.add('poor');
+
+            document.getElementById('eval-correct').textContent = correct;
+            document.getElementById('eval-total').textContent = total;
+            document.getElementById('eval-level').textContent = level;
+
+            // Update stats
+            document.getElementById('stat-time').textContent = elapsedTime || '--:--';
+            document.getElementById('stat-accuracy').textContent = `${score}%`;
+
+            // Determine rank
+            let rank = '-';
+            if (score >= 90) rank = '优秀';
+            else if (score >= 80) rank = '良好';
+            else if (score >= 60) rank = '及格';
+            else rank = '需加强';
+            document.getElementById('stat-rank').textContent = rank;
+
+            // Update level description
+            const levelDescriptions = {
+                '入门': '建议从基础词汇开始学习，打好词汇基础',
+                '基础': '可以开始学习更多日常词汇，逐步提升',
+                '中级': '已经掌握了一定词汇量，可以挑战更高难度',
+                '高级': '词汇量较为丰富，建议深入学习高级词汇',
+                '专家': '词汇水平优秀，继续保持并拓展专业词汇'
+            };
+            document.getElementById('level-description').textContent =
+                levelDescriptions[level] || '根据你的测试表现，系统为你推荐了适合的学习等级';
+
+            // Update result icon based on score
+            const resultIcon = document.querySelector('.result-icon');
+            if (score >= 90) {
+                resultIcon.style.background = 'linear-gradient(135deg, #6B8E6B, #5a7a5a)';
+                resultIcon.innerHTML = '🌟';
+            } else if (score >= 70) {
+                resultIcon.style.background = 'linear-gradient(135deg, #F2A03D, #e8943d)';
+                resultIcon.innerHTML = '🏆';
+            } else if (score >= 50) {
+                resultIcon.style.background = 'linear-gradient(135deg, #002FA7, #1a4fd0)';
+                resultIcon.innerHTML = '💪';
+            } else {
+                resultIcon.style.background = 'linear-gradient(135deg, #E07A5F, #d06a4f)';
+                resultIcon.innerHTML = '📚';
+            }
+        }
+
+        // Retake test
+        document.getElementById('eval-again-btn').addEventListener('click', () => {
+            document.getElementById('eval-result').style.display = 'none';
+            document.getElementById('eval-start').style.display = 'block';
+            document.getElementById('eval-questions-container').innerHTML = '';
+            document.getElementById('timer-value').textContent = '00:00';
+            document.getElementById('progress-bar-fill').style.width = '0%';
+            document.getElementById('submit-eval-btn').disabled = false;
+            document.getElementById('submit-eval-btn').innerHTML = '<span>✅</span> 提交答卷';
+        });
+
+        // Logout
+        document.getElementById('logout-btn').addEventListener('click', () => {
+            clearToken();
+            window.location.href = 'login.html';
+        });
+
+        // Initialize
+        loadUserProfile();
+    </script>
+</body>
+</html>

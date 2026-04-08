@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>学习 - SmartVocab</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23002FA7'/><text x='16' y='21' font-family='Arial' font-size='16' font-weight='bold' fill='white' text-anchor='middle'>SV</text></svg>">
+    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --klein-blue: #002FA7;
+            --klein-light: #1a4fd0;
+            --klein-dark: #001d6c;
+            --morandi-cream: #F5F0E8;
+            --morandi-beige: #E8DFD4;
+            --morandi-rose: #D4C4B5;
+            --morandi-sage: #B8C4B8;
+            --morandi-mist: #C5CED3;
+            --accent-coral: #E07A5F;
+            --accent-amber: #F2A03D;
+            --accent-sage: #6B8E6B;
+            --text-dark: #2D3436;
+            --text-muted: #636E72;
+            --text-light: #B2BEC3;
+        }
+
+        body {
+            font-family: 'Nunito', -apple-system, sans-serif;
+            background: var(--morandi-cream);
+            min-height: 100vh;
+            color: var(--text-dark);
+            position: relative;
+        }
+
+        /* 背景装饰 */
+        .bg-decoration {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            overflow: hidden;
+            z-index: 0;
+        }
+
+        .hand-letter {
+            font-family: 'Caveat', cursive;
+            font-size: 48px;
+            font-weight: 600;
+            color: var(--klein-blue);
+            opacity: 0.1;
+            position: absolute;
+            animation: float 6s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0) rotate(var(--rotation, 0deg)); }
+            50% { transform: translateY(-15px) rotate(calc(var(--rotation, 0deg) + 3deg)); }
+        }
+
+        .letter-A { top: 5%; left: 3%; --rotation: -12deg; }
+        .letter-B { top: 20%; right: 5%; --rotation: 8deg; font-size: 36px; }
+        .letter-C { top: 40%; left: 2%; --rotation: 5deg; font-size: 52px; }
+        .letter-D { top: 65%; right: 3%; --rotation: -10deg; }
+        .letter-E { top: 85%; left: 6%; --rotation: 15deg; font-size: 38px; }
+
+        /* 导航栏 */
+        .navbar {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--morandi-rose);
+            padding: 16px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .nav-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+        }
+
+        .nav-logo {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--klein-blue), var(--klein-light));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            color: white;
+            font-size: 18px;
+            box-shadow: 0 4px 12px rgba(0, 47, 167, 0.2);
+        }
+
+        .nav-title {
+            font-size: 22px;
+            font-weight: 800;
+            color: var(--klein-blue);
+        }
+
+        .nav-menu {
+            display: flex;
+            gap: 6px;
+        }
+
+        .nav-link {
+            color: var(--text-muted);
+            text-decoration: none;
+            padding: 10px 18px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .nav-link:hover {
+            background: var(--morandi-beige);
+            color: var(--text-dark);
+        }
+
+        .nav-link.active {
+            background: var(--klein-blue);
+            color: white;
+        }
+
+        .nav-user {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .user-name {
+            font-size: 14px;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--text-muted);
+            border: 2px solid var(--morandi-rose);
+        }
+
+        .btn-ghost:hover {
+            background: var(--morandi-rose);
+            color: var(--text-dark);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--klein-blue), var(--klein-light));
+            color: white;
+            box-shadow: 0 4px 12px rgba(0, 47, 167, 0.2);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 47, 167, 0.3);
+        }
+
+        /* 主容器 */
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* 进度条 */
+        .progress-section {
+            background: white;
+            border-radius: 20px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            border: 1px solid var(--morandi-rose);
+        }
+
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .progress-text {
+                color: var(--text-muted);
+                font-size: 14px;
+                font-weight: 600;
+            }
+
+        .progress-text span {
+                color: var(--klein-blue);
+                font-weight: 700;
+            }
+
+        .progress-bar {
+                height: 8px;
+                background: var(--morandi-beige);
+                border-radius: 10px;
+                overflow: hidden;
+            }
+
+        .progress-fill {
+                height: 100%;
+                background: linear-gradient(90deg, var(--klein-blue), var(--klein-light));
+                background-size: 200% 100%;
+                animation: progressGradient 3s linear infinite;
+                border-radius: 10px;
+                transition: width 0.5s ease;
+            }
+
+        @keyframes progressGradient {
+                0% { background-position: 0% 50%; }
+                100% { background-position: 200% 50%; }
+            }
+
+        /* 单词卡片 */
+        .word-card {
+                background: white;
+                border-radius: 24px;
+                padding: 40px;
+                text-align: center;
+                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+                border: 2px solid var(--morandi-rose);
+                position: relative;
+            }
+
+        .word-card::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                height: 4px;
+                background: linear-gradient(90deg, var(--klein-blue), var(--accent-coral));
+            }
+
+        .word-text {
+                font-size: 48px;
+                font-weight: 800;
+                color: var(--klein-blue);
+                margin-bottom: 12px;
+                letter-spacing: 1px;
+            }
+
+        .word-phonetic {
+                font-size: 16px;
+                color: var(--text-muted);
+                font-style: italic;
+            }
+
+        /* 选择题区域 */
+        .choice-section {
+                background: white;
+                border-radius: 20px;
+                padding: 30px;
+                margin-top: 24px;
+                border: 2px solid var(--morandi-rose);
+            }
+
+        .choice-title {
+                font-size: 16px;
+                font-weight: 700;
+                color: var(--text-dark);
+                margin-bottom: 20px;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+
+        .choice-title::before {
+                content: '💭';
+                font-size: 20px;
+            }
+
+        .choice-options {
+                display: grid;
+                gap: 12px;
+            }
+
+        .choice-option {
+                padding: 16px 20px;
+                background: var(--morandi-cream);
+                border: 2px solid var(--morandi-beige);
+                border-radius: 14px;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                font-size: 15px;
+                color: var(--text-dark);
+            }
+
+        .choice-option:hover {
+                border-color: var(--klein-blue);
+                background: white;
+                transform: translateY(-2px);
+            }
+
+        .choice-option.selected {
+                border-color: var(--klein-blue);
+                background: rgba(0, 47, 167, 0.05);
+            }
+
+        .choice-option.correct {
+                border-color: var(--accent-sage);
+                background: rgba(107, 142, 107, 0.1);
+            }
+
+        .choice-option.wrong {
+                border-color: var(--accent-coral);
+                background: rgba(224, 122, 95, 0.1);
+            }
+
+        /* 翻译题区域 */
+        .translation-section {
+                background: white;
+                border-radius: 20px;
+                padding: 30px;
+                margin-top: 24px;
+                border: 2px solid var(--morandi-rose);
+                display: none;
+            }
+
+        .translation-title {
+                font-size: 16px;
+                font-weight: 700;
+                color: var(--text-dark);
+                margin-bottom: 20px;
+            }
+
+        .translation-input {
+                width: 100%;
+                padding: 14px 18px;
+                border: 2px solid var(--morandi-beige);
+                border-radius: 12px;
+                font-size: 15px;
+                font-family: inherit;
+                transition: all 0.3s ease;
+            }
+
+            .translation-input:focus {
+                border-color: var(--klein-blue);
+                outline: none;
+            }
+
+        .submit-btn {
+                margin-top: 16px;
+                width: 100%;
+                padding: 14px;
+                background: linear-gradient(135deg, var(--klein-blue), var(--klein-light));
+                color: white;
+                border: none;
+                border-radius: 12px;
+                font-size: 15px;
+                font-weight: 600;
+                cursor: pointer;
+                transition: all 0.3s ease;
+            }
+
+            .submit-btn:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 6px 20px rgba(0, 47, 167, 0.3);
+            }
+
+        /* 完成提示 */
+        .complete-section {
+                display: none;
+                text-align: center;
+                padding: 60px 20px;
+            }
+
+        .complete-icon {
+                font-size: 64px;
+                margin-bottom: 16px;
+            }
+
+        .complete-text {
+                font-size: 24px;
+                font-weight: 700;
+                color: var(--klein-blue);
+                margin-bottom: 8px;
+            }
+
+        .complete-stats {
+                display: flex;
+                justify-content: center;
+                gap: 24px;
+                margin-top: 16px;
+            }
+
+            .stat-item {
+                text-align: center;
+            }
+
+            .stat-value {
+                font-size: 28px;
+                font-weight: 800;
+                color: var(--klein-blue);
+            }
+
+            .stat-label {
+                font-size: 12px;
+                color: var(--text-muted);
+                margin-top: 4px;
+            }
+
+        /* 反馈提示 */
+        .feedback-section {
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                right: 50%;
+                background: rgba(0, 0, 0, 0.8);
+                padding: 16px 24px;
+                border-radius: 12px;
+                z-index: 100;
+                display: none;
+            }
+
+        .feedback-message {
+                color: white;
+                font-size: 14px;
+                font-weight: 600;
+            }
+
+        /* 按钮组 */
+        .action-buttons {
+                display: flex;
+                gap: 12px;
+                margin-top: 24px;
+            }
+
+        .action-btn {
+                flex: 1;
+                padding: 12px;
+                background: var(--morandi-beige);
+                border: 2px solid var(--morandi-rose);
+                border-radius: 12px;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                font-size: 14px;
+                color: var(--text-dark);
+                font-weight: 600;
+            }
+
+            .action-btn:hover {
+                background: var(--morandi-rose);
+            }
+
+            .action-btn.primary {
+                background: linear-gradient(135deg, var(--klein-blue), var(--klein-light));
+                color: white;
+                border: none;
+            }
+
+            .action-btn.primary:hover {
+                transform: translateY(-2px);
+            }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%, 0);
+            background: white;
+            padding: 14px 24px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            transition: transform 0.3s ease;
+        }
+
+        .toast.show {
+            transform: translateX(0, 0);
+        }
+
+        .toast.success {
+                border-left: 4px solid var(--accent-sage);
+        }
+        .toast.error {
+                border-left: 4px solid var(--accent-coral);
+        }
+
+        /* 响应式布局 */
+        @media (max-width: 768px) {
+            .container { padding: 20px 16px; padding-bottom: 100px; }
+            .word-card { padding: 24px 16px; margin: 0 -8px; border-radius: 20px; }
+            .word-text { font-size: 32px; }
+            .word-phonetic { font-size: 14px; }
+            .progress-section { padding: 16px; margin-bottom: 20px; }
+            .choice-section { padding: 20px 16px; }
+            .choice-options { gap: 10px; }
+            .choice-option { padding: 14px 16px; font-size: 14px; }
+            .action-buttons { flex-direction: column; gap: 10px; }
+            .action-btn { width: 100%; padding: 12px; }
+            .navbar { padding: 12px 16px; }
+            .nav-menu { display: none; }
+            .nav-user { gap: 8px; }
+        }
+
+        @media (max-width: 480px) {
+            .word-text { font-size: 28px; }
+            .word-phonetic { font-size: 12px; }
+            .stat-value { font-size: 20px; }
+            .complete-title { font-size: 24px; }
+            .complete-stats { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-decoration">
+        <span class="hand-letter letter-A">A</span>
+        <span class="hand-letter letter-B">B</span>
+        <span class="hand-letter letter-C">C</span>
+        <span class="hand-letter letter-D">D</span>
+        <span class="hand-letter letter-E">E</span>
+    </div>
+
+    <!-- 导航栏 -->
+    <nav class="navbar" role="navigation" aria-label="主导航">
+        <a href="dashboard.html" class="nav-brand">
+            <div class="nav-logo">SV</div>
+            <span class="nav-title">SmartVocab</span>
+        </a>
+        <div class="nav-menu" role="menubar">
+            <a href="dashboard.html" class="nav-link" role="menuitem">🏠 首页</a>
+            <a href="learning.html" class="nav-link active" role="menuitem" aria-current="page">📖 学习</a>
+            <a href="statistics.html" class="nav-link" role="menuitem">📊 统计</a>
+            <a href="favorites.html" class="nav-link" role="menuitem">⭐ 收藏</a>
+        </div>
+        <div class="nav-user">
+            <span class="user-name" id="username-display">用户</span>
+            <button class="btn btn-ghost" onclick="logout()" aria-label="退出登录">退出</button>
+        </div>
+    </nav>
+
+    <main class="container">
+        <!-- 进度条 -->
+        <div class="progress-section">
+            <div class="progress-header">
+                <span class="progress-text">学习进度:span>
+                <span class="progress-text"><span id="current-index">0</span> / <span id="total-count">0</span></span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress-fill" style="width: 0%"></div>
+            </div>
+        </div>
+
+        <!-- 单词卡片 -->
+        <div class="word-card" id="word-card">
+            <button class="action-btn" onclick="toggleFavorite()" style="position: absolute; top: 16px; right: 16px;">☆</button>
+            <button class="action-btn" onclick="playSound()" style="position: absolute; top: 16px; left: 16px;">🔊</button>
+            <div class="word-text" id="word-text">Loading...</div>
+            <div class="word-phonetic" id="word-phonetic"></div>
+        </div>
+
+        <!-- 选择题区域 -->
+        <div class="choice-section" id="choice-section">
+            <div class="choice-title">请选择正确的中文释义</div>
+            <div class="choice-options" id="choice-options"></div>
+        </div>
+
+        <!-- 翻译题区域 -->
+        <div class="translation-section" id="translation-section">
+            <div class="translation-title">请输入英文单词</div>
+            <input type="text" class="translation-input" id="answer-input" placeholder="输入单词...">
+            <button class="submit-btn" onclick="submitTranslation()">提交</button>
+        </div>
+
+        <!-- 完成提示 -->
+        <div class="complete-section" id="complete-section">
+            <div class="complete-icon">🎉</div>
+            <div class="complete-text">学习完成!</div>
+            <div class="complete-stats">
+                <div class="stat-item">
+                    <div class="stat-value" id="final-accuracy">0%</div>
+                    <div class="stat-label">准确率</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="final-time">0s</div>
+                    <div class="stat-label">用时</div>
+                </div>
+            </div>
+            <div class="action-buttons">
+                <button class="action-btn" onclick="goBack()">返回首页</button>
+                <button class="action-btn primary" onclick="nextWord()">继续学习</button>
+            </div>
+        </div>
+
+        <!-- 反馈提示 -->
+        <div class="feedback-section" id="feedback-section">
+            <div class="feedback-message" id="feedback-message"></div>
+        </div>
+    </main>
+
+    <script>
+        const API_BASE = window.location.hostname === 'localhost'
+            ? 'http://localhost:5000/api'
+            : '/api';
+
+        let currentUser = null;
+        let words = [];
+        let currentIndex = 0;
+        let correctCount = 0;
+        let startTime = null;
+        let currentWord = null;
+
+        let sessionId = null;
+
+        function getToken() { return localStorage.getItem('auth_token'); }
+        function clearToken() { localStorage.removeItem('auth_token'); localStorage.removeItem('currentUser'); }
+
+        async function apiRequest(endpoint, options = {}) {
+            const token = getToken();
+            try {
+                const res = await fetch(API_BASE + endpoint, {
+                    method: options.method || 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                    },
+                    body: options.body
+                });
+                if (res.status === 401) { clearToken(); window.location.href = 'login.html'; }
+                return await res.json();
+            } catch (e) { return { success: false, message: '网络错误' }; }
+        }
+
+        function showToast(msg, type = 'success') {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type} show`;
+            toast.textContent = msg;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        async function init() {
+            const token = getToken();
+            if (!token) { window.location.href = 'login.html'; return; }
+
+            const result = await apiRequest('/auth/profile');
+            if (!result.success) { window.location.href = 'login.html'; return; }
+
+            currentUser = result.data;
+            document.getElementById('username-display').textContent = currentUser.username;
+
+            // 检查是否有保存的学习设置
+            const settings = sessionStorage.getItem('learning_settings');
+            const reviewMode = sessionStorage.getItem('review_mode');
+
+            if (reviewMode === 'true') {
+                await loadReviewWords();
+            } else if (settings) {
+                const parsed = JSON.parse(settings);
+                await startSession(parsed.difficulty || 2, parsed.wordCount || 10);
+            } else {
+                await startSession(2, 10);
+            }
+        }
+
+        async function startSession(difficulty, wordCount) {
+            try {
+                const result = await apiRequest('/vocabulary/start-session', {
+                    method: 'POST',
+                    body: JSON.stringify({ user_id: currentUser.id, difficulty_level: difficulty, word_count: wordCount })
+                });
+
+                if (result.success) {
+                    sessionId = result.data.session_id;
+                    words = result.data.words || [];
+                    if (words.length > 0) {
+                        currentIndex = 0;
+                        showWord();
+                    } else {
+                        showToast('没有可学习的单词', 'error');
+                        setTimeout(() => window.location.href = 'dashboard.html', 2000);
+                    }
+                } else {
+                    showToast(result.message || '启动学习失败', 'error');
+                }
+            } catch (e) {
+                showToast('网络错误', 'error');
+            }
+        }
+
+        async function loadReviewWords() {
+            try {
+                const result = await apiRequest(`/learning/review-words/${currentUser.id}?limit=10`);
+                if (result.success && result.data?.words?.length > 0) {
+                    words = result.data.words;
+                    currentIndex = 0;
+                    showWord();
+                } else {
+                    showToast('没有需要复习的单词', 'error');
+                    setTimeout(() => window.location.href = 'dashboard.html', 2000);
+                }
+            } catch (e) {
+                showToast('网络错误', 'error');
+            }
+        }
+
+        function showWord() {
+            if (currentIndex >= words.length) {
+                showComplete();
+                return;
+            }
+
+            const word = words[currentIndex];
+            currentWord = word;
+            document.getElementById('word-text').textContent = word.word;
+            document.getElementById('word-phonetic').textContent = word.phonetic || '';
+
+            document.getElementById('current-index').textContent = currentIndex + 1;
+            document.getElementById('total-count').textContent = words.length;
+            document.getElementById('progress-fill').style.width = `${((currentIndex + 1) / words.length) * 100}%`;
+
+            showChoices(word);
+        }
+
+        async function showChoices(word) {
+            const container = document.getElementById('choice-options');
+            container.innerHTML = '<div class="choice-option">加载中...</div>';
+
+            try {
+                const result = await apiRequest('/vocabulary/current-word', {
+                    method: 'POST',
+                    body: JSON.stringify({ session_id: sessionId, word_id: word.id })
+                });
+
+                if (result.success && result.data?.question?.options) {
+                    const options = result.data.question.options;
+                    const correctAnswer = result.data.question.correct_answer;
+
+                    container.innerHTML = options.map((opt, i) => `
+                        <div class="choice-option" onclick="selectChoice(${i}, '${correctAnswer}')">${opt}</div>
+                    `).join('');
+                } else {
+                    container.innerHTML = '<div class="choice-option">加载失败</div>';
+                }
+            } catch (e) {
+                container.innerHTML = '<div class="choice-option">网络错误</div>';
+            }
+        }
+
+        async function selectChoice(index, correctAnswer) {
+            const options = document.querySelectorAll('.choice-option');
+            const selectedOption = options[index];
+            const selectedText = selectedOption.textContent;
+
+            const isCorrect = selectedText === correctAnswer;
+            correctCount += isCorrect ? 1 : 0;
+
+            options.forEach((opt, i) => {
+                opt.onclick = null;
+                if (opt.textContent === correctAnswer) {
+                    opt.classList.add('correct');
+                } else if (i === index) {
+                    opt.classList.add('wrong');
+                }
+            });
+
+            await submitAnswer(isCorrect);
+        }
+
+        async function submitAnswer(isCorrect) {
+            const word = words[currentIndex];
+            try {
+                await apiRequest('/vocabulary/submit-answer', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        session_id: sessionId,
+                        word_id: word.id,
+                        is_correct: isCorrect
+                    })
+                });
+            } catch (e) {
+                console.error(e);
+            }
+
+            setTimeout(() => nextWord(), 1500);
+        }
+
+        function submitTranslation() {
+            const input = document.getElementById('answer-input').value.trim();
+            const currentWord = words[currentIndex];
+            const isCorrect = input && currentWord?.word?.toLowerCase() === input.toLowerCase();
+            correctCount += isCorrect ? 1 : 0;
+            submitAnswer(isCorrect);
+        }
+
+        function nextWord() {
+            currentIndex++;
+            document.querySelectorAll('.choice-option').forEach(opt => {
+                opt.classList.remove('correct', 'wrong', 'selected');
+            });
+            showWord();
+        }
+
+        function showComplete() {
+            document.getElementById('word-card').classList.add('hidden');
+            document.getElementById('complete-section').classList.remove('hidden');
+
+            document.getElementById('choice-section').classList.add('hidden');
+            document.getElementById('translation-section').classList.add('hidden');
+
+            const accuracy = words.length > 0 ? Math.round((correctCount / words.length) * 100) : 0;
+            const time = Math.round((Date.now() - startTime) / 1000);
+
+            document.getElementById('final-accuracy').textContent = accuracy + '%';
+            document.getElementById('final-time').textContent = time + 's';
+
+            if (startTime === null) startTime = Date.now();
+        }
+
+        function playSound() {
+            if ('speechSynthesis' in window) {
+                const utterance = new SpeechSynthesisUtterance(currentWord?.word || '');
+                utterance.lang = 'en-US';
+                speechSynthesis.speak(utterance);
+            }
+        }
+
+        async function toggleFavorite() {
+            if (!currentWord) return;
+            try {
+                const result = await apiRequest(`/favorites/${currentUser.id}/word/${currentWord.id}`);
+                if (result.success) {
+                    await apiRequest(`/favorites/${currentUser.id}/word/${currentWord.id}`, { method: 'DELETE' });
+                    showToast('已取消收藏');
+                } else {
+                    await apiRequest(`/favorites/${currentUser.id}`, {
+                        method: 'POST',
+                        body: JSON.stringify({ word_id: currentWord.id })
+                    });
+                    showToast('已添加收藏');
+                }
+            } catch (e) {
+                showToast('操作失败', 'error');
+            }
+        }
+
+        function logout() {
+            clearToken();
+            window.location.href = 'login.html';
+        }
+
+        // Enter键提交
+        document.getElementById('answer-input')?.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                const input = document.getElementById('answer-input').value.trim();
+                const currentWord = words[currentIndex];
+                const isCorrect = input && currentWord?.word?.toLowerCase() === input.toLowerCase();
+                submitAnswer(isCorrect);
+            }
+        });
+
+        init();
+    </script>
+</body>
+</html>

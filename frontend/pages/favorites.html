@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="SmartVocab 我的收藏 - 收藏单词管理">
+    <title>我的收藏 - SmartVocab</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23002FA7'/><text x='16' y='20' font-family='Arial' font-size='18' font-weight='bold' fill='white' text-anchor='middle'>S</text></svg>">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../styles/klein-morandi.css">
+    <style>
+        /* Page-Specific Styles */
+        body {
+            font-family: 'Nunito', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: var(--morandi-cream);
+            color: var(--text-dark);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Background Decoration with Hand-Drawn Letters */
+        .bg-decoration {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            overflow: hidden;
+            z-index: 0;
+        }
+
+        .hand-letter {
+            font-family: 'Caveat', cursive;
+            font-size: 120px;
+            font-weight: 600;
+            color: var(--klein-blue);
+            opacity: 0.08;
+            position: absolute;
+            animation: float 6s ease-in-out infinite;
+            user-select: none;
+        }
+
+        .hand-letter:nth-child(1) { top: 10%; left: 5%; --rotation: -5deg; animation-delay: 0s; }
+        .hand-letter:nth-child(2) { top: 25%; right: 8%; --rotation: 8deg; animation-delay: 1s; }
+        .hand-letter:nth-child(3) { top: 50%; left: 12%; --rotation: -3deg; animation-delay: 2s; }
+        .hand-letter:nth-child(4) { top: 70%; right: 15%; --rotation: 6deg; animation-delay: 3s; }
+        .hand-letter:nth-child(5) { bottom: 10%; left: 20%; --rotation: -8deg; animation-delay: 4s; }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0) rotate(var(--rotation, 0deg)); }
+            50% { transform: translateY(-20px) rotate(calc(var(--rotation, 0deg) + 5deg)); }
+        }
+
+        /* Navbar Enhancement */
+        .navbar {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-bottom: 2px solid var(--morandi-rose);
+            padding: 16px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .nav-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+        }
+
+        .nav-logo {
+            width: 44px;
+            height: 44px;
+            background: linear-gradient(135deg, var(--klein-blue), var(--klein-light));
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            color: white;
+            font-size: 20px;
+            box-shadow: 0 4px 16px rgba(0, 47, 167, 0.25);
+        }
+
+        .nav-title {
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--klein-blue);
+        }
+
+        .nav-menu {
+            display: flex;
+            gap: 6px;
+        }
+
+        .nav-link {
+            color: var(--text-muted);
+            text-decoration: none;
+            padding: 10px 18px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .nav-link:hover {
+            background: var(--morandi-beige);
+            color: var(--text-dark);
+        }
+
+        .nav-link.active {
+            background: linear-gradient(135deg, var(--klein-blue), var(--klein-light));
+            color: white;
+            box-shadow: 0 4px 12px rgba(0, 47, 167, 0.2);
+        }
+
+        .nav-user {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .user-name {
+            font-size: 14px;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        /* Main Container */
+        .favorites-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 40px;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Page Header */
+        .page-header {
+            margin-bottom: 32px;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .page-title {
+            font-size: 36px;
+            font-weight: 800;
+            color: var(--klein-blue);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .page-title-icon {
+            font-size: 32px;
+        }
+
+        .page-subtitle {
+            color: var(--text-muted);
+            font-size: 16px;
+            margin-top: 8px;
+        }
+
+        .favorites-count {
+            color: var(--klein-blue);
+            font-weight: 700;
+        }
+
+        /* Filters Section - White Card with Rose Border */
+        .filters-section {
+            background: white;
+            border-radius: 24px;
+            padding: 28px;
+            margin-bottom: 32px;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+            border: 2px solid var(--morandi-rose);
+            animation: fadeIn 0.6s ease;
+        }
+
+        .filter-row {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .filter-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .filter-label {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text-muted);
+            min-width: 80px;
+        }
+
+        .filter-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .filter-tag {
+            padding: 8px 18px;
+            background: var(--morandi-beige);
+            border: 2px solid transparent;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-dark);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        .filter-tag:hover {
+            background: var(--morandi-rose);
+            transform: translateY(-2px);
+        }
+
+        .filter-tag.active {
+            background: linear-gradient(135deg, var(--klein-blue), var(--klein-light));
+            color: white;
+            border-color: transparent;
+            box-shadow: 0 4px 12px rgba(0, 47, 167, 0.25);
+        }
+
+        /* Search Box */
+        .search-box {
+            position: relative;
+            margin-top: 24px;
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 18px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-light);
+            font-size: 18px;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 16px 20px 16px 48px;
+            background: var(--morandi-cream);
+            border: 2px solid var(--morandi-beige);
+            border-radius: 16px;
+            font-size: 15px;
+            color: var(--text-dark);
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--klein-blue);
+            background: white;
+            box-shadow: 0 0 0 4px rgba(0, 47, 167, 0.1);
+        }
+
+        .search-input::placeholder {
+            color: var(--text-light);
+        }
+
+        /* Favorites Grid */
+        .favorites-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 24px;
+            animation: fadeIn 0.7s ease;
+        }
+
+        /* Favorite Card - White with Rose Border */
+        .favorite-card {
+            background: white;
+            border-radius: 20px;
+            padding: 24px;
+            position: relative;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            border: 2px solid var(--morandi-rose);
+            transition: all 0.3s ease;
+        }
+
+        .favorite-card:hover {
+            transform: translateY(-6px);
+            box-shadow: 0 12px 32px rgba(0, 47, 167, 0.12);
+            border-color: var(--klein-blue);
+        }
+
+        .favorite-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
+
+        .favorite-word {
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--klein-blue);
+        }
+
+        .favorite-toggle {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            transition: all 0.3s ease;
+            color: var(--accent-coral);
+        }
+
+        .favorite-toggle:hover {
+            transform: scale(1.15);
+            background: rgba(224, 122, 95, 0.1);
+        }
+
+        .favorite-phonetic {
+            font-size: 14px;
+            color: var(--text-muted);
+            font-style: italic;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .speak-btn {
+            background: var(--morandi-beige);
+            border: none;
+            border-radius: 50%;
+            width: 28px;
+            height: 28px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .speak-btn:hover {
+            background: var(--klein-blue);
+            color: white;
+        }
+
+        .favorite-translation {
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin-bottom: 16px;
+            padding: 12px;
+            background: var(--morandi-cream);
+            border-radius: 12px;
+        }
+
+        .favorite-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 16px;
+            border-top: 1px dashed var(--morandi-beige);
+        }
+
+        .favorite-difficulty {
+            font-size: 12px;
+            font-weight: 600;
+            padding: 6px 14px;
+            background: linear-gradient(135deg, var(--klein-blue), var(--klein-light));
+            color: white;
+            border-radius: 12px;
+        }
+
+        .favorite-dataset {
+            font-size: 12px;
+            font-weight: 600;
+            padding: 6px 14px;
+            background: var(--morandi-sage);
+            color: white;
+            border-radius: 12px;
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 80px 20px;
+            color: var(--text-muted);
+            animation: fadeIn 0.5s ease;
+        }
+
+        .empty-icon {
+            font-size: 80px;
+            margin-bottom: 24px;
+            display: block;
+        }
+
+        .empty-title {
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--text-dark);
+            margin-bottom: 12px;
+        }
+
+        .empty-subtitle {
+            font-size: 15px;
+            color: var(--text-muted);
+            margin-bottom: 24px;
+        }
+
+        .empty-action {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 14px 28px;
+            background: linear-gradient(135deg, var(--klein-blue), var(--klein-light));
+            color: white;
+            text-decoration: none;
+            border-radius: 16px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 16px rgba(0, 47, 167, 0.25);
+        }
+
+        .empty-action:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 24px rgba(0, 47, 167, 0.35);
+            text-decoration: none;
+        }
+
+        /* Loading State */
+        .loading-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-muted);
+        }
+
+        .loading-spinner {
+            width: 48px;
+            height: 48px;
+            border: 4px solid var(--morandi-beige);
+            border-top-color: var(--klein-blue);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .navbar {
+                padding: 12px 20px;
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+
+            .nav-menu {
+                order: 3;
+                width: 100%;
+                justify-content: center;
+                flex-wrap: wrap;
+            }
+
+            .favorites-container {
+                padding: 20px;
+            }
+
+            .page-title {
+                font-size: 28px;
+            }
+
+            .filters-section {
+                padding: 20px;
+            }
+
+            .filter-row {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .filter-label {
+                margin-bottom: 8px;
+            }
+
+            .favorites-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Animation */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Card Entrance Animation */
+        .favorite-card {
+            animation: cardEnter 0.4s ease backwards;
+        }
+
+        @keyframes cardEnter {
+            from {
+                opacity: 0;
+                transform: translateY(20px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Background Decoration -->
+    <div class="bg-decoration">
+        <span class="hand-letter">A</span>
+        <span class="hand-letter">B</span>
+        <span class="hand-letter">C</span>
+        <span class="hand-letter">D</span>
+        <span class="hand-letter">E</span>
+    </div>
+
+    <!-- Navbar -->
+    <nav class="navbar" role="navigation" aria-label="主导航">
+        <a href="dashboard.html" class="nav-brand">
+            <div class="nav-logo">S</div>
+            <span class="nav-title">SmartVocab</span>
+        </a>
+        <div class="nav-menu" role="menubar">
+            <a href="dashboard.html" class="nav-link" role="menuitem">🏠 首页</a>
+            <a href="plans.html" class="nav-link" role="menuitem">📋 计划</a>
+            <a href="levels.html" class="nav-link" role="menuitem">🎮 闯关</a>
+            <a href="evaluation.html" class="nav-link" role="menuitem">📝 测试</a>
+            <a href="statistics.html" class="nav-link" role="menuitem">📊 统计</a>
+            <a href="favorites.html" class="nav-link active" role="menuitem" aria-current="page">⭐ 收藏</a>
+            <a href="profile.html" class="nav-link" role="menuitem">👤 我的</a>
+        </div>
+        <div class="nav-user">
+            <span id="username-display" class="user-name"></span>
+            <button id="logout-btn" class="btn btn-ghost" aria-label="退出登录">退出</button>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="favorites-container">
+        <!-- Page Header -->
+        <header class="page-header">
+            <h1 class="page-title">
+                <span class="page-title-icon">⭐</span>
+                我的收藏
+            </h1>
+            <p class="page-subtitle">共 <span id="favorites-count" class="favorites-count">0</span> 个收藏单词</p>
+        </header>
+
+        <!-- Filters Section -->
+        <section class="filters-section">
+            <div class="filter-row">
+                <span class="filter-label">📚 难度筛选</span>
+                <div class="filter-tags" id="difficulty-filters">
+                    <button class="filter-tag active" data-difficulty="all">全部</button>
+                    <button class="filter-tag" data-difficulty="1">入门</button>
+                    <button class="filter-tag" data-difficulty="2">基础</button>
+                    <button class="filter-tag" data-difficulty="3">初级</button>
+                    <button class="filter-tag" data-difficulty="4">中级</button>
+                    <button class="filter-tag" data-difficulty="5">高级</button>
+                    <button class="filter-tag" data-difficulty="6">专业</button>
+                </div>
+            </div>
+            <div class="filter-row">
+                <span class="filter-label">📖 词库筛选</span>
+                <div class="filter-tags" id="dataset-filters">
+                    <button class="filter-tag active" data-dataset="all">全部</button>
+                    <button class="filter-tag" data-dataset="cet4">CET4</button>
+                    <button class="filter-tag" data-dataset="cet6">CET6</button>
+                    <button class="filter-tag" data-dataset="toefl">TOEFL</button>
+                    <button class="filter-tag" data-dataset="ielts">IELTS</button>
+                </div>
+            </div>
+            <div class="search-box">
+                <span class="search-icon">🔍</span>
+                <input type="text" id="favorites-search" class="search-input" placeholder="搜索单词或释义...">
+            </div>
+        </section>
+
+        <!-- Favorites Grid -->
+        <section class="favorites-grid" id="favorites-grid">
+            <div class="loading-state">
+                <div class="loading-spinner"></div>
+                <p>加载中...</p>
+            </div>
+        </section>
+
+        <!-- Empty State -->
+        <section id="favorites-empty" class="empty-state" style="display: none;">
+            <span class="empty-icon">📚</span>
+            <h3 class="empty-title">还没有收藏任何单词</h3>
+            <p class="empty-subtitle">在学习时点击单词旁边的 ⭐ 即可收藏喜欢的单词</p>
+            <a href="dashboard.html" class="empty-action">
+                开始学习
+            </a>
+        </section>
+    </main>
+
+    <script type="module">
+        import { apiRequest, getToken, clearToken } from '../js/api-client.js';
+        import { showToast, escapeHtml } from '../js/utils.js';
+
+        // Check login status
+        const token = getToken();
+        if (!token) {
+            window.location.href = 'login.html';
+        }
+
+        let currentUser = null;
+        let allFavorites = [];
+        let currentDifficulty = 'all';
+        let currentDataset = 'all';
+        let searchQuery = '';
+
+        // Load user profile
+        async function loadUserProfile() {
+            try {
+                const result = await apiRequest('/auth/profile');
+                if (result.success) {
+                    currentUser = result.data;
+                    document.getElementById('username-display').textContent = currentUser.username;
+                    loadFavorites();
+                }
+            } catch (err) {
+                console.error('Failed to load user info:', err);
+            }
+        }
+
+        // Load favorites
+        async function loadFavorites() {
+            try {
+                const result = await apiRequest(`/favorites/${currentUser.id}`);
+                if (result.success) {
+                    allFavorites = result.data?.favorites || [];
+                    document.getElementById('favorites-count').textContent = allFavorites.length;
+                    renderFavorites();
+                }
+            } catch (err) {
+                console.error('Failed to load favorites:', err);
+            }
+        }
+
+        // Speak word pronunciation
+        window.speakWord = function(word) {
+            if ('speechSynthesis' in window) {
+                const utterance = new SpeechSynthesisUtterance(word);
+                utterance.lang = 'en-US';
+                utterance.rate = 0.9;
+                speechSynthesis.speak(utterance);
+            }
+        };
+
+        // Get difficulty description
+        function getDifficultyDescription(level) {
+            const descriptions = { 1: '入门', 2: '基础', 3: '初级', 4: '中级', 5: '高级', 6: '专业' };
+            return descriptions[level] || '未知';
+        }
+
+        // Render favorites list
+        function renderFavorites() {
+            const grid = document.getElementById('favorites-grid');
+            const emptyState = document.getElementById('favorites-empty');
+
+            let filtered = allFavorites;
+
+            // Difficulty filter
+            if (currentDifficulty !== 'all') {
+                filtered = filtered.filter(f => f.difficulty_level === parseInt(currentDifficulty));
+            }
+
+            // Dataset filter
+            if (currentDataset !== 'all') {
+                filtered = filtered.filter(f => f.dataset === currentDataset);
+            }
+
+            // Search filter
+            if (searchQuery) {
+                const query = searchQuery.toLowerCase();
+                filtered = filtered.filter(f =>
+                    f.word.toLowerCase().includes(query) ||
+                    f.translation?.toLowerCase().includes(query)
+                );
+            }
+
+            if (filtered.length === 0) {
+                grid.style.display = 'none';
+                emptyState.style.display = 'block';
+                return;
+            }
+
+            grid.style.display = 'grid';
+            emptyState.style.display = 'none';
+
+            grid.innerHTML = filtered.map((f, index) => `
+                <div class="favorite-card" style="animation-delay: ${index * 0.05}s">
+                    <div class="favorite-header">
+                        <div class="favorite-word">${escapeHtml(f.word)}</div>
+                        <button class="favorite-toggle" onclick="removeFavorite(${f.id})" title="取消收藏">
+                            ⭐
+                        </button>
+                    </div>
+                    <div class="favorite-phonetic">
+                        ${escapeHtml(f.phonetic || '')}
+                        <button class="speak-btn" onclick="speakWord('${escapeHtml(f.word)}')" title="发音">
+                            🔊
+                        </button>
+                    </div>
+                    <div class="favorite-translation">${escapeHtml(f.translation || '')}</div>
+                    <div class="favorite-meta">
+                        <span class="favorite-difficulty">${getDifficultyDescription(f.difficulty_level)}</span>
+                        <span class="favorite-dataset">${f.dataset || '通用'}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Remove favorite
+        window.removeFavorite = async function(favoriteId) {
+            try {
+                const result = await apiRequest(`/favorites/${currentUser.id}/word/${favoriteId}`, {
+                    method: 'DELETE'
+                });
+                if (result.success) {
+                    showToast('已取消收藏', 'success');
+                    loadFavorites();
+                }
+            } catch (err) {
+                showToast('操作失败', 'error');
+            }
+        };
+
+        // Difficulty filter
+        document.querySelectorAll('#difficulty-filters .filter-tag').forEach(tag => {
+            tag.addEventListener('click', () => {
+                document.querySelectorAll('#difficulty-filters .filter-tag').forEach(t => t.classList.remove('active'));
+                tag.classList.add('active');
+                currentDifficulty = tag.dataset.difficulty;
+                renderFavorites();
+            });
+        });
+
+        // Dataset filter
+        document.querySelectorAll('#dataset-filters .filter-tag').forEach(tag => {
+            tag.addEventListener('click', () => {
+                document.querySelectorAll('#dataset-filters .filter-tag').forEach(t => t.classList.remove('active'));
+                tag.classList.add('active');
+                currentDataset = tag.dataset.dataset;
+                renderFavorites();
+            });
+        });
+
+        // Search
+        document.getElementById('favorites-search').addEventListener('input', (e) => {
+            searchQuery = e.target.value;
+            renderFavorites();
+        });
+
+        // Logout
+        document.getElementById('logout-btn').addEventListener('click', () => {
+            clearToken();
+            window.location.href = 'login.html';
+        });
+
+        // Initialize
+        loadUserProfile();
+    </script>
+</body>
+</html>
