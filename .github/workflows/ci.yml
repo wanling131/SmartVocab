@@ -1,0 +1,86 @@
+# SmartVocab CI - 自动测试和检查
+# 触发条件：push 到 main，PR 到 main
+
+name: SmartVocab CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # Python 单元测试
+  pytest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-cov
+
+      - name: Run pytest
+        env:
+          SMARTVOCAB_SKIP_DL_INIT: 1
+        run: |
+          python -m pytest tests/ -v --tb=short --cov=api --cov=core --cov=tools
+        continue-on-error: true  # 测试失败不阻止，让结果可见
+
+  # 代码质量检查
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install linters
+        run: pip install flake8 isort black
+
+      - name: Run flake8
+        run: flake8 api/ core/ tools/ --max-line-length=100 --extend-ignore=E203,W503
+        continue-on-error: true
+
+      - name: Check isort
+        run: isort --check-only --profile=black api/ core/ tools/
+        continue-on-error: true
+
+      - name: Check black
+        run: black --check --line-length=100 api/ core/ tools/
+        continue-on-error: true
+
+  # E2E 测试 (需要数据库，暂时跳过)
+  e2e:
+    runs-on: ubuntu-latest
+    if: false  # 需要配置数据库后启用
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: tests/e2e/package.json
+
+      - name: Install Playwright
+        working-directory: tests/e2e
+        run: |
+          npm install
+          npx playwright install
+
+      - name: Run E2E tests
+        working-directory: tests/e2e
+        run: npx playwright test

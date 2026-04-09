@@ -109,19 +109,20 @@ RECOMMENDATION_CONFIG = {
     "min_score_threshold": 0.3,         # 最小推荐分数阈值
 
     # 基础算法权重（总和应为1.0，会自动归一化）
+    # 优化后权重：增强多样性和协同过滤，平衡各算法贡献
     "algorithm_weights": {
         "difficulty_based": 0.21,       # 基于难度的推荐
-        "frequency_based": 0.17,        # 基于词频的推荐
+        "frequency_based": 0.16,        # 基于词频的推荐（微调）
         "learning_history": 0.17,       # 基于学习历史的推荐
-        "deep_learning": 0.25,          # 深度学习推荐
-        "collaborative": 0.13,          # 协同过滤推荐
-        "random_exploration": 0.07      # 随机探索
+        "deep_learning": 0.23,          # 深度学习推荐（微调）
+        "collaborative": 0.15,          # 协同过滤推荐（↑ 增强发现相似用户喜好）
+        "random_exploration": 0.08      # 随机探索（↑ 增强推荐多样性）
     },
 
     # 动态权重调整参数
     "dynamic_weights": {
         "enabled": True,                 # 是否启用动态权重
-        "min_records_for_personalization": 20,  # 个性化权重所需最少记录
+        "min_records_for_personalization": 15,  # 个性化权重所需最少记录（↓ 更早开始个性化）
         "weight_adaptation_rate": 0.1,   # 权重适应速率
         "exploration_decay_rate": 0.05,  # 探索衰减率
     },
@@ -143,13 +144,13 @@ RECOMMENDATION_CONFIG = {
         "thompson_sampling_enabled": True,  # 是否启用Thompson采样
     },
 
-    # 多样性控制
+    # 多样性控制（优化：增强推荐多样性）
     "diversity": {
         "enabled": True,                 # 是否启用多样性控制
-        "mmr_lambda": 0.7,               # MMR平衡参数 (0-1, 越大越重相关性)
+        "mmr_lambda": 0.65,              # MMR平衡参数（↓ 增加多样性）
         "category_penalty": 0.3,         # 同类别惩罚系数
         "difficulty_spread": 2,          # 推荐难度跨度
-        "max_same_pos_ratio": 0.3,       # 同词性最大比例
+        "max_same_pos_ratio": 0.25,      # 同词性最大比例（↓ 更严格限制）
     },
 
     # 协同过滤配置
@@ -170,13 +171,14 @@ RECOMMENDATION_CONFIG = {
         "feedback_integration_rate": 0.2,  # 反馈整合速率
     },
 
-    # 深度学习增强
+    # 深度学习增强（优化：更及时的个性化模型更新）
     "deep_learning_enhanced": {
         "user_feature_dim": 25,          # 增强用户特征维度
         "word_feature_dim": 25,          # 增强单词特征维度
         "attention_enabled": True,       # 是否启用注意力机制
         "online_learning_rate": 0.01,    # 在线学习率
-        "model_update_frequency": 50,    # 模型更新频率（学习记录数）
+        "model_update_frequency": 35,    # 模型更新频率（↓ 更频繁更新）
+        "min_records_for_training": 30   # 最小训练记录数（新增：控制训练门槛）
     }
 }
 

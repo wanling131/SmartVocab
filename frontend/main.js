@@ -6,19 +6,14 @@ import {
   fadeIn,
   fadeOut,
   animateProgress,
-  typeWriter,
-  showToast as utilsShowToast,
-  showLoading as utilsShowLoading,
-  hideLoading as utilsHideLoading
+  typeWriter
 } from "./js/utils.js"
 
 // Web Worker 客户端（用于大量数据计算)
 let workerClient = null
 
-// 重命名导入的工具函数以避免冲突
-const showToast = utilsShowToast || showToast
-const showLoading = utilsShowLoading || showLoading
-const hideLoading = utilsHideLoading || hideLoading
+// 注意：showToast、showLoading、hideLoading 使用本文件中的增强版本（带动画效果）
+// 不从 utils.js 导入
 
 /**
  * 安全地设置元素的innerHTML，自动转义所有变量
@@ -110,10 +105,16 @@ function updateExampleSection(word) {
   const example = word.example_sentence || word.example || ""
 
   if (example && word.question_type !== "spelling") {
-    // 高亮当前单词
-    const highlighted = example.replace(
-      new RegExp(`\\b${word.word}\\b`, "gi"),
-      `<span class="highlight">${word.word}</span>`
+    // 先转义例句和单词，防止 XSS
+    const escapedExample = escapeHtml(example)
+    const escapedWord = escapeHtml(word.word)
+
+    // 高亮当前单词（在转义后的文本中匹配）
+    // 转义正则特殊字符
+    const regexSafeWord = escapedWord.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const highlighted = escapedExample.replace(
+      new RegExp(`\\b${regexSafeWord}\\b`, "gi"),
+      `<span class="highlight">${escapedWord}</span>`
     )
     exampleText.innerHTML = highlighted
     exampleSection.classList.remove("hidden")
@@ -386,63 +387,8 @@ function setFormValues(valueMap) {
 
 // ==================== 动画工具函数 ====================
 
-/**
- * 数字递增动画
- */
-function animateNumber(element, targetValue, duration = 1000) {
-  if (!element) return
-  const startValue = parseInt(element.textContent) || 0
-  const startTime = performance.now()
-
-  function update(currentTime) {
-    const elapsed = currentTime - startTime
-    const progress = Math.min(elapsed / duration, 1)
-    const easeProgress = 1 - Math.pow(1 - progress, 3)
-    const currentValue = Math.round(startValue + (targetValue - startValue) * easeProgress)
-    element.textContent = currentValue.toLocaleString()
-    if (progress < 1) requestAnimationFrame(update)
-  }
-  requestAnimationFrame(update)
-}
-
-/**
- * 元素淡入动画
- */
-function fadeIn(element, duration = 300) {
-  if (!element) return
-  element.style.opacity = '0'
-  element.style.display = 'block'
-  let start = null
-  function animate(timestamp) {
-    if (!start) start = timestamp
-    const opacity = Math.min((timestamp - start) / duration, 1)
-    element.style.opacity = opacity
-    if (opacity < 1) requestAnimationFrame(animate)
-  }
-  requestAnimationFrame(animate)
-}
-
-/**
- * 元素淡出动画
- */
-function fadeOut(element, duration = 300) {
-  return new Promise((resolve) => {
-    if (!element) { resolve(); return }
-    let start = null
-    function animate(timestamp) {
-      if (!start) start = timestamp
-      const opacity = 1 - Math.min((timestamp - start) / duration, 1)
-      element.style.opacity = opacity
-      if (opacity > 0) {
-        requestAnimationFrame(animate)
-      } else {
-        element.style.display = 'none'
-        resolve()
-      }
-    }
-    requestAnimationFrame(animate)
-  })
-}
+// 注意：animateNumber、fadeIn、fadeOut、animateProgress、typeWriter
+// 已从 utils.js 导入，无需重复定义
 
 /**
  * 涟漪点击效果
@@ -461,40 +407,6 @@ function createRipple(event) {
   button.querySelector('.ripple-effect')?.remove()
   button.appendChild(ripple)
   setTimeout(() => ripple.remove(), 600)
-}
-
-/**
- * 进度条平滑动画
- */
-function animateProgress(progressBar, targetPercent, duration = 500) {
-  if (!progressBar) return
-  const currentWidth = parseFloat(progressBar.style.width) || 0
-  const startTime = performance.now()
-  function update(currentTime) {
-    const progress = Math.min((currentTime - startTime) / duration, 1)
-    const easeProgress = 1 - Math.pow(1 - progress, 2)
-    progressBar.style.width = `${currentWidth + (targetPercent - currentWidth) * easeProgress}%`
-    if (progress < 1) requestAnimationFrame(update)
-  }
-  requestAnimationFrame(update)
-}
-
-/**
- * 打字机效果
- */
-function typeWriter(element, text, speed = 50) {
-  return new Promise((resolve) => {
-    if (!element) { resolve(); return }
-    element.textContent = ''
-    let i = 0
-    function type() {
-      if (i < text.length) {
-        element.textContent += text.charAt(i++)
-        setTimeout(type, speed)
-      } else resolve()
-    }
-    type()
-  })
 }
 
 /**

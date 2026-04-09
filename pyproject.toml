@@ -1,0 +1,74 @@
+# SmartVocab Python 项目配置
+# https://packaging.python.org/en/latest/specifications/declaring-project-metadata/
+
+[project]
+name = "smartvocab"
+version = "1.0.0"
+description = "智能英语词汇学习系统，集成深度学习推荐"
+readme = "CLAUDE.md"
+requires-python = ">=3.8"
+license = {text = "MIT"}
+authors = [
+    {name = "SmartVocab Team"}
+]
+keywords = ["vocabulary", "learning", "recommendation", "flask", "pytorch"]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+    "black>=23.0",
+    "isort>=5.12",
+    "flake8>=6.0",
+    "mypy>=1.0",
+    "pre-commit>=3.0",
+]
+
+# pytest 配置
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests requiring database connection",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]
+
+# black 代码格式化配置
+[tool.black]
+line-length = 100
+target-version = ['py38', 'py39', 'py310']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+    \.git
+    | \.venv
+    | __pycache__
+    | node_modules
+    | tests/e2e
+)/
+'''
+
+# isort 导入排序配置
+[tool.isort]
+profile = "black"
+line_length = 100
+known_first_party = ["api", "core", "tools", "models"]
+sections = ["FUTURE", "STDLIB", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"]
+skip = [".git", ".venv", "__pycache__", "node_modules"]
+
+# mypy 类型检查配置
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_ignores = true
+ignore_missing_imports = true
+exclude = [
+    "tests/e2e",
+    "node_modules",
+]

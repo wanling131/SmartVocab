@@ -3,10 +3,12 @@
 提供用户注册、登录等认证相关接口
 """
 
+import re
 from flask import Blueprint, request
 from core.auth.user_auth import UserAuth
 from .utils import APIResponse, handle_api_error
-from .auth_middleware import generate_token, require_auth, get_current_user
+from .auth_middleware import generate_token, require_auth, get_current_user, check_user_access
+from tools.users_crud import UsersCRUD
 
 # 创建蓝图
 auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
@@ -93,9 +95,7 @@ def get_current_profile():
 @require_auth
 def get_profile(user_id):
     """查询个人信息"""
-    # 验证当前用户只能查看自己的信息
-    current_user = get_current_user()
-    if current_user['user_id'] != user_id:
+    if not check_user_access(user_id):
         return APIResponse.error('无权访问', 403)
 
     info = user_auth.get_user_info(user_id)
@@ -111,12 +111,9 @@ def get_profile(user_id):
 @require_auth
 def update_profile(user_id):
     """更新个人信息"""
-    # 验证当前用户只能修改自己的信息
-    current_user = get_current_user()
-    if current_user['user_id'] != user_id:
+    if not check_user_access(user_id):
         return APIResponse.error('无权修改', 403)
 
-    from tools.users_crud import UsersCRUD
     data = request.get_json()
     crud = UsersCRUD()
     user = crud.read(user_id)
@@ -139,9 +136,7 @@ def update_profile(user_id):
 @require_auth
 def change_password(user_id):
     """修改密码"""
-    # 验证当前用户只能修改自己的密码
-    current_user = get_current_user()
-    if current_user['user_id'] != user_id:
+    if not check_user_access(user_id):
         return APIResponse.error('无权修改', 403)
 
     data = request.get_json()
@@ -151,21 +146,25 @@ def change_password(user_id):
     if not old_password or not new_password:
         return APIResponse.error('旧密码和新密码不能为空', 400)
 
-    if len(new_password) < 6:
-        return APIResponse.error('新密码至少需要6个字符', 400)
+    # 密码强度验证
+    if len(new_password) < 8:
+        return APIResponse.error('新密码至少需要8个字符', 400)
+    if not re.search(r'[A-Z]', new_password):
+        return APIResponse.error('新密码需要包含大写字母', 400)
+    if not re.search(r'[a-z]', new_password):
+        return APIResponse.error('新密码需要包含小写字母', 400)
+    if not re.search(r'\d', new_password):
+        return APIResponse.error('新密码需要包含数字', 400)
 
     # 验证旧密码
+    current_user = get_current_user()
     result = user_auth.login(current_user['username'], old_password)
     if not result['success']:
         return APIResponse.error('旧密码错误', 400)
 
-    # 更新密码
-    from tools.users_crud import UsersCRUD
+    # 更新密码（使用 UserAuth 的哈希方法）
+    password_hash = user_auth._hash_password(new_password)
     crud = UsersCRUD()
-
-    # 生成新密码哈希
-    import bcrypt
-    password_hash = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
     crud.update(user_id, password_hash=password_hash)
 
     return APIResponse.success({}, "密码修改成功")

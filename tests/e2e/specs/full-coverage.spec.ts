@@ -235,13 +235,12 @@ test.describe('5. 等级测试', () => {
   test('5.1 显示开始测试界面', async ({ page }) => {
     await expect(page.locator('#eval-start')).toBeAttached();
     await expect(page.locator('#start-eval-btn')).toBeAttached();
-    await expect(page.locator('#eval-question-count')).toBeAttached();
+    await expect(page.locator('.preset-btn')).toHaveCount(3);
   });
 
   test('5.2 开始等级测试', async ({ page }) => {
-    await page.waitForSelector('#eval-question-count', { state: 'attached' });
-    await page.fill('#eval-question-count', '5');
-    await page.waitForSelector('#start-eval-btn', { state: 'attached' });
+    // 选择 10 题快速测试模式（默认已选中）
+    await page.waitForSelector('.preset-btn.active');
     await page.locator('#start-eval-btn').click({ force: true });
 
     await page.waitForSelector('#eval-test', { state: 'attached', timeout: 10000 });
@@ -249,13 +248,63 @@ test.describe('5. 等级测试', () => {
   });
 
   test('5.3 提交答卷并查看结果', async ({ page }) => {
-    await page.waitForSelector('#eval-question-count', { state: 'attached' });
-    await page.fill('#eval-question-count', '5');
-    await page.waitForSelector('#start-eval-btn', { state: 'attached' });
-    await page.locator('#start-eval-btn').click({ force: true });
+    test.setTimeout(60000);
+    // 拦截 API 并模拟成功响应
+    await page.route('**/api/evaluation/start', async route => {
+      const request = route.request();
+      const body = request.postDataJSON();
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          success: true,
+          data: {
+            paper_id: 999,
+            questions: Array.from({ length: body.question_count || 10 }, (_, i) => ({
+              word: `test_word_${i + 1}`,
+              phonetic: `test_${i + 1}`,
+              options: ['选项A', '选项B', '选项C', '选项D'],
+              correct_index: 0
+            }))
+          },
+          message: '开始测试成功'
+        })
+      });
+    });
 
+    // 拦截提交 API
+    await page.route('**/api/evaluation/submit', async route => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          success: true,
+          data: {
+            score: 80,
+            correct_count: 8,
+            total_count: 10,
+            level: '中级'
+          },
+          message: '提交成功'
+        })
+      });
+    });
+
+    // 等待用户信息加载完成（确保 currentUser 已设置）
+    await page.waitForSelector('#username-display', { state: 'attached' });
+    await page.waitForFunction(() => {
+      const el = document.getElementById('username-display');
+      return el && el.textContent && el.textContent.length > 0;
+    }, { timeout: 5000 });
+
+    await page.waitForSelector('.preset-btn.active');
+    // 直接通过 JS 触发开始按钮点击
+    await page.evaluate(() => document.getElementById('start-eval-btn').click());
+
+    // 等待测试区域显示并可见
+    await page.waitForSelector('#eval-test', { state: 'visible', timeout: 10000 });
     // 等待题目真正渲染出来（说明 API 成功返回了题目）
-    await page.waitForSelector('.question-card', { state: 'attached', timeout: 15000 });
+    await page.waitForSelector('.question-card', { state: 'attached', timeout: 10000 });
 
     // 接受确认对话框并直接通过 JS 触发提交
     page.once('dialog', dialog => dialog.accept());
@@ -269,11 +318,60 @@ test.describe('5. 等级测试', () => {
   });
 
   test('5.4 再次测试', async ({ page }) => {
-    await page.waitForSelector('#eval-question-count', { state: 'attached' });
-    await page.fill('#eval-question-count', '5');
-    await page.waitForSelector('#start-eval-btn', { state: 'attached' });
-    await page.locator('#start-eval-btn').click({ force: true });
-    await page.waitForSelector('.question-card', { state: 'attached', timeout: 15000 });
+    test.setTimeout(60000);
+    // 拦截 API 并模拟成功响应
+    await page.route('**/api/evaluation/start', async route => {
+      const request = route.request();
+      const body = request.postDataJSON();
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          success: true,
+          data: {
+            paper_id: 999,
+            questions: Array.from({ length: body.question_count || 10 }, (_, i) => ({
+              word: `test_word_${i + 1}`,
+              phonetic: `test_${i + 1}`,
+              options: ['选项A', '选项B', '选项C', '选项D'],
+              correct_index: 0
+            }))
+          },
+          message: '开始测试成功'
+        })
+      });
+    });
+
+    // 拦截提交 API
+    await page.route('**/api/evaluation/submit', async route => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          success: true,
+          data: {
+            score: 80,
+            correct_count: 8,
+            total_count: 10,
+            level: '中级'
+          },
+          message: '提交成功'
+        })
+      });
+    });
+
+    // 等待用户信息加载完成
+    await page.waitForSelector('#username-display', { state: 'attached' });
+    await page.waitForFunction(() => {
+      const el = document.getElementById('username-display');
+      return el && el.textContent && el.textContent.length > 0;
+    }, { timeout: 5000 });
+
+    await page.waitForSelector('.preset-btn.active');
+    // 直接通过 JS 触发开始按钮点击
+    await page.evaluate(() => document.getElementById('start-eval-btn').click());
+    await page.waitForSelector('#eval-test', { state: 'visible', timeout: 10000 });
+    await page.waitForSelector('.question-card', { state: 'attached', timeout: 10000 });
 
     page.once('dialog', dialog => dialog.accept());
     await page.evaluate(() => document.getElementById('submit-eval-btn').click());

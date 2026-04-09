@@ -1,0 +1,55 @@
+# Pre-commit hooks - 提交前自动检查
+# https://pre-commit.com
+
+repos:
+  # 通用检查
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: ^tests/e2e/
+      - id: end-of-file-fixer
+        exclude: ^tests/e2e/
+      - id: check-yaml
+      - id: check-json
+      - id: check-added-large-files
+        args: ['--maxkb=500']
+        exclude: ^(models/|data/)
+      - id: check-merge-conflict
+      - id: detect-private-key
+      - id: check-case-conflict
+
+  # Python 代码检查
+  - repo: https://github.com/pycqa/flake8
+    rev: 7.0.0
+    hooks:
+      - id: flake8
+        args: ['--max-line-length=100', '--extend-ignore=E203,W503']
+        exclude: ^(tests/e2e/|node_modules/)
+
+  # Python 导入排序
+  - repo: https://github.com/pycqa/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        args: ['--profile=black']
+        exclude: ^(tests/e2e/|node_modules/)
+
+  # Python 代码格式化
+  - repo: https://github.com/psf/black
+    rev: 24.3.0
+    hooks:
+      - id: black
+        args: ['--line-length=100']
+        exclude: ^(tests/e2e/|node_modules/)
+
+  # 安全检查 - 检测硬编码密钥
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.18.4
+    hooks:
+      - id: gitleaks
+
+# CI 配置（可选）
+ci:
+  autofix_prs: true
+  autoupdate_schedule: weekly
