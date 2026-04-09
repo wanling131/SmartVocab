@@ -756,7 +756,7 @@
                         <label class="form-label" for="login-password">密码</label>
                         <div class="input-wrapper password-wrapper">
                             <input type="password" class="form-input" id="login-password" placeholder="请输入密码" autocomplete="current-password">
-                            <button type="button" class="password-toggle" onclick="togglePasswordVisibility('login-password', this)" aria-label="显示密码">👁</button>
+                            <button type="button" class="password-toggle" data-input-id="login-password" aria-label="显示密码">👁</button>
                             <div class="sketch-line"></div>
                         </div>
                     </div>
@@ -791,7 +791,7 @@
                         <label class="form-label" for="register-password">密码</label>
                         <div class="input-wrapper password-input-wrapper">
                             <input type="password" class="form-input" id="register-password" placeholder="至少 6 个字符" autocomplete="new-password">
-                            <button type="button" class="password-toggle" onclick="togglePasswordVisibility('register-password', this)" aria-label="显示密码">👁</button>
+                            <button type="button" class="password-toggle" data-input-id="register-password" aria-label="显示密码">👁</button>
                             <div class="sketch-line"></div>
                         </div>
                     </div>
@@ -799,7 +799,7 @@
                         <label class="form-label" for="register-confirm">确认密码</label>
                         <div class="input-wrapper password-input-wrapper">
                             <input type="password" class="form-input" id="register-confirm" placeholder="再次输入密码" autocomplete="new-password">
-                            <button type="button" class="password-toggle" onclick="togglePasswordVisibility('register-confirm', this)" aria-label="显示密码">👁</button>
+                            <button type="button" class="password-toggle" data-input-id="register-confirm" aria-label="显示密码">👁</button>
                             <div class="sketch-line"></div>
                         </div>
                     </div>
@@ -836,8 +836,14 @@
         const loginForm = document.getElementById('login-form');
         const registerForm = document.getElementById('register-form');
 
-        // 密码可见性切换
-        function togglePasswordVisibility(inputId, button) {
+        // 密码可见性切换（事件委托）
+function handlePasswordToggle(e) {
+            const button = e.target.closest('.password-toggle');
+            if (!button) return;
+
+            const inputId = button.dataset.inputId;
+            if (!inputId) return;
+
             const input = document.getElementById(inputId);
             if (!input) return;
 
@@ -847,6 +853,11 @@
             button.classList.toggle('active', isPassword);
             button.setAttribute('aria-label', isPassword ? '隐藏密码' : '显示密码');
         }
+
+        // 事件委托：所有密码切换按钮
+        document.querySelectorAll('.password-toggle').forEach(btn => {
+            btn.addEventListener('click', handlePasswordToggle);
+        });
 
         function switchTab(tab) {
             tabBtns.forEach(btn => {
@@ -979,8 +990,6 @@
             if (e.key === 'Enter') document.getElementById('register-btn').click();
         });
 
-        // 暴露到 window 供 onclick 使用
-        window.togglePasswordVisibility = togglePasswordVisibility;
-    </script>
+            </script>
 </body>
 </html>
