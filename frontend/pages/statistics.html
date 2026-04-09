@@ -372,45 +372,14 @@
         </div>
     </main>
 
-    <!-- Toast -->
-    <div class="toast" id="toast"></div>
-
-    <script>
-        const API_BASE = window.location.hostname === 'localhost'
-            ? 'http://localhost:5000/api'
-            : `http://${window.location.hostname}:5000/api`;
+    <script type="module">
+        import { apiRequest, getToken, clearToken } from '../js/api-client.js';
+        import { showToast } from '../js/utils.js';
 
         let currentUser = null;
         let charts = {};
         let currentPeriod = 7;
 
-        function getToken() { return localStorage.getItem('auth_token'); }
-        function clearToken() { localStorage.removeItem('auth_token'); localStorage.removeItem('currentUser'); }
-        function getUserId() { return localStorage.getItem('userId'); }
-        async function apiRequest(endpoint, options = {}) {
-            const token = getToken();
-            try {
-                const res = await fetch(API_BASE + endpoint, {
-                    method: options.method || 'GET',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-                    },
-                    body: options.body
-                });
-                if (res.status === 401) { clearToken(); window.location.href = 'login.html'; return { success: false }; }
-                return await res.json();
-            } catch (e) {
-                return { success: false, message: '网络错误' };
-            }
-        }
-
-        function showToast(msg, type = 'success') {
-            const toast = document.getElementById('toast');
-            toast.textContent = msg;
-            toast.className = `toast ${type} show`;
-            setTimeout(() => toast.classList.remove('show'), 3000);
-        }
         async function init() {
             const token = getToken();
             if (!token) { window.location.href = 'login.html'; return; }
@@ -558,6 +527,10 @@
             clearToken();
             window.location.href = 'login.html';
         }
+
+        // 暴露到 window 供 onclick 使用
+        window.logout = logout;
+
         init();
     </script>
 </body>

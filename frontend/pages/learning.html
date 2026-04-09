@@ -620,17 +620,9 @@
         </div>
     </main>
 
-    <script>
-        const API_BASE = window.location.hostname === 'localhost'
-            ? 'http://localhost:5000/api'
-            : `http://${window.location.hostname}:5000/api`;
-
-        function escapeHtml(str) {
-            if (!str) return '';
-            const div = document.createElement('div');
-            div.textContent = str;
-            return div.innerHTML;
-        }
+    <script type="module">
+        import { apiRequest, getToken, clearToken } from '../js/api-client.js';
+        import { showToast, escapeHtml } from '../js/utils.js';
 
         let currentUser = null;
         let words = [];
@@ -640,33 +632,6 @@
         let currentWord = null;
 
         let sessionId = null;
-
-        function getToken() { return localStorage.getItem('auth_token'); }
-        function clearToken() { localStorage.removeItem('auth_token'); localStorage.removeItem('currentUser'); }
-
-        async function apiRequest(endpoint, options = {}) {
-            const token = getToken();
-            try {
-                const res = await fetch(API_BASE + endpoint, {
-                    method: options.method || 'GET',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-                    },
-                    body: options.body
-                });
-                if (res.status === 401) { clearToken(); window.location.href = 'login.html'; }
-                return await res.json();
-            } catch (e) { return { success: false, message: '网络错误' }; }
-        }
-
-        function showToast(msg, type = 'success') {
-            const toast = document.createElement('div');
-            toast.className = `toast ${type} show`;
-            toast.textContent = msg;
-            document.body.appendChild(toast);
-            setTimeout(() => toast.remove(), 3000);
-        }
 
         async function init() {
             const token = getToken();
@@ -766,7 +731,7 @@
                     const correctAnswer = result.data.question.correct_answer;
 
                     container.innerHTML = options.map((opt, i) => `
-                        <div class="choice-option" onclick="selectChoice(${i}, ${JSON.stringify(correctAnswer)})">${escapeHtml(opt)}</div>
+                        <div class="choice-option" data-index="${i}" data-correct="${escapeHtml(correctAnswer)}">${escapeHtml(opt)}</div>
                     `).join('');
                 } else {
                     container.innerHTML = '<div class="choice-option">加载失败</div>';
@@ -775,6 +740,15 @@
                 container.innerHTML = '<div class="choice-option">网络错误</div>';
             }
         }
+
+        // 事件委托：选择答案
+        document.getElementById('choice-options').addEventListener('click', (e) => {
+            const option = e.target.closest('.choice-option');
+            if (!option) return;
+            const index = parseInt(option.dataset.index);
+            const correctAnswer = option.dataset.correct;
+            selectChoice(index, correctAnswer);
+        });
 
         async function selectChoice(index, correctAnswer) {
             const options = document.querySelectorAll('.choice-option');
@@ -877,6 +851,18 @@
             clearToken();
             window.location.href = 'login.html';
         }
+
+        function goBack() {
+            window.location.href = 'dashboard.html';
+        }
+
+        // 暴露到 window 供 onclick 使用
+        window.logout = logout;
+        window.toggleFavorite = toggleFavorite;
+        window.playSound = playSound;
+        window.submitTranslation = submitTranslation;
+        window.goBack = goBack;
+        window.nextWord = nextWord;
 
         // Enter键提交
         document.getElementById('answer-input')?.addEventListener('keypress', (e) => {

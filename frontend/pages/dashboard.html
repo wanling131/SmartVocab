@@ -751,37 +751,11 @@
         </div>
     </main>
 
-    <script>
-        const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:5000/api' : `http://${window.location.hostname}:5000/api`;
+    <script type="module">
+        import { apiRequest, getToken, clearToken } from '../js/api-client.js';
+        import { showToast, escapeHtml } from '../js/utils.js';
 
-        function getToken() { return localStorage.getItem('auth_token'); }
-        function clearToken() { localStorage.removeItem('auth_token'); localStorage.removeItem('currentUser'); }
-
-        async function apiRequest(endpoint, options = {}) {
-            const token = getToken();
-            try {
-                const res = await fetch(API_BASE + endpoint, {
-                    method: options.method || 'GET',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-                    },
-                    body: options.body
-                });
-                if (res.status === 401) { clearToken(); window.location.href = 'login.html'; }
-                return await res.json();
-            } catch (e) { return { success: false, message: '网络错误' }; }
-        }
-
-        function showToast(msg, type = 'success') {
-            const t = document.createElement('div');
-            t.className = `toast ${type}`;
-            t.textContent = msg;
-            document.body.appendChild(t);
-            setTimeout(() => t.remove(), 3000);
-        }
-
-        // 防抖函数
+        // 防抖函数（utils.js 中无此函数，保留内联）
         function debounce(func, wait) {
             let timeout;
             return function(...args) {
@@ -817,13 +791,6 @@
                 document.getElementById('learning-words').textContent = d.learning_words || 0;
                 document.getElementById('mastery-rate').textContent = (d.mastery_rate || 0) + '%';
             }
-        }
-
-        function escapeHtml(str) {
-            if (!str) return '';
-            const div = document.createElement('div');
-            div.textContent = str;
-            return div.innerHTML;
         }
 
         async function loadRecommendations() {
@@ -870,6 +837,13 @@
 
         function learnWord(id) { window.location.href = `learning.html?word_id=${id}`; }
         function logout() { clearToken(); window.location.href = 'login.html'; }
+
+        // 暴露到 window 供 onclick 使用
+        window.logout = logout;
+        window.refreshRecommendations = refreshRecommendations;
+        window.startLearning = startLearning;
+        window.startReview = startReview;
+        window.learnWord = learnWord;
 
         init();
     </script>
