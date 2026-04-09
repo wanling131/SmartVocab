@@ -746,14 +746,14 @@
                 <!-- 登录表单 -->
                 <div class="form-panel active" id="login-form">
                     <div class="form-group">
-                        <label class="form-label">用户名</label>
+                        <label class="form-label" for="login-username">用户名</label>
                         <div class="input-wrapper">
                             <input type="text" class="form-input" id="login-username" placeholder="请输入用户名" autocomplete="username">
                             <div class="sketch-line"></div>
                         </div>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">密码</label>
+                        <label class="form-label" for="login-password">密码</label>
                         <div class="input-wrapper password-wrapper">
                             <input type="password" class="form-input" id="login-password" placeholder="请输入密码" autocomplete="current-password">
                             <button type="button" class="password-toggle" onclick="togglePasswordVisibility('login-password', this)" aria-label="显示密码">👁</button>
@@ -774,21 +774,21 @@
                 <!-- 注册表单 -->
                 <div class="form-panel" id="register-form">
                     <div class="form-group">
-                        <label class="form-label">用户名</label>
+                        <label class="form-label" for="register-username">用户名</label>
                         <div class="input-wrapper">
                             <input type="text" class="form-input" id="register-username" placeholder="设置您的用户名" autocomplete="username">
                             <div class="sketch-line"></div>
                         </div>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">邮箱 <span style="color: var(--text-light);">(可选)</span></label>
+                        <label class="form-label" for="register-email">邮箱 <span style="color: var(--text-light);">(可选)</span></label>
                         <div class="input-wrapper">
                             <input type="email" class="form-input" id="register-email" placeholder="your@email.com" autocomplete="email">
                             <div class="sketch-line"></div>
                         </div>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">密码</label>
+                        <label class="form-label" for="register-password">密码</label>
                         <div class="input-wrapper password-input-wrapper">
                             <input type="password" class="form-input" id="register-password" placeholder="至少 6 个字符" autocomplete="new-password">
                             <button type="button" class="password-toggle" onclick="togglePasswordVisibility('register-password', this)" aria-label="显示密码">👁</button>
@@ -796,7 +796,7 @@
                         </div>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">确认密码</label>
+                        <label class="form-label" for="register-confirm">确认密码</label>
                         <div class="input-wrapper password-input-wrapper">
                             <input type="password" class="form-input" id="register-confirm" placeholder="再次输入密码" autocomplete="new-password">
                             <button type="button" class="password-toggle" onclick="togglePasswordVisibility('register-confirm', this)" aria-label="显示密码">👁</button>

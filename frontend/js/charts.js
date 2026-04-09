@@ -318,9 +318,9 @@ function createMasteryRadarChart(canvasId, labels, data) {
 }
 
 /**
- * 创建遗忘曲线图表（用于统计页面）
+ * 创建遗忘曲线柱状图（用于统计页面，按紧急程度着色）
  */
-function createForgettingCurveChart(canvasId, labels, data) {
+function createForgettingCurveBarChart(canvasId, labels, data) {
   return createChart(canvasId, {
     type: 'bar',
     data: {
@@ -352,9 +352,9 @@ function createForgettingCurveChart(canvasId, labels, data) {
 }
 
 /**
- * 创建词性分布饼图
+ * 创建词性分布饼图（简化版）
  */
-function createPosDistributionChart(canvasId, labels, data) {
+function createPosDistributionPieChart(canvasId, labels, data) {
   return createChart(canvasId, {
     type: 'pie',
     data: {
@@ -419,7 +419,9 @@ window.ChartModule = {
   destroyAllCharts,
   createProgressLineChart,
   createForgettingCurveChart,
+  createForgettingCurveBarChart,
   createPosDistributionChart,
+  createPosDistributionPieChart,
   createDifficultyBarChart,
   createTrendComparisonChart,
   createMasteryRadarChart,

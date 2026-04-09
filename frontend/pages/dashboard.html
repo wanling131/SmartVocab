@@ -548,7 +548,7 @@
                         <p>系统根据难度智能推荐</p>
                         <div class="form-row">
                             <div class="form-group">
-                                <label>难度</label>
+                                <label for="difficulty">难度</label>
                                 <select id="difficulty">
                                     <option value="1">初级</option>
                                     <option value="2" selected>中级</option>
@@ -556,7 +556,7 @@
                                 </select>
                             </div>
                             <div class="form-group">
-                                <label>数量</label>
+                                <label for="word-count">数量</label>
                                 <input type="number" id="word-count" value="10" min="5" max="50">
                             </div>
                         </div>
@@ -626,7 +626,7 @@
 
             if (result.success && result.data?.recommendations?.length > 0) {
                 list.innerHTML = result.data.recommendations.map(w => `
-                    <div class="word-item" onclick="learnWord(${w.id})">
+                    <div class="word-item" data-word-id="${w.id}">
                         <div class="word-info">
                             <h4>${escapeHtml(w.word)}</h4>
                             <p>${escapeHtml(w.translation) || ''}</p>
@@ -670,7 +670,14 @@
         window.refreshRecommendations = refreshRecommendations;
         window.startLearning = startLearning;
         window.startReview = startReview;
-        window.learnWord = learnWord;
+
+        // 事件委托：推荐词汇点击
+        document.getElementById('recommendations-list').addEventListener('click', (e) => {
+            const item = e.target.closest('.word-item');
+            if (item && item.dataset.wordId) {
+                learnWord(item.dataset.wordId);
+            }
+        });
 
         init();
     </script>

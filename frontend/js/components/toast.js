@@ -5,6 +5,16 @@
 let toastContainer = null
 
 /**
+ * HTML 转义函数
+ */
+function escapeHtml(str) {
+  if (str === null || str === undefined) return ''
+  const div = document.createElement('div')
+  div.textContent = String(str)
+  return div.innerHTML
+}
+
+/**
  * 显示 Toast 消息
  * @param {string} message - 消息内容
  * @param {string} type - 类型: success, error, warning, info
@@ -28,7 +38,7 @@ export function showToast(message, type = 'success', duration = 3000) {
     warning: '⚠',
     info: 'ℹ'
   }
-  toast.innerHTML = `<span class="toast-icon">${icons[type]}</span><span>${message}</span>`
+  toast.innerHTML = `<span class="toast-icon">${icons[type]}</span><span>${escapeHtml(message)}</span>`
 
   toastContainer.appendChild(toast)
 

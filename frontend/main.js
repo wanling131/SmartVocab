@@ -2319,7 +2319,7 @@ async function loadForgettingCurve() {
       const data = result.data.map(d => d.words_to_review)
 
       if (window.ChartModule) {
-        window.ChartModule.createForgettingCurveChart('forgetting-curve-canvas', labels, data)
+        window.ChartModule.createForgettingCurveBarChart('forgetting-curve-canvas', labels, data)
       } else {
         // 降级为简单的柱状图
         const maxVal = Math.max(...data, 1)
@@ -2387,8 +2387,8 @@ async function loadPlansPage() {
             </div>
           </div>
           <div class="plan-actions">
-            <button class="btn btn-primary btn-sm" onclick="startPlanLearning(${r.data.id})">开始学习</button>
-            <button class="btn btn-secondary btn-sm" onclick="deactivatePlan(${r.data.id})">停用计划</button>
+            <button class="btn btn-primary btn-sm" data-plan-id="${r.data.id}" data-action="start-learning">开始学习</button>
+            <button class="btn btn-secondary btn-sm" data-plan-id="${r.data.id}" data-action="deactivate">停用计划</button>
           </div>
         </div>
       `
@@ -2403,7 +2403,7 @@ async function loadPlansPage() {
     // 加载历史计划列表
     await loadPlansList()
   } catch (e) {
-    activeEl.innerHTML = `<p>加载失败: ${e.message}</p>`
+    activeEl.innerHTML = `<p>加载失败: ${escapeHtml(e.message)}</p>`
   }
 }
 
@@ -2434,9 +2434,9 @@ async function loadPlansList() {
             </div>
           </div>
           <div class="plan-actions">
-            ${!plan.is_active ? `<button class="btn btn-primary btn-sm" onclick="activatePlan(${plan.id})">启用</button>` : ''}
-            <button class="btn btn-secondary btn-sm" data-plan-id="${plan.id}" data-plan-name="${escapeHtml(plan.plan_name || '')}" data-dataset-type="${escapeHtml(plan.dataset_type)}" data-daily-new="${plan.daily_new_count}" data-daily-review="${plan.daily_review_count}" onclick="editPlanFromButton(this)">编辑</button>
-            <button class="btn btn-secondary btn-sm" onclick="deletePlan(${plan.id})">删除</button>
+            ${!plan.is_active ? `<button class="btn btn-primary btn-sm" data-plan-id="${plan.id}" data-action="activate">启用</button>` : ''}
+            <button class="btn btn-secondary btn-sm" data-plan-id="${plan.id}" data-plan-name="${escapeHtml(plan.plan_name || '')}" data-dataset-type="${escapeHtml(plan.dataset_type)}" data-daily-new="${plan.daily_new_count}" data-daily-review="${plan.daily_review_count}" data-action="edit">编辑</button>
+            <button class="btn btn-secondary btn-sm" data-plan-id="${plan.id}" data-action="delete">删除</button>
           </div>
         </div>
       `).join("")
@@ -2448,7 +2448,7 @@ async function loadPlansList() {
       `
     }
   } catch (e) {
-    listEl.innerHTML = `<p>加载失败: ${e.message}</p>`
+    listEl.innerHTML = `<p>加载失败: ${escapeHtml(e.message)}</p>`
   }
 }
 
@@ -3061,7 +3061,7 @@ async function loadLevelsPage() {
       btn.addEventListener("click", () => startGateLearning(parseInt(btn.dataset.gateId)))
     })
   } catch (e) {
-    listEl.innerHTML = `<div class="empty-state"><p>加载失败: ${e.message}</p></div>`
+    listEl.innerHTML = `<div class="empty-state"><p>加载失败: ${escapeHtml(e.message)}</p></div>`
   }
 }
 
@@ -3584,6 +3584,35 @@ function initEventListeners() {
       }
       // learning页面只能通过功能按钮进入，不能通过导航进入
     }
+
+    // 计划操作按钮事件委托
+    const planBtn = e.target.closest('[data-action]')
+    if (planBtn) {
+      const action = planBtn.dataset.action
+      const planId = planBtn.dataset.planId
+
+      switch (action) {
+        case 'start-learning':
+          if (planId) startPlanLearning(parseInt(planId))
+          break
+        case 'activate':
+          if (planId) activatePlan(parseInt(planId))
+          break
+        case 'deactivate':
+          if (planId) deactivatePlan(parseInt(planId))
+          break
+        case 'delete':
+          if (planId) deletePlan(parseInt(planId))
+          break
+        case 'edit':
+          editPlanFromButton(planBtn)
+          break
+        case 'remove-favorite':
+          const wordId = planBtn.dataset.wordId
+          if (wordId) removeFavoriteFromList(parseInt(wordId), planBtn)
+          break
+      }
+    }
   })
 
   // 退出登录
@@ -4030,7 +4059,7 @@ function renderFavorites(favorites) {
     card.dataset.difficulty = fav.difficulty_level || "0"
     card.dataset.dataset = fav.dataset_type || "other"
     card.innerHTML = `
-      <button class="remove-btn" onclick="removeFavoriteFromList(${fav.word_id}, this)">✕</button>
+      <button class="remove-btn" data-word-id="${fav.word_id}" data-action="remove-favorite">✕</button>
       <div class="word">${escapeHtml(fav.word)}</div>
       <div class="phonetic">${escapeHtml(fav.phonetic || "")}</div>
       <div class="translation">${escapeHtml(fav.translation)}</div>
