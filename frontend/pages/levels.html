@@ -9,59 +9,16 @@
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&family=Caveat:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../styles/klein-morandi.css">
     <style>
-        /* Page-specific styles for Levels Page */
+        /* Levels Page-Specific Styles */
 
-        :root {
-            --klein-blue: #002FA7;
-            --klein-light: #1a4fd0;
-            --klein-dark: #001d6c;
-            --klein-rgb: 0, 47, 167;
+        body { background: #EBF0F9; }
 
-            --morandi-cream: #F5F0E8;
-            --morandi-beige: #E8DFD4;
-            --morandi-rose: #D4C4B5;
-            --morandi-sage: #B8C4B8;
-            --morandi-mist: #C5CED3;
-            --morandi-lavender: #B8B4C8;
-
-            --accent-coral: #E07A5F;
-            --accent-amber: #F2A03D;
-            --accent-sage: #6B8E6B;
-            --accent-lavender: #9B8AA6;
-
-            --text-dark: #2D3436;
-            --text-muted: #636E72;
-            --text-light: #B2BEC3;
-        }
-
-        body {
-            background: #EBF0F9;
-            min-height: 100vh;
-            position: relative;
-        }
-
-        /* Floating Hand-letter Decorations */
-        .hand-letter {
-            font-family: 'Caveat', cursive;
-            font-size: 56px;
-            font-weight: 600;
-            color: var(--klein-blue);
-            opacity: 0.08;
-            position: fixed;
-            pointer-events: none;
-            z-index: 0;
-            animation: float 8s ease-in-out infinite;
-        }
+        /* Hand-letter positions */
         .hand-letter:nth-child(1) { top: 10%; left: 5%; animation-delay: 0s; --rotation: -5deg; }
         .hand-letter:nth-child(2) { top: 25%; right: 8%; animation-delay: 2s; --rotation: 8deg; }
         .hand-letter:nth-child(3) { top: 50%; left: 3%; animation-delay: 4s; --rotation: -3deg; }
         .hand-letter:nth-child(4) { top: 70%; right: 5%; animation-delay: 1s; --rotation: 6deg; }
         .hand-letter:nth-child(5) { top: 85%; left: 10%; animation-delay: 3s; --rotation: -8deg; }
-
-        @keyframes float {
-            0%, 100% { transform: translateY(0) rotate(var(--rotation, 0deg)); }
-            50% { transform: translateY(-20px) rotate(calc(var(--rotation, 0deg) + 5deg)); }
-        }
 
         /* Wave Decoration */
         .wave-decoration {

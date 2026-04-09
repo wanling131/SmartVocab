@@ -48,6 +48,7 @@ body {
     background: var(--morandi-cream);
     color: var(--text-dark);
     line-height: 1.6;
+    min-height: 100vh;
 }
 
 a {
@@ -69,12 +70,13 @@ a:hover {
 
  .hand-letter {
     font-family: 'Caveat', cursive;
-    font-size: 48px;
+    font-size: 56px;
     font-weight: 600;
     color: var(--klein-blue);
-    opacity: 0.1;
+    opacity: 0.08;
     position: absolute;
     animation: float 6s ease-in-out infinite;
+    user-select: none;
 }
 @keyframes float {
     0%, 100% { transform: translateY(0) rotate(var(--rotation, 0deg)); }
@@ -358,6 +360,35 @@ a:hover {
 @keyframes pulse {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.5; }
+}
+@keyframes shimmer {
+    to { left: 100%; }
+}
+
+/* AI Badge with shimmer effect */
+.ai-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: linear-gradient(135deg, var(--klein-blue), var(--klein-light));
+    color: white;
+    padding: 12px 24px;
+    border-radius: 50px;
+    font-size: 14px;
+    font-weight: 600;
+    box-shadow: 0 8px 24px rgba(0, 47, 167, 0.25);
+    position: relative;
+    overflow: hidden;
+}
+.ai-badge::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    animation: shimmer 3s infinite;
 }
 
 /* Focus Visible Styles for Accessibility */

@@ -29,109 +29,12 @@
             z-index: 0;
         }
 
-        .hand-letter {
-            font-family: 'Caveat', cursive;
-            font-size: 56px;
-            font-weight: 600;
-            color: var(--klein-blue);
-            opacity: 0.08;
-            position: absolute;
-            animation: float 6s ease-in-out infinite;
-            user-select: none;
-        }
-
+        /* Hand-letter positions */
         .hand-letter:nth-child(1) { top: 10%; left: 5%; --rotation: -5deg; animation-delay: 0s; }
         .hand-letter:nth-child(2) { top: 25%; right: 8%; --rotation: 8deg; animation-delay: 1s; }
         .hand-letter:nth-child(3) { top: 50%; left: 12%; --rotation: -3deg; animation-delay: 2s; }
         .hand-letter:nth-child(4) { top: 70%; right: 15%; --rotation: 6deg; animation-delay: 3s; }
         .hand-letter:nth-child(5) { bottom: 10%; left: 20%; --rotation: -8deg; animation-delay: 4s; }
-
-        @keyframes float {
-            0%, 100% { transform: translateY(0) rotate(var(--rotation, 0deg)); }
-            50% { transform: translateY(-20px) rotate(calc(var(--rotation, 0deg) + 5deg)); }
-        }
-
-        /* Navbar Enhancement */
-        .navbar {
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(20px);
-            border-bottom: 2px solid var(--morandi-rose);
-            padding: 16px 40px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .nav-brand {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            text-decoration: none;
-        }
-
-        .nav-logo {
-            width: 44px;
-            height: 44px;
-            background: linear-gradient(135deg, var(--klein-blue), var(--klein-light));
-            border-radius: 14px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 800;
-            color: white;
-            font-size: 20px;
-            box-shadow: 0 4px 16px rgba(0, 47, 167, 0.25);
-        }
-
-        .nav-title {
-            font-size: 24px;
-            font-weight: 800;
-            color: var(--klein-blue);
-        }
-
-        .nav-menu {
-            display: flex;
-            gap: 6px;
-        }
-
-        .nav-link {
-            color: var(--text-muted);
-            text-decoration: none;
-            padding: 10px 18px;
-            border-radius: 12px;
-            font-size: 14px;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .nav-link:hover {
-            background: var(--morandi-beige);
-            color: var(--text-dark);
-        }
-
-        .nav-link.active {
-            background: linear-gradient(135deg, var(--klein-blue), var(--klein-light));
-            color: white;
-            box-shadow: 0 4px 12px rgba(0, 47, 167, 0.2);
-        }
-
-        .nav-user {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-        }
-
-        .user-name {
-            font-size: 14px;
-            color: var(--text-muted);
-            font-weight: 600;
-        }
 
         /* Main Container */
         .favorites-container {

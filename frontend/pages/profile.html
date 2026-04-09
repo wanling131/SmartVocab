@@ -31,21 +31,6 @@
             z-index: 0;
         }
 
-        .hand-letter {
-            font-family: 'Caveat', cursive;
-            font-size: 56px;
-            font-weight: 600;
-            color: var(--klein-blue);
-            opacity: 0.08;
-            position: absolute;
-            animation: float 8s ease-in-out infinite;
-        }
-
-        @keyframes float {
-            0%, 100% { transform: translateY(0) rotate(var(--rotation, 0deg)); }
-            50% { transform: translateY(-20px) rotate(calc(var(--rotation, 0deg) + 5deg)); }
-        }
-
         /* Main Container */
         .profile-container {
             max-width: 900px;

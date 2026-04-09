@@ -6,67 +6,9 @@
     <title>仪表盘 - SmartVocab</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23002FA7'/><text x='16' y='21' font-family='Arial' font-size='16' font-weight='bold' fill='white' text-anchor='middle'>SV</text></svg>">
     <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../styles/klein-morandi.css">
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-
-        :root {
-            /* Klein Blue */
-            --klein-blue: #002FA7;
-            --klein-light: #1a4fd0;
-            --klein-dark: #001d6c;
-
-            /* Morandi Colors */
-            --morandi-cream: #F5F0E8;
-            --morandi-beige: #E8DFD4;
-            --morandi-rose: #D4C4B5;
-            --morandi-sage: #B8C4B8;
-            --morandi-mist: #C5CED3;
-            --morandi-lavender: #B8B4C8;
-            --morandi-peach: #E8D4C4;
-
-            /* Accent Colors */
-            --accent-coral: #E07A5F;
-            --accent-amber: #F2A03D;
-            --accent-sage: #6B8E6B;
-            --accent-lavender: #9B8AA6;
-
-            /* Text */
-            --text-dark: #2D3436;
-            --text-muted: #636E72;
-            --text-light: #B2BEC3;
-        }
-
-        body {
-            font-family: 'Nunito', -apple-system, sans-serif;
-            background: #EBF0F9;
-            min-height: 100vh;
-            color: var(--text-dark);
-            position: relative;
-        }
-
-        /* 背景装饰 */
-        .bg-decoration {
-            position: fixed;
-            inset: 0;
-            pointer-events: none;
-            overflow: hidden;
-            z-index: 0;
-        }
-
-        .hand-letter {
-            font-family: 'Caveat', cursive;
-            font-size: 56px;
-            font-weight: 600;
-            color: var(--klein-blue);
-            opacity: 0.08;
-            position: absolute;
-            animation: float 6s ease-in-out infinite;
-        }
-
-        @keyframes float {
-            0%, 100% { transform: translateY(0) rotate(var(--rotation, 0deg)); }
-            50% { transform: translateY(-15px) rotate(calc(var(--rotation, 0deg) + 3deg)); }
-        }
+        /* Dashboard Page-Specific Styles */
 
         .letter-A { top: 5%; left: 3%; --rotation: -12deg; }
         .letter-B { top: 20%; right: 5%; --rotation: 8deg; font-size: 36px; }
@@ -85,121 +27,6 @@
         .wave-1 { top: 15%; }
         .wave-2 { top: 45%; }
         .wave-3 { top: 75%; }
-
-        /* 导航栏 */
-        .navbar {
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(20px);
-            border-bottom: 1px solid var(--morandi-rose);
-            padding: 16px 40px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .nav-brand {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            text-decoration: none;
-        }
-
-        .nav-logo {
-            width: 40px;
-            height: 40px;
-            background: linear-gradient(135deg, var(--klein-blue), var(--klein-light));
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 800;
-            color: white;
-            font-size: 18px;
-            box-shadow: 0 4px 12px rgba(0, 47, 167, 0.2);
-        }
-
-        .nav-title {
-            font-size: 22px;
-            font-weight: 800;
-            color: var(--klein-blue);
-            letter-spacing: -0.5px;
-        }
-
-        .nav-menu {
-            display: flex;
-            gap: 6px;
-        }
-
-        .nav-link {
-            color: var(--text-muted);
-            text-decoration: none;
-            padding: 10px 18px;
-            border-radius: 12px;
-            font-size: 14px;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .nav-link:hover {
-            background: var(--morandi-beige);
-            color: var(--text-dark);
-        }
-
-        .nav-link.active {
-            background: var(--klein-blue);
-            color: white;
-        }
-
-        .nav-user {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-        }
-
-        .user-name {
-            font-size: 14px;
-            color: var(--text-muted);
-            font-weight: 600;
-        }
-
-        .btn {
-            padding: 10px 20px;
-            border: none;
-            border-radius: 12px;
-            font-size: 13px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-family: inherit;
-        }
-
-        .btn-ghost {
-            background: transparent;
-            color: var(--text-muted);
-            border: 2px solid var(--morandi-rose);
-        }
-
-        .btn-ghost:hover {
-            background: var(--morandi-rose);
-            color: var(--text-dark);
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, var(--klein-blue), var(--klein-light));
-            color: white;
-            box-shadow: 0 4px 12px rgba(0, 47, 167, 0.2);
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(0, 47, 167, 0.3);
-        }
 
         /* 主容器 */
         .container {
@@ -547,7 +374,7 @@
             color: var(--accent-amber);
         }
 
-        /* Toast */
+        /* Toast - page-specific animation */
         .toast {
             position: fixed;
             bottom: 30px;
@@ -557,7 +384,7 @@
             font-size: 14px;
             font-weight: 600;
             z-index: 10000;
-            animation: slideIn 0.4s ease;
+            animation: toastSlide 0.4s ease;
             box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
         }
 
@@ -571,7 +398,7 @@
             color: white;
         }
 
-        @keyframes slideIn {
+        @keyframes toastSlide {
             from { transform: translateY(20px); opacity: 0; }
             to { transform: translateY(0); opacity: 1; }
         }
