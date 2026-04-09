@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="SmartVocab 我的收藏 - 收藏单词管理">
     <title>我的收藏 - SmartVocab</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23002FA7'/><text x='16' y='20' font-family='Arial' font-size='18' font-weight='bold' fill='white' text-anchor='middle'>S</text></svg>">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23002FA7'/><text x='16' y='21' font-family='Arial' font-size='16' font-weight='bold' fill='white' text-anchor='middle'>SV</text></svg>">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -31,7 +31,7 @@
 
         .hand-letter {
             font-family: 'Caveat', cursive;
-            font-size: 120px;
+            font-size: 56px;
             font-weight: 600;
             color: var(--klein-blue);
             opacity: 0.08;
@@ -190,12 +190,12 @@
 
         /* Filters Section — 手绘便利贴风格 */
         .filters-section {
-            background: white;
-            border-radius: 28px 14px 28px 14px;
+            background: rgba(235, 240, 249, 0.3);
+            border-radius: 28px;
             padding: 28px;
             margin-bottom: 32px;
             box-shadow: 3px 3px 0 var(--morandi-lavender);
-            border: 2px dashed var(--morandi-lavender);
+            border: 2px solid var(--morandi-beige);
             animation: fadeIn 0.6s ease;
             position: relative;
         }
@@ -241,7 +241,7 @@
         .filter-tag {
             padding: 8px 18px;
             background: transparent;
-            border: 2px solid var(--morandi-lavender);
+            border: 1px solid var(--morandi-beige);
             border-radius: 20px;
             font-size: 13px;
             font-weight: 600;
@@ -249,12 +249,14 @@
             cursor: pointer;
             transition: all 0.3s ease;
             font-family: inherit;
+            position: relative;
         }
 
         .filter-tag:hover {
-            background: rgba(184, 180, 200, 0.15);
+            background: rgba(184, 180, 200, 0.1);
             border-color: var(--morandi-lavender);
             transform: translateY(-2px);
+            box-shadow: 2px 2px 0 rgba(0, 47, 167, 0.08);
         }
 
         .filter-tag.active {
@@ -262,6 +264,15 @@
             color: white;
             border-color: transparent;
             box-shadow: 0 4px 12px rgba(0, 47, 167, 0.25);
+        }
+
+        .filter-tag.active::after {
+            content: '✦';
+            position: absolute;
+            top: -4px;
+            right: -4px;
+            font-size: 10px;
+            color: var(--accent-amber);
         }
 
         /* Search Box */
@@ -282,21 +293,21 @@
         .search-input {
             width: 100%;
             padding: 16px 20px 16px 48px;
-            background: rgba(235, 240, 249, 0.5);
-            border: 2px dashed var(--morandi-beige);
+            background: white;
+            border: 2px solid var(--morandi-beige);
             border-radius: 16px;
             font-size: 15px;
             color: var(--text-dark);
             transition: all 0.3s ease;
             font-family: inherit;
+            box-shadow: inset 2px 2px 4px rgba(0, 0, 0, 0.04);
         }
 
         .search-input:focus {
             outline: none;
             border-color: var(--klein-blue);
-            border-style: solid;
             background: white;
-            box-shadow: 0 0 0 4px rgba(0, 47, 167, 0.1);
+            box-shadow: inset 2px 2px 4px rgba(0, 0, 0, 0.04), 0 0 0 3px rgba(0, 47, 167, 0.08);
         }
 
         .search-input::placeholder {
@@ -594,7 +605,7 @@
     <!-- Navbar -->
     <nav class="navbar" role="navigation" aria-label="主导航">
         <a href="dashboard.html" class="nav-brand">
-            <div class="nav-logo">S</div>
+            <div class="nav-logo">SV</div>
             <span class="nav-title">SmartVocab</span>
         </a>
         <div class="nav-menu" role="menubar">
@@ -649,7 +660,7 @@
             </div>
             <div class="search-box">
                 <span class="search-icon">🔍</span>
-                <input type="text" id="favorites-search" class="search-input" placeholder="搜索单词或释义...">
+                <input type="text" id="favorites-search" class="search-input" placeholder="寻找你的宝藏单词...">
             </div>
         </section>
 
@@ -657,15 +668,15 @@
         <section class="favorites-grid" id="favorites-grid">
             <div class="loading-state">
                 <div class="loading-spinner"></div>
-                <p>加载中...</p>
+                <p>正在召唤你的收藏单词...</p>
             </div>
         </section>
 
         <!-- Empty State -->
         <section id="favorites-empty" class="empty-state" style="display: none;">
-            <span class="empty-icon">📚</span>
-            <h3 class="empty-title">还没有收藏任何单词</h3>
-            <p class="empty-subtitle">在学习时点击单词旁边的 ⭐ 即可收藏喜欢的单词</p>
+            <span class="empty-icon">📦</span>
+            <h3 class="empty-title">你的宝藏库空空如也</h3>
+            <p class="empty-subtitle">快去闯关收集单词吧！</p>
             <a href="dashboard.html" class="empty-action">
                 开始学习
             </a>

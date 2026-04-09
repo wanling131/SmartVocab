@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="SmartVocab 等级测试 - 评估你的词汇水平">
     <title>等级测试 - SmartVocab</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23002FA7'/><text x='16' y='20' font-family='Arial' font-size='18' font-weight='bold' fill='white' text-anchor='middle'>S</text></svg>">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23002FA7'/><text x='16' y='21' font-family='Arial' font-size='16' font-weight='bold' fill='white' text-anchor='middle'>SV</text></svg>">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -236,11 +236,27 @@
         /* Test Card Base */
         .test-card {
             background: white;
-            border-radius: 24px 14px 24px 14px;
+            border-radius: 24px;
             padding: 40px;
             box-shadow: 3px 3px 0 var(--morandi-lavender);
-            border: 2px dashed var(--morandi-rose);
+            border: 3px solid var(--klein-blue);
             animation: fadeIn 0.4s ease;
+            position: relative;
+            /* Grid paper texture */
+            background-image:
+                linear-gradient(rgba(0, 47, 167, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 47, 167, 0.03) 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+
+        /* Inner frame effect */
+        .test-card::after {
+            content: '';
+            position: absolute;
+            inset: 6px;
+            border: 1px solid var(--morandi-beige);
+            border-radius: 20px;
+            pointer-events: none;
         }
 
         @keyframes fadeIn {
@@ -289,29 +305,57 @@
             margin-bottom: 32px;
         }
 
-        .settings-label {
-            font-size: 15px;
-            font-weight: 600;
-            color: var(--text-muted);
+        .preset-btn-group {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            margin-bottom: 32px;
+            flex-wrap: wrap;
         }
 
-        .settings-input {
-            width: 80px;
-            padding: 12px 16px;
-            border: 2px solid var(--morandi-beige);
-            border-radius: 12px;
-            font-size: 18px;
-            font-weight: 700;
-            color: var(--klein-blue);
-            text-align: center;
+        .preset-btn {
+            padding: 14px 24px;
             background: var(--morandi-cream);
+            border: 2px dashed var(--morandi-beige);
+            border-radius: 14px;
+            cursor: pointer;
             transition: all 0.3s ease;
+            font-family: inherit;
+            text-align: center;
+            min-width: 140px;
         }
 
-        .settings-input:focus {
-            outline: none;
+        .preset-btn:hover {
             border-color: var(--klein-blue);
-            box-shadow: 0 0 0 4px rgba(0, 47, 167, 0.1);
+            transform: translateY(-2px);
+            box-shadow: 2px 2px 0 rgba(0, 47, 167, 0.1);
+        }
+
+        .preset-btn.active {
+            background: linear-gradient(135deg, var(--klein-blue), var(--klein-light));
+            color: white;
+            border-color: transparent;
+            border-style: solid;
+            box-shadow: 0 4px 12px rgba(0, 47, 167, 0.25);
+        }
+
+        .preset-btn-title {
+            font-size: 14px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            justify-content: center;
+        }
+
+        .preset-btn-time {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        .preset-btn.active .preset-btn-time {
+            color: rgba(255,255,255,0.8);
         }
 
         .btn-start {
@@ -584,6 +628,12 @@
             0% { transform: scale(0); }
             50% { transform: scale(1.1); }
             100% { transform: scale(1); }
+        }
+
+        @keyframes btnPulse {
+            0% { box-shadow: 0 8px 24px rgba(0, 47, 167, 0.25); }
+            50% { box-shadow: 0 8px 24px rgba(0, 47, 167, 0.5), 0 0 0 8px rgba(0, 47, 167, 0.15); }
+            100% { box-shadow: 0 8px 24px rgba(0, 47, 167, 0.25); }
         }
 
         .result-title {
@@ -872,7 +922,7 @@
     <!-- Navbar -->
     <nav class="navbar">
         <a href="dashboard.html" class="nav-brand">
-            <div class="nav-logo">S</div>
+            <div class="nav-logo">SV</div>
             <span class="nav-title">SmartVocab</span>
         </a>
         <div class="nav-menu">
@@ -903,12 +953,24 @@
 
         <!-- Start Test Section -->
         <section id="eval-start" class="test-card start-section">
+            <!-- TEST badge decoration -->
+            <div style="position: absolute; top: -18px; left: 50%; transform: translateX(-50%); background: linear-gradient(135deg, var(--klein-blue), var(--klein-light)); color: white; padding: 6px 24px; border-radius: 20px; font-size: 13px; font-weight: 700; letter-spacing: 2px; box-shadow: 0 4px 12px rgba(0, 47, 167, 0.3); z-index: 2;">✦ TEST ✦</div>
             <div class="start-icon">🎯</div>
             <h2 class="start-title">准备好挑战了吗？</h2>
-            <p class="start-description">选择题目数量开始测试，系统将根据你的答题情况评估词汇水平并推荐合适的学习等级</p>
-            <div class="settings-group">
-                <span class="settings-label">题目数量</span>
-                <input type="number" id="eval-question-count" class="settings-input" value="10" min="5" max="30">
+            <p class="start-description">选择测试模式开始挑战，系统将评估你的词汇水平并推荐学习等级</p>
+            <div class="preset-btn-group">
+                <button class="preset-btn active" data-count="10">
+                    <div class="preset-btn-title">⚡ 快速测试</div>
+                    <div class="preset-btn-time">10题 · 约5分钟</div>
+                </button>
+                <button class="preset-btn" data-count="20">
+                    <div class="preset-btn-title">📝 标准测试</div>
+                    <div class="preset-btn-time">20题 · 约10分钟</div>
+                </button>
+                <button class="preset-btn" data-count="30">
+                    <div class="preset-btn-title">🔬 深度测试</div>
+                    <div class="preset-btn-time">30题 · 约15分钟</div>
+                </button>
             </div>
             <button id="start-eval-btn" class="btn-start">
                 <span>🚀</span>
@@ -1064,14 +1126,28 @@
             document.getElementById('progress-bar-fill').style.width = `${percent}%`;
         }
 
+        // Preset button selection
+        let selectedQuestionCount = 10;
+        document.querySelectorAll('.preset-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                selectedQuestionCount = parseInt(btn.dataset.count) || 10;
+                // Pulse animation on start button
+                const startBtn = document.getElementById('start-eval-btn');
+                startBtn.style.animation = 'none';
+                startBtn.offsetHeight; // trigger reflow
+                startBtn.style.animation = 'btnPulse 0.6s ease';
+            });
+        });
+
         // Start test
         document.getElementById('start-eval-btn').addEventListener('click', async () => {
-            totalQuestions = parseInt(document.getElementById('eval-question-count').value) || 10;
+            totalQuestions = selectedQuestionCount;
 
-            // Validate input
+            // Validate
             if (totalQuestions < 5) totalQuestions = 5;
             if (totalQuestions > 30) totalQuestions = 30;
-            document.getElementById('eval-question-count').value = totalQuestions;
 
             document.getElementById('eval-start').style.display = 'none';
             document.getElementById('eval-test').style.display = 'block';

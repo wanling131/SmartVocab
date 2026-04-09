@@ -377,3 +377,20 @@ a:hover {
 .form-input:focus:not(:focus-visible) {
     outline: none;
 }
+
+/* Hidden utility class */
+.hidden {
+    display: none !important;
+}
+
+/* Skeleton loading animation */
+.skeleton {
+    background: linear-gradient(90deg, var(--morandi-beige) 25%, var(--morandi-cream) 50%, var(--morandi-beige) 75%);
+    background-size: 200% 100%;
+    animation: skeleton-loading 1.5s ease-in-out infinite;
+    border-radius: 8px;
+}
+@keyframes skeleton-loading {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}

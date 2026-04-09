@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="SmartVocab 学习计划 - 制定和管理学习计划">
     <title>学习计划 - SmartVocab</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23002FA7'/><text x='16' y='20' font-family='Arial' font-size='18' font-weight='bold' fill='white' text-anchor='middle'>S</text></svg>">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23002FA7'/><text x='16' y='21' font-family='Arial' font-size='16' font-weight='bold' fill='white' text-anchor='middle'>SV</text></svg>">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600;700&family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -177,6 +177,8 @@
         .page-subtitle {
             color: var(--text-muted);
             font-size: 16px;
+            font-family: 'Caveat', cursive;
+            font-size: 20px;
         }
 
         /* Section Styles */
@@ -224,10 +226,11 @@
             color: white;
             box-shadow: 4px 4px 0px var(--morandi-rose);
             border: 2px solid transparent;
+            border-radius: 16px;
         }
 
         .btn-primary:hover {
-            transform: translateY(-2px);
+            transform: scale(1.05) translateY(-2px);
             box-shadow: 6px 6px 0px var(--morandi-rose);
         }
 
@@ -239,27 +242,27 @@
         .btn-secondary {
             background: var(--morandi-cream);
             color: var(--text-muted);
-            border: 2px solid var(--morandi-beige);
+            border: 2px dashed var(--morandi-rose);
             box-shadow: none;
         }
 
         .btn-secondary:hover {
-            background: #e8f4ff;
-            border-color: var(--klein-blue);
-            color: var(--klein-blue);
+            background: var(--morandi-beige);
+            border-color: var(--morandi-rose);
+            color: var(--text-dark);
         }
 
         .btn-ghost {
             background: var(--morandi-cream);
             color: var(--text-muted);
-            border: 2px solid var(--morandi-beige);
+            border: 2px dashed var(--morandi-rose);
             box-shadow: none;
         }
 
         .btn-ghost:hover {
-            background: #e8f4ff;
-            border-color: var(--klein-blue);
-            color: var(--klein-blue);
+            background: var(--morandi-beige);
+            border-color: var(--morandi-rose);
+            color: var(--text-dark);
         }
 
         .btn-sm {
@@ -647,17 +650,17 @@
             border-radius: 14px;
             font-size: 15px;
             color: var(--text-dark);
-            background: #F9F7F2;  /* 淡米黄色背景 */
+            background: rgba(235, 240, 249, 0.3);
             transition: all 0.3s ease;
             font-family: inherit;
         }
 
         .form-input:focus,
         .form-select:focus {
-            outline: none;  /* 去掉浏览器默认轮廓线 */
-            border-color: var(--klein-blue);  /* 克莱因蓝边框 */
+            outline: none;
+            border-color: var(--klein-blue);
             background: white;
-            box-shadow: 0 0 0 4px rgba(0, 47, 167, 0.1);
+            box-shadow: 3px 3px 0 rgba(0, 47, 167, 0.08);
         }
 
         .form-input::placeholder {
@@ -830,7 +833,7 @@
     <!-- Navbar -->
     <nav class="navbar">
         <a href="dashboard.html" class="nav-brand">
-            <div class="nav-logo">S</div>
+            <div class="nav-logo">SV</div>
             <span class="nav-title">SmartVocab</span>
         </a>
         <div class="nav-menu">
