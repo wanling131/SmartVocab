@@ -852,10 +852,10 @@
         </div>
     </div>
 
-    <!-- Toast -->
-    <div class="toast" id="toast"></div>
+    <script type="module">
+        import { API_BASE_URL, apiRequest, setToken } from '../js/api-client.js';
+        import { showToast } from '../js/utils.js';
 
-    <script>
         // 密码强度检测
         function getPasswordStrength(password) {
             let strength = 0;
@@ -864,16 +864,6 @@
             if (/[0-9]/.test(password)) strength++;
             if (/[!@#$%^&*(),.?":{}|<>]/.test(password)) strength++;
             return strength;
-        }
-
-        // Toast 函数
-        function showToast(message, type = 'success') {
-            const toast = document.getElementById('toast');
-            toast.textContent = message;
-            toast.className = `toast ${type} show`;
-            setTimeout(() => {
-                toast.classList.remove('show');
-            }, 3000);
         }
 
         // 标签切换
@@ -934,11 +924,6 @@
             }, 100);
         });
 
-        // API 基础地址
-        const API_BASE = window.location.hostname === 'localhost'
-            ? 'http://localhost:5000/api'
-            : '/api';
-
         // 登录
         document.getElementById('login-btn').addEventListener('click', async () => {
             const username = document.getElementById('login-username').value.trim();
@@ -949,29 +934,21 @@
                 return;
             }
 
-            try {
-                const res = await fetch(`${API_BASE}/auth/login`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, password })
-                });
+            const data = await apiRequest('/auth/login', {
+                method: 'POST',
+                body: { username, password }
+            });
 
-                const data = await res.json();
-
-                if (data.success) {
-                    localStorage.setItem('auth_token', data.data.token);
-                    localStorage.setItem('userId', data.data.user_id);
-                    localStorage.setItem('username', username);
-                    showToast('登录成功！', 'success');
-                    setTimeout(() => {
-                        window.location.href = 'dashboard.html';
-                    }, 1000);
-                } else {
-                    showToast(data.message || '登录失败', 'error');
-                }
-            } catch (err) {
-                console.error(err);
-                showToast('网络错误，请检查后端服务', 'error');
+            if (data.success) {
+                setToken(data.data.token);
+                localStorage.setItem('userId', data.data.user_id);
+                localStorage.setItem('username', username);
+                showToast('登录成功！', 'success');
+                setTimeout(() => {
+                    window.location.href = 'dashboard.html';
+                }, 1000);
+            } else {
+                showToast(data.message || '登录失败', 'error');
             }
         });
 
@@ -1015,24 +992,16 @@
                 return;
             }
 
-            try {
-                const res = await fetch(`${API_BASE}/auth/register`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, email, password })
-                });
+            const data = await apiRequest('/auth/register', {
+                method: 'POST',
+                body: { username, email, password }
+            });
 
-                const data = await res.json();
-
-                if (data.success) {
-                    showToast('注册成功！请登录', 'success');
-                    setTimeout(() => switchTab('login'), 1500);
-                } else {
-                    showToast(data.message || '注册失败', 'error');
-                }
-            } catch (err) {
-                console.error(err);
-                showToast('网络错误，请检查后端服务', 'error');
+            if (data.success) {
+                showToast('注册成功！请登录', 'success');
+                setTimeout(() => switchTab('login'), 1500);
+            } else {
+                showToast(data.message || '注册失败', 'error');
             }
         });
 
@@ -1044,6 +1013,9 @@
         document.getElementById('register-confirm').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') document.getElementById('register-btn').click();
         });
+
+        // 暴露到 window 供 onclick 使用
+        window.togglePasswordVisibility = togglePasswordVisibility;
     </script>
 </body>
 </html>
