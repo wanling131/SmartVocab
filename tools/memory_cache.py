@@ -14,12 +14,12 @@ import logging
 import threading
 import time
 from collections import OrderedDict
-from typing import Any, Callable, Dict, Optional, TypeVar, Generic
 from functools import wraps
+from typing import Any, Callable, Dict, Optional, TypeVar
 
 logger = logging.getLogger(__name__)
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 class CacheEntry:
@@ -156,10 +156,7 @@ class MemoryCache:
             清理的条目数
         """
         with self._lock:
-            expired_keys = [
-                key for key, entry in self._cache.items()
-                if entry.is_expired()
-            ]
+            expired_keys = [key for key, entry in self._cache.items() if entry.is_expired()]
             for key in expired_keys:
                 del self._cache[key]
 
@@ -185,7 +182,7 @@ class MemoryCache:
                 "hits": self._hits,
                 "misses": self._misses,
                 "hit_rate": f"{hit_rate:.2f}%",
-                "default_ttl": self._default_ttl
+                "default_ttl": self._default_ttl,
             }
 
     def get_or_set(self, key: str, factory: Callable[[], T], ttl: Optional[int] = None) -> T:
@@ -232,6 +229,7 @@ level_config_cache = MemoryCache(max_size=50, default_ttl=1800)
 
 # ==================== 缓存装饰器 ====================
 
+
 def cached(cache: MemoryCache, key_prefix: str = "", ttl: Optional[int] = None):
     """
     缓存装饰器
@@ -246,6 +244,7 @@ def cached(cache: MemoryCache, key_prefix: str = "", ttl: Optional[int] = None):
         def get_word(word_id):
             return db.query(...)
     """
+
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -263,19 +262,23 @@ def cached(cache: MemoryCache, key_prefix: str = "", ttl: Optional[int] = None):
                 cache.set(cache_key, result, ttl)
 
             return result
+
         return wrapper
+
     return decorator
 
 
 # ==================== 缓存键生成器 ====================
+
 
 def make_word_key(word_id: int) -> str:
     """生成单词缓存键"""
     return f"word:{word_id}"
 
 
-def make_word_list_key(dataset_type: str = None, difficulty: int = None,
-                       limit: int = None, offset: int = 0) -> str:
+def make_word_list_key(
+    dataset_type: str = None, difficulty: int = None, limit: int = None, offset: int = 0
+) -> str:
     """生成单词列表缓存键"""
     parts = ["words"]
     if dataset_type:
@@ -303,6 +306,7 @@ def make_user_stats_key(user_id: int, days: int = 7) -> str:
 
 
 # ==================== 缓存失效工具 ====================
+
 
 def invalidate_user_cache(user_id: int) -> None:
     """
@@ -352,7 +356,7 @@ def get_all_cache_stats() -> Dict[str, Dict[str, Any]]:
         "user_records_cache": user_records_cache.get_stats(),
         "recommendation_cache": recommendation_cache.get_stats(),
         "user_stats_cache": user_stats_cache.get_stats(),
-        "level_config_cache": level_config_cache.get_stats()
+        "level_config_cache": level_config_cache.get_stats(),
     }
 
 

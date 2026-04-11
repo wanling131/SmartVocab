@@ -3,36 +3,38 @@ CRUD基础类 - 提供统一的数据库操作接口
 """
 
 import logging
-from typing import Optional, List, Dict, Any, Union
 from contextlib import contextmanager
+from typing import Any, Dict, List, Optional, Union
+
 from .database import get_database_context
 
 # 配置日志
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 class BaseCRUD:
     """CRUD基础类，提供统一的数据库操作接口"""
-    
+
     def __init__(self, table_name: str):
         """
         初始化CRUD基础类
-        
+
         Args:
             table_name (str): 数据库表名
         """
         self.table_name = table_name
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
-    
+
     @contextmanager
     def get_cursor(self, connection=None, dictionary=True):
         """
         获取数据库游标的上下文管理器
-        
+
         Args:
             connection: 数据库连接，如果为None则使用连接池
             dictionary: 是否返回字典格式结果
-            
+
         Yields:
             cursor: 数据库游标
         """
@@ -51,25 +53,26 @@ class BaseCRUD:
                     yield cursor
                 finally:
                     cursor.close()
-    
-    def execute_query(self, query: str, params: tuple = None, 
-                     fetch_one: bool = False, fetch_all: bool = True) -> Union[Dict, List, None]:
+
+    def execute_query(
+        self, query: str, params: tuple = None, fetch_one: bool = False, fetch_all: bool = True
+    ) -> Union[Dict, List, None]:
         """
         执行查询语句
-        
+
         Args:
             query (str): SQL查询语句
             params (tuple): 查询参数
             fetch_one (bool): 是否只获取一条记录
             fetch_all (bool): 是否获取所有记录
-            
+
         Returns:
             Union[Dict, List, None]: 查询结果
         """
         try:
             with self.get_cursor() as cursor:
                 cursor.execute(query, params or ())
-                
+
                 if fetch_one:
                     return cursor.fetchone()
                 elif fetch_all:
@@ -79,15 +82,15 @@ class BaseCRUD:
         except Exception as e:
             self.logger.error(f"查询执行失败: {e}, SQL: {query}, 参数: {params}")
             return None if fetch_one or fetch_all else 0
-    
+
     def execute_update(self, query: str, params: tuple = None) -> int:
         """
         执行更新语句（INSERT, UPDATE, DELETE）
-        
+
         Args:
             query (str): SQL语句
             params (tuple): 参数
-            
+
         Returns:
             int: 受影响的行数
         """
@@ -100,15 +103,15 @@ class BaseCRUD:
         except Exception as e:
             self.logger.error(f"更新执行失败: {e}, SQL: {query}, 参数: {params}")
             return 0
-    
+
     def execute_insert(self, query: str, params: tuple = None) -> Optional[int]:
         """
         执行插入语句
-        
+
         Args:
             query (str): SQL语句
             params (tuple): 参数
-            
+
         Returns:
             Optional[int]: 新插入记录的ID
         """
@@ -121,9 +124,13 @@ class BaseCRUD:
         except Exception as e:
             self.logger.error(f"插入执行失败: {e}, SQL: {query}, 参数: {params}")
             return None
-    
-    def build_update_query(self, fields: Dict[str, Any], where_clause: str = "id = %s",
-                          allowed_fields: List[str] = None) -> tuple:
+
+    def build_update_query(
+        self,
+        fields: Dict[str, Any],
+        where_clause: str = "id = %s",
+        allowed_fields: List[str] = None,
+    ) -> tuple:
         """
         构建更新查询语句
 
@@ -153,34 +160,36 @@ class BaseCRUD:
 
         query = f"UPDATE {self.table_name} SET {', '.join(set_clauses)} WHERE {where_clause}"
         return query, tuple(values)
-    
+
     def validate_fields(self, data: Dict[str, Any], required_fields: List[str]) -> bool:
         """
         验证必需字段
-        
+
         Args:
             data (Dict[str, Any]): 数据字典
             required_fields (List[str]): 必需字段列表
-            
+
         Returns:
             bool: 验证是否通过
         """
-        missing_fields = [field for field in required_fields if field not in data or data[field] is None]
+        missing_fields = [
+            field for field in required_fields if field not in data or data[field] is None
+        ]
         if missing_fields:
             self.logger.warning(f"缺少必需字段: {missing_fields}")
             return False
         return True
-    
+
     def log_operation(self, operation: str, **kwargs):
         """
         记录操作日志
-        
+
         Args:
             operation (str): 操作名称
             **kwargs: 操作参数
         """
         self.logger.info(f"{operation}: {kwargs}")
-    
+
     def close(self):
         """
         关闭数据库连接（使用连接池时无需手动关闭）

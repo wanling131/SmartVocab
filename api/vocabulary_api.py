@@ -6,30 +6,26 @@
 import csv
 import io
 import logging
-import os
 from typing import Any, Dict, Optional, Union
 
 from flask import Blueprint, Response, request
 
 from config import LEARNING_PARAMS
 from core.vocabulary.vocabulary_learning_manager import VocabularyLearningManager
+from tools.admin_utils import is_admin
 from tools.words_crud import WordsCRUD
 
-from .auth_middleware import get_current_user, require_auth, check_user_access
+from .auth_middleware import check_user_access, require_auth
 from .utils import APIResponse, handle_api_error
 
 logger = logging.getLogger(__name__)
 
 # 创建蓝图
-vocabulary_bp = Blueprint('vocabulary', __name__, url_prefix='/api/vocabulary')
+vocabulary_bp = Blueprint("vocabulary", __name__, url_prefix="/api/vocabulary")
 
 # 初始化
 vocabulary_manager = VocabularyLearningManager()
 words_crud = WordsCRUD()
-
-# 管理员配置：通过环境变量 ADMIN_USERS 指定，逗号分隔的用户名列表
-# 示例：ADMIN_USERS=admin,root,teacher
-ADMIN_USERS: set = set(u.strip() for u in os.getenv('ADMIN_USERS', '').split(',') if u.strip())
 
 
 def _session_info_matches_user(session_info: Optional[Dict[str, Any]]) -> bool:
@@ -43,25 +39,10 @@ def _session_info_matches_user(session_info: Optional[Dict[str, Any]]) -> bool:
     """
     if not session_info or not isinstance(session_info, dict):
         return False
-    return check_user_access(session_info.get('user_id'))
+    return check_user_access(session_info.get("user_id"))
 
 
-def _is_admin() -> bool:
-    """检查当前用户是否为管理员。
-
-    Returns:
-        bool: 是否为管理员。
-    """
-    if not ADMIN_USERS:
-        logger.warning("ADMIN_USERS 未配置，拒绝管理员操作。请在 .env 中设置 ADMIN_USERS")
-        return False
-    current = get_current_user()
-    if not current:
-        return False
-    return current.get('username') in ADMIN_USERS
-
-
-@vocabulary_bp.route('/start-session', methods=['POST'])
+@vocabulary_bp.route("/start-session", methods=["POST"])
 @handle_api_error
 @require_auth
 def start_learning_session() -> tuple:
@@ -77,23 +58,26 @@ def start_learning_session() -> tuple:
         tuple: (JSON响应, HTTP状态码)。
     """
     data = request.get_json()
-    user_id = data.get('user_id')
-    difficulty_level = data.get('difficulty_level')
-    word_count = data.get('word_count', LEARNING_PARAMS["default_word_count"])
-    question_type = data.get('question_type', 'mixed')
+    user_id = data.get("user_id")
+    difficulty_level = data.get("difficulty_level")
+    word_count = data.get("word_count", LEARNING_PARAMS["default_word_count"])
+    question_type = data.get("question_type", "mixed")
 
     if not user_id:
-        return APIResponse.error('用户ID不能为空', 400)
+        return APIResponse.error("用户ID不能为空", 400)
     if not check_user_access(user_id):
-        return APIResponse.error('无权访问', 403)
+        return APIResponse.error("无权访问", 403)
 
-    result = vocabulary_manager.start_learning_session(user_id, difficulty_level, word_count, question_type)
-    if result['success']:
-        return APIResponse.success(result.get('session_info'), result['message'])
+    result = vocabulary_manager.start_learning_session(
+        user_id, difficulty_level, word_count, question_type
+    )
+    if result["success"]:
+        return APIResponse.success(result.get("session_info"), result["message"])
     else:
-        return APIResponse.error(result['message'], 400)
+        return APIResponse.error(result["message"], 400)
 
-@vocabulary_bp.route('/current-word', methods=['POST'])
+
+@vocabulary_bp.route("/current-word", methods=["POST"])
 @handle_api_error
 @require_auth
 def get_current_word() -> tuple:
@@ -106,20 +90,21 @@ def get_current_word() -> tuple:
         tuple: (JSON响应, HTTP状态码)。
     """
     data = request.get_json()
-    session_info = data.get('session_info')
+    session_info = data.get("session_info")
 
     if not session_info:
-        return APIResponse.error('会话信息不能为空', 400)
+        return APIResponse.error("会话信息不能为空", 400)
     if not _session_info_matches_user(session_info):
-        return APIResponse.error('无权访问该会话', 403)
+        return APIResponse.error("无权访问该会话", 403)
 
     word_info = vocabulary_manager.get_current_word(session_info)
     if word_info:
         return APIResponse.success(word_info, "获取单词成功")
     else:
-        return APIResponse.error('没有更多单词', 404)
+        return APIResponse.error("没有更多单词", 404)
 
-@vocabulary_bp.route('/submit-answer', methods=['POST'])
+
+@vocabulary_bp.route("/submit-answer", methods=["POST"])
 @handle_api_error
 @require_auth
 def submit_answer() -> tuple:
@@ -139,31 +124,39 @@ def submit_answer() -> tuple:
         tuple: (JSON响应, HTTP状态码)。
     """
     data = request.get_json()
-    user_id = data.get('user_id')
-    word_id = data.get('word_id')
-    user_answer = data.get('user_answer')
-    correct_answer = data.get('correct_answer')
-    response_time = data.get('response_time', 0)
-    question_type = data.get('question_type', 'translation')
-    mastery_override = data.get('mastery_override')
-    session_info = data.get('session_info')
+    user_id = data.get("user_id")
+    word_id = data.get("word_id")
+    user_answer = data.get("user_answer")
+    correct_answer = data.get("correct_answer")
+    response_time = data.get("response_time", 0)
+    question_type = data.get("question_type", "translation")
+    mastery_override = data.get("mastery_override")
+    session_info = data.get("session_info")
 
     if not all([user_id, word_id, user_answer, correct_answer]):
-        return APIResponse.error('所有字段都不能为空', 400)
+        return APIResponse.error("所有字段都不能为空", 400)
     if not check_user_access(user_id):
-        return APIResponse.error('无权访问', 403)
+        return APIResponse.error("无权访问", 403)
     if session_info and not _session_info_matches_user(session_info):
-        return APIResponse.error('无权访问该会话', 403)
+        return APIResponse.error("无权访问该会话", 403)
 
     result = vocabulary_manager.submit_answer(
-        user_id, word_id, user_answer, correct_answer, response_time, question_type, mastery_override, session_info
+        user_id,
+        word_id,
+        user_answer,
+        correct_answer,
+        response_time,
+        question_type,
+        mastery_override,
+        session_info,
     )
-    if result['success']:
-        return APIResponse.success(result, result['message'])
+    if result["success"]:
+        return APIResponse.success(result, result["message"])
     else:
-        return APIResponse.error(result['message'], 400)
+        return APIResponse.error(result["message"], 400)
 
-@vocabulary_bp.route('/active-session/<int:user_id>', methods=['GET'])
+
+@vocabulary_bp.route("/active-session/<int:user_id>", methods=["GET"])
 @handle_api_error
 @require_auth
 def get_active_session(user_id: int) -> tuple:
@@ -179,16 +172,17 @@ def get_active_session(user_id: int) -> tuple:
         tuple: (JSON响应, HTTP状态码)。
     """
     if not check_user_access(user_id):
-        return APIResponse.error('无权访问', 403)
-    session_type = request.args.get('session_type', 'learning')
+        return APIResponse.error("无权访问", 403)
+    session_type = request.args.get("session_type", "learning")
 
     result = vocabulary_manager.get_active_session(user_id, session_type)
-    if result['success']:
-        return APIResponse.success(result['session_info'], result['message'])
+    if result["success"]:
+        return APIResponse.success(result["session_info"], result["message"])
     else:
-        return APIResponse.error(result['message'], 404)
+        return APIResponse.error(result["message"], 404)
 
-@vocabulary_bp.route('/finish-session', methods=['POST'])
+
+@vocabulary_bp.route("/finish-session", methods=["POST"])
 @handle_api_error
 @require_auth
 def finish_session() -> tuple:
@@ -201,20 +195,20 @@ def finish_session() -> tuple:
         tuple: (JSON响应, HTTP状态码)。
     """
     data = request.get_json()
-    session_id = data.get('session_id')
+    session_id = data.get("session_id")
 
     if not session_id:
-        return APIResponse.error('会话ID不能为空', 400)
+        return APIResponse.error("会话ID不能为空", 400)
     try:
         sid = int(session_id)
     except (TypeError, ValueError):
-        return APIResponse.error('会话ID无效', 400)
+        return APIResponse.error("会话ID无效", 400)
 
     row = vocabulary_manager.learning_sessions_crud.get_by_id(sid)
     if not row:
-        return APIResponse.error('会话不存在', 404)
-    if not check_user_access(row.get('user_id')):
-        return APIResponse.error('无权访问', 403)
+        return APIResponse.error("会话不存在", 404)
+    if not check_user_access(row.get("user_id")):
+        return APIResponse.error("无权访问", 403)
 
     success = vocabulary_manager.finish_session(sid)
     if success:
@@ -222,7 +216,8 @@ def finish_session() -> tuple:
     else:
         return APIResponse.error("完成会话失败", 400)
 
-@vocabulary_bp.route('/start-review-session', methods=['POST'])
+
+@vocabulary_bp.route("/start-review-session", methods=["POST"])
 @handle_api_error
 @require_auth
 def start_review_session() -> tuple:
@@ -236,22 +231,22 @@ def start_review_session() -> tuple:
         tuple: (JSON响应, HTTP状态码)。
     """
     data = request.get_json()
-    user_id = data.get('user_id')
-    word_count = data.get('word_count', LEARNING_PARAMS["default_word_count"])
+    user_id = data.get("user_id")
+    word_count = data.get("word_count", LEARNING_PARAMS["default_word_count"])
 
     if not user_id:
-        return APIResponse.error('用户ID不能为空', 400)
+        return APIResponse.error("用户ID不能为空", 400)
     if not check_user_access(user_id):
-        return APIResponse.error('无权访问', 403)
+        return APIResponse.error("无权访问", 403)
 
     result = vocabulary_manager.start_review_session(user_id, word_count)
-    if result['success']:
-        return APIResponse.success(result.get('session_info'), result['message'])
+    if result["success"]:
+        return APIResponse.success(result.get("session_info"), result["message"])
     else:
-        return APIResponse.error(result['message'], 400)
+        return APIResponse.error(result["message"], 400)
 
 
-@vocabulary_bp.route('/import', methods=['POST'])
+@vocabulary_bp.route("/import", methods=["POST"])
 @handle_api_error
 @require_auth
 def import_words() -> tuple:
@@ -264,40 +259,40 @@ def import_words() -> tuple:
     Returns:
         tuple: (JSON响应, HTTP状态码)。
     """
-    if not _is_admin():
-        return APIResponse.error('无权操作，仅管理员可导入词库', 403)
+    if not is_admin():
+        return APIResponse.error("无权操作，仅管理员可导入词库", 403)
 
     data = request.get_json()
     if not data:
-        return APIResponse.error('请提供 JSON 数据', 400)
-    words_list = data if isinstance(data, list) else data.get('words', [])
-    dataset_type = data.get('dataset_type') if isinstance(data, dict) else None
+        return APIResponse.error("请提供 JSON 数据", 400)
+    words_list = data if isinstance(data, list) else data.get("words", [])
+    dataset_type = data.get("dataset_type") if isinstance(data, dict) else None
     count = 0
     for w in words_list:
         try:
             wid = words_crud.create(
-                word=str(w.get('word', '')).strip(),
-                translation=str(w.get('translation', '')).strip(),
-                phonetic=w.get('phonetic', ''),
-                pos=w.get('pos', ''),
-                tag=w.get('tag', ''),
-                total=int(w.get('frequency_rank', w.get('total', 0)) or 0),
-                spoken_ratio=float(w.get('spoken_ratio', 0) or 0),
-                academic_ratio=float(w.get('academic_ratio', 0) or 0),
-                cefr_standard=w.get('cefr_standard', ''),
-                difficulty_level=int(w.get('difficulty_level', 3) or 3),
-                dataset_type=w.get('dataset_type') or dataset_type,
-                definition_en=w.get('definition_en'),
-                example_sentence=w.get('example_sentence')
+                word=str(w.get("word", "")).strip(),
+                translation=str(w.get("translation", "")).strip(),
+                phonetic=w.get("phonetic", ""),
+                pos=w.get("pos", ""),
+                tag=w.get("tag", ""),
+                total=int(w.get("frequency_rank", w.get("total", 0)) or 0),
+                spoken_ratio=float(w.get("spoken_ratio", 0) or 0),
+                academic_ratio=float(w.get("academic_ratio", 0) or 0),
+                cefr_standard=w.get("cefr_standard", ""),
+                difficulty_level=int(w.get("difficulty_level", 3) or 3),
+                dataset_type=w.get("dataset_type") or dataset_type,
+                definition_en=w.get("definition_en"),
+                example_sentence=w.get("example_sentence"),
             )
             if wid:
                 count += 1
         except Exception:
             pass
-    return APIResponse.success({'imported': count}, f"成功导入 {count} 个单词")
+    return APIResponse.success({"imported": count}, f"成功导入 {count} 个单词")
 
 
-@vocabulary_bp.route('/export', methods=['GET'])
+@vocabulary_bp.route("/export", methods=["GET"])
 @handle_api_error
 @require_auth
 def export_words() -> Union[tuple, Response]:
@@ -311,134 +306,151 @@ def export_words() -> Union[tuple, Response]:
     Returns:
         Union[tuple, Response]: JSON响应或CSV文件响应。
     """
-    if not _is_admin():
-        return APIResponse.error('无权操作，仅管理员可导出词库', 403)
+    if not is_admin():
+        return APIResponse.error("无权操作，仅管理员可导出词库", 403)
 
-    dataset_type = request.args.get('dataset_type')
-    format_type = request.args.get('format', 'json')
-    limit = request.args.get('limit', 10000, type=int)
+    dataset_type = request.args.get("dataset_type")
+    format_type = request.args.get("format", "json")
+    limit = request.args.get("limit", 10000, type=int)
 
     if dataset_type:
-        words = words_crud.execute_query(
-            "SELECT * FROM words WHERE dataset_type = %s LIMIT %s",
-            (dataset_type, limit), fetch_all=True
-        ) or []
+        words = (
+            words_crud.execute_query(
+                "SELECT * FROM words WHERE dataset_type = %s LIMIT %s",
+                (dataset_type, limit),
+                fetch_all=True,
+            )
+            or []
+        )
     else:
         words = words_crud.list_all(limit=limit, offset=0)
 
-    if format_type == 'csv':
+    if format_type == "csv":
         output = io.StringIO()
         writer = csv.writer(output)
         if words:
             writer.writerow(words[0].keys())
             for row in words:
-                writer.writerow([str(v) if v is not None else '' for v in row.values()])
-        return Response(output.getvalue(), mimetype='text/csv',
-                       headers={'Content-Disposition': 'attachment;filename=words_export.csv'})
+                writer.writerow([str(v) if v is not None else "" for v in row.values()])
+        return Response(
+            output.getvalue(),
+            mimetype="text/csv",
+            headers={"Content-Disposition": "attachment;filename=words_export.csv"},
+        )
     return APIResponse.success(words, "导出成功")
 
 
 # ==================== 单条词管理 API（管理员） ====================
 
-@vocabulary_bp.route('/words/<int:word_id>', methods=['GET'])
+
+@vocabulary_bp.route("/words/<int:word_id>", methods=["GET"])
 @handle_api_error
 @require_auth
 def get_word(word_id):
     """获取单个单词详情"""
-    if not _is_admin():
-        return APIResponse.error('无权操作， 仅管理员可访问', 403)
+    if not is_admin():
+        return APIResponse.error("无权操作， 仅管理员可访问", 403)
 
     word = words_crud.read(word_id)
     if not word:
-        return APIResponse.error('单词不存在', 404)
+        return APIResponse.error("单词不存在", 404)
     return APIResponse.success(word, "获取成功")
 
 
-@vocabulary_bp.route('/words/<int:word_id>', methods=['PUT'])
+@vocabulary_bp.route("/words/<int:word_id>", methods=["PUT"])
 @handle_api_error
 @require_auth
 def update_word(word_id):
     """更新单词信息"""
-    if not _is_admin():
-        return APIResponse.error('无权操作， 仅管理员可访问', 403)
+    if not is_admin():
+        return APIResponse.error("无权操作， 仅管理员可访问", 403)
 
     word = words_crud.read(word_id)
     if not word:
-        return APIResponse.error('单词不存在', 404)
+        return APIResponse.error("单词不存在", 404)
 
     data = request.get_json()
     if not data:
-        return APIResponse.error('请求数据不能为空', 400)
+        return APIResponse.error("请求数据不能为空", 400)
 
     # 过滤允许更新的字段
-    allowed_fields = ['word', 'translation', 'phonetic', 'pos', 'tag',
-                     'definition_en', 'example_sentence', 'difficulty_level',
-                     'cefr_standard', 'dataset_type']
+    allowed_fields = [
+        "word",
+        "translation",
+        "phonetic",
+        "pos",
+        "tag",
+        "definition_en",
+        "example_sentence",
+        "difficulty_level",
+        "cefr_standard",
+        "dataset_type",
+    ]
     update_data = {k: v for k, v in data.items() if k in allowed_fields}
 
     if not update_data:
-        return APIResponse.error('没有有效的更新字段', 400)
+        return APIResponse.error("没有有效的更新字段", 400)
 
     affected = words_crud.update(word_id, **update_data)
     if affected > 0:
         updated_word = words_crud.read(word_id)
         return APIResponse.success(updated_word, "更新成功")
-    return APIResponse.error('更新失败', 500)
+    return APIResponse.error("更新失败", 500)
 
 
-@vocabulary_bp.route('/words/<int:word_id>', methods=['DELETE'])
+@vocabulary_bp.route("/words/<int:word_id>", methods=["DELETE"])
 @handle_api_error
 @require_auth
 def delete_word(word_id):
     """删除单词"""
-    if not _is_admin():
-        return APIResponse.error('无权操作， 仅管理员可访问', 403)
+    if not is_admin():
+        return APIResponse.error("无权操作， 仅管理员可访问", 403)
 
     word = words_crud.read(word_id)
     if not word:
-        return APIResponse.error('单词不存在', 404)
+        return APIResponse.error("单词不存在", 404)
 
     affected = words_crud.delete(word_id)
     if affected > 0:
         return APIResponse.success({}, "删除成功")
-    return APIResponse.error('删除失败', 500)
+    return APIResponse.error("删除失败", 500)
 
 
-@vocabulary_bp.route('/words', methods=['POST'])
+@vocabulary_bp.route("/words", methods=["POST"])
 @handle_api_error
 @require_auth
 def create_word():
     """创建新单词"""
-    if not _is_admin():
-        return APIResponse.error('无权操作， 仅管理员可访问', 403)
+    if not is_admin():
+        return APIResponse.error("无权操作， 仅管理员可访问", 403)
 
     data = request.get_json()
     if not data:
-        return APIResponse.error('请求数据不能为空', 400)
+        return APIResponse.error("请求数据不能为空", 400)
 
-    word = data.get('word')
-    translation = data.get('translation')
+    word = data.get("word")
+    translation = data.get("translation")
     if not word or not translation:
-        return APIResponse.error('单词和释义不能为空', 400)
+        return APIResponse.error("单词和释义不能为空", 400)
 
     # 创建单词
     word_id = words_crud.create(
         word=word,
         translation=translation,
-        phonetic=data.get('phonetic'),
-        pos=data.get('pos'),
-        tag=data.get('tag'),
-        total=data.get('frequency_rank', 0),
-        spoken_ratio=data.get('spoken_ratio', 0.5),
-        academic_ratio=data.get('academic_ratio', 0.5),
-        cefr_standard=data.get('cefr_standard'),
-        difficulty_level=data.get('difficulty_level', 3),
-        dataset_type=data.get('dataset_type'),
-        definition_en=data.get('definition_en'),
-        example_sentence=data.get('example_sentence')
+        phonetic=data.get("phonetic"),
+        pos=data.get("pos"),
+        tag=data.get("tag"),
+        total=data.get("frequency_rank", 0),
+        spoken_ratio=data.get("spoken_ratio", 0.5),
+        academic_ratio=data.get("academic_ratio", 0.5),
+        cefr_standard=data.get("cefr_standard"),
+        difficulty_level=data.get("difficulty_level", 3),
+        dataset_type=data.get("dataset_type"),
+        definition_en=data.get("definition_en"),
+        example_sentence=data.get("example_sentence"),
     )
 
     if word_id:
         new_word = words_crud.read(word_id)
         return APIResponse.success(new_word, "创建成功")
-    return APIResponse.error('创建失败', 500)
+    return APIResponse.error("创建失败", 500)

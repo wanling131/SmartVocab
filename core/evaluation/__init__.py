@@ -2,4 +2,4 @@
 评测模块
 """
 
-from .evaluation_manager import EvaluationManager
+from .evaluation_manager import EvaluationManager  # noqa: F401

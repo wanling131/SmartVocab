@@ -9,10 +9,11 @@ import time
 import uuid
 from secrets import token_hex
 
-from flask import Flask, request, g
+from flask import Flask, g, request
 from flask_cors import CORS
 
 from config import APP_CONFIG
+from .swagger_config import SWAGGER_CONFIG, SWAGGER_TEMPLATE
 
 logger = logging.getLogger(__name__)
 
@@ -26,18 +27,19 @@ _KNOWN_INSECURE_SECRET_KEYS = frozenset(
     }
 )
 
+from .achievements_api import achievements_bp
+
 # 导入所有API模块
 from .auth_api import auth_bp
-from .vocabulary_api import vocabulary_bp
-from .learning_api import learning_bp
-from .recommendation_api import recommendation_bp
-from .plans_api import plans_bp
 from .evaluation_api import evaluation_bp
-from .levels_api import levels_bp
-from .health_api import health_bp
-from .achievements_api import achievements_bp
 from .favorites_api import favorites_bp
+from .health_api import health_bp
+from .learning_api import learning_bp
+from .levels_api import levels_bp
+from .plans_api import plans_bp
+from .recommendation_api import recommendation_bp
 from .utils import APIResponse
+from .vocabulary_api import vocabulary_bp
 
 
 class APILauncher:
@@ -69,38 +71,33 @@ class APILauncher:
         @self.app.before_request
         def before_request():
             """请求开始前：生成请求ID、记录开始时间"""
-            g.request_id = request.headers.get('X-Request-ID', str(uuid.uuid4())[:8])
+            g.request_id = request.headers.get("X-Request-ID", str(uuid.uuid4())[:8])
             g.start_time = time.time()
 
             # 记录请求日志（排除静态文件和健康检查）
-            if not request.path.startswith('/static') and request.path != '/api/health':
-                logger.info(
-                    "[%s] %s %s",
-                    g.request_id,
-                    request.method,
-                    request.path
-                )
+            if not request.path.startswith("/static") and request.path != "/api/health":
+                logger.info("[%s] %s %s", g.request_id, request.method, request.path)
 
         @self.app.after_request
         def after_request(response):
             """请求结束后：添加请求ID头、记录响应时间"""
             # 添加请求ID到响应头
-            if hasattr(g, 'request_id'):
-                response.headers['X-Request-ID'] = g.request_id
+            if hasattr(g, "request_id"):
+                response.headers["X-Request-ID"] = g.request_id
 
             # 记录响应时间
-            if hasattr(g, 'start_time'):
+            if hasattr(g, "start_time"):
                 elapsed_ms = (time.time() - g.start_time) * 1000
-                response.headers['X-Response-Time'] = f'{elapsed_ms:.2f}ms'
+                response.headers["X-Response-Time"] = f"{elapsed_ms:.2f}ms"
 
                 # 慢请求警告（>1秒）
-                if elapsed_ms > 1000 and not request.path.startswith('/static'):
+                if elapsed_ms > 1000 and not request.path.startswith("/static"):
                     logger.warning(
                         "[%s] 慢请求: %s %s (%.2fms)",
                         g.request_id,
                         request.method,
                         request.path,
-                        elapsed_ms
+                        elapsed_ms,
                     )
 
             return response
@@ -121,9 +118,21 @@ class APILauncher:
             )
 
         self.app.config["SECRET_KEY"] = secret
-        self.app.config["MAX_CONTENT_LENGTH"] = APP_CONFIG.get("max_content_length", 16 * 1024 * 1024)
+        self.app.config["MAX_CONTENT_LENGTH"] = APP_CONFIG.get(
+            "max_content_length", 16 * 1024 * 1024
+        )
         # JSON 使用 UTF-8，避免中文乱码
         self.app.config["JSON_AS_ASCII"] = False
+
+        # Swagger 配置（仅开发环境启用）
+        if not APP_CONFIG.get("production"):
+            self.app.config["SWAGGER"] = SWAGGER_CONFIG
+            try:
+                from flasgger import Swagger
+                Swagger(self.app, template=SWAGGER_TEMPLATE)
+                logger.info("Swagger UI 已启用: /api/docs")
+            except ImportError:
+                logger.warning("flasgger 未安装，Swagger UI 不可用")
 
     def _configure_cors(self) -> None:
         """跨域：生产环境请在 CORS_ORIGINS 中列出前端 Origin"""
@@ -172,7 +181,7 @@ class APILauncher:
         @self.app.errorhandler(Exception)
         def handle_exception(error):
             """全局异常处理"""
-            logger.exception("[%s] 未处理异常: %s", getattr(g, 'request_id', 'N/A'), error)
+            logger.exception("[%s] 未处理异常: %s", getattr(g, "request_id", "N/A"), error)
             if APP_CONFIG.get("expose_error_details"):
                 return APIResponse.error(f"服务器错误: {str(error)}", 500)
             return APIResponse.error("服务器内部错误，请稍后重试", 500)
@@ -187,9 +196,10 @@ class APILauncher:
             response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
             response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
             # 仅在明确启用且生产模式下下发 HSTS（需站点全站 HTTPS）
-            if (
-                APP_CONFIG.get("production")
-                and os.getenv("ENABLE_HSTS", "").lower() in ("1", "true", "yes")
+            if APP_CONFIG.get("production") and os.getenv("ENABLE_HSTS", "").lower() in (
+                "1",
+                "true",
+                "yes",
             ):
                 response.headers["Strict-Transport-Security"] = (
                     "max-age=31536000; includeSubDomains"

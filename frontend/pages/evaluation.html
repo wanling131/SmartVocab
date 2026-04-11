@@ -782,26 +782,7 @@
         </svg>
     </div>
 
-    <!-- Navbar -->
-    <nav class="navbar">
-        <a href="dashboard.html" class="nav-brand">
-            <div class="nav-logo">SV</div>
-            <span class="nav-title">SmartVocab</span>
-        </a>
-        <div class="nav-menu">
-            <a href="dashboard.html" class="nav-link" data-page="dashboard">🏠 首页</a>
-            <a href="plans.html" class="nav-link" data-page="plans">📋 计划</a>
-            <a href="levels.html" class="nav-link" data-page="levels">🎮 闯关</a>
-            <a href="evaluation.html" class="nav-link active" data-page="evaluation">📝 测试</a>
-            <a href="statistics.html" class="nav-link" data-page="statistics">📊 统计</a>
-            <a href="favorites.html" class="nav-link" data-page="favorites">⭐ 收藏</a>
-            <a href="profile.html" class="nav-link" data-page="profile">👤 我的</a>
-        </div>
-        <div class="nav-user">
-            <span id="username-display" class="user-name"></span>
-            <button id="logout-btn" class="btn-logout">退出</button>
-        </div>
-    </nav>
+    <!-- Navbar (由 page-common.js 插入) -->
 
     <!-- Main Content -->
     <main class="evaluation-container">
@@ -930,32 +911,22 @@
     </main>
 
     <script type="module">
-        import { apiRequest, getToken, clearToken } from '../js/api-client.js';
+        import { apiRequest } from '../js/api-client.js';
         import { showToast, escapeHtml } from '../js/utils.js';
-
-        // Check login status
-        const token = getToken();
-        if (!token) {
-            window.location.href = 'login.html';
-        }
+        import { initPage, getCurrentUser } from '../js/page-common.js';
 
         let currentUser = null;
         let timerInterval = null;
         let startTime = null;
         let totalQuestions = 10;
 
-        // Load user profile
-        async function loadUserProfile() {
-            try {
-                const result = await apiRequest('/auth/profile');
-                if (result.success) {
-                    currentUser = result.data;
-                    document.getElementById('username-display').textContent = currentUser.username;
-                }
-            } catch (err) {
-                console.error('加载用户信息失败:', err);
+        // 页面初始化
+        initPage({
+            navTarget: 'body',
+            onReady: async (user) => {
+                currentUser = user;
             }
-        }
+        });
 
         // Timer functions
         function startTimer() {
@@ -1187,14 +1158,7 @@
             document.getElementById('submit-eval-btn').innerHTML = '<span>✅</span> 提交答卷';
         });
 
-        // Logout
-        document.getElementById('logout-btn').addEventListener('click', () => {
-            clearToken();
-            window.location.href = 'login.html';
-        });
-
-        // Initialize
-        loadUserProfile();
+        // 初始化已完成（由 initPage 处理）
     </script>
 </body>
 </html>

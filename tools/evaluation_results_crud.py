@@ -2,20 +2,29 @@
 评测结果表CRUD操作
 """
 
-from .base_crud import BaseCRUD
-from typing import Optional, List, Dict, Any
 from datetime import datetime
+from typing import Any, Dict, List, Optional
+
+from .base_crud import BaseCRUD
 
 
 class EvaluationResultsCRUD(BaseCRUD):
     """评测结果表CRUD操作类"""
-    
+
     def __init__(self):
         super().__init__("evaluation_results")
-    
-    def create(self, user_id: int, paper_id: int, score: float, correct_count: int,
-               total_count: int, duration_seconds: int = None,
-               assessed_level: str = None, submitted_at: datetime = None) -> Optional[int]:
+
+    def create(
+        self,
+        user_id: int,
+        paper_id: int,
+        score: float,
+        correct_count: int,
+        total_count: int,
+        duration_seconds: int = None,
+        assessed_level: str = None,
+        submitted_at: datetime = None,
+    ) -> Optional[int]:
         """
         创建评测结果
         """
@@ -27,18 +36,27 @@ class EvaluationResultsCRUD(BaseCRUD):
             duration_seconds, assessed_level, submitted_at)
         VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         """
-        return self.execute_insert(query, (
-            user_id, paper_id, score, correct_count, total_count,
-            duration_seconds, assessed_level, submitted_at
-        ))
-    
+        return self.execute_insert(
+            query,
+            (
+                user_id,
+                paper_id,
+                score,
+                correct_count,
+                total_count,
+                duration_seconds,
+                assessed_level,
+                submitted_at,
+            ),
+        )
+
     def read(self, result_id: int) -> Optional[Dict[str, Any]]:
         """
         根据ID读取评测结果
         """
         query = "SELECT * FROM evaluation_results WHERE id = %s"
         return self.execute_query(query, (result_id,), fetch_one=True, fetch_all=False)
-    
+
     def get_by_user(self, user_id: int, limit: int = 50) -> List[Dict[str, Any]]:
         """
         获取用户评测历史
@@ -57,7 +75,7 @@ class EvaluationResultsCRUD(BaseCRUD):
         """
         更新评测结果
         """
-        allowed = ['score', 'correct_count', 'total_count', 'duration_seconds', 'assessed_level']
+        allowed = ["score", "correct_count", "total_count", "duration_seconds", "assessed_level"]
         fields = {k: v for k, v in kwargs.items() if k in allowed}
         if not fields:
             return 0

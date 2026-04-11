@@ -113,19 +113,19 @@ class TestAdminPermission:
     """管理员权限测试"""
 
     def test_is_admin_when_not_configured(self):
-        """测试未配置 ADMIN_USERS 时允许所有用户"""
+        """测试未配置 ADMIN_USERS 时拒绝所有用户"""
         # 需要在没有 ADMIN_USERS 环境变量的情况下测试
         original = os.environ.get("ADMIN_USERS", "")
         try:
             os.environ.pop("ADMIN_USERS", None)
             # 重新导入以应用新配置
             import importlib
-            import api.vocabulary_api
-            importlib.reload(api.vocabulary_api)
+            import tools.admin_utils
+            importlib.reload(tools.admin_utils)
 
-            from api.vocabulary_api import _is_admin
+            from tools.admin_utils import is_admin
             # 未配置时返回 False（安全默认值）
-            assert _is_admin() is False
+            assert is_admin() is False
         finally:
             if original:
                 os.environ["ADMIN_USERS"] = original
@@ -137,10 +137,10 @@ class TestAdminPermission:
             os.environ["ADMIN_USERS"] = "admin,root,teacher"
             # 重新导入以应用新配置
             import importlib
-            import api.vocabulary_api
-            importlib.reload(api.vocabulary_api)
+            import tools.admin_utils
+            importlib.reload(tools.admin_utils)
 
-            from api.vocabulary_api import ADMIN_USERS
+            from tools.admin_utils import ADMIN_USERS
             assert "admin" in ADMIN_USERS
             assert "root" in ADMIN_USERS
             assert "teacher" in ADMIN_USERS

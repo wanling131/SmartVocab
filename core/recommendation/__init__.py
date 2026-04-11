@@ -13,20 +13,21 @@ from .recommendation_engine import RecommendationEngine
 
 # 尝试导出增强模块
 try:
-    from .recommendation_enhancements import (
-        CollaborativeFiltering,
-        DynamicWeightAdjuster,
-        DiversityController,
+    from .recommendation_enhancements import (  # noqa: F401
         ColdStartHandler,
-        RealtimePersonalizer
+        CollaborativeFiltering,
+        DiversityController,
+        DynamicWeightAdjuster,
+        RealtimePersonalizer,
     )
+
     __all__ = [
         "RecommendationEngine",
         "CollaborativeFiltering",
         "DynamicWeightAdjuster",
         "DiversityController",
         "ColdStartHandler",
-        "RealtimePersonalizer"
+        "RealtimePersonalizer",
     ]
 except ImportError:
     __all__ = ["RecommendationEngine"]

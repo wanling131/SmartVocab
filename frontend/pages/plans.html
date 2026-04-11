@@ -702,26 +702,7 @@
         <span class="hand-letter" style="bottom: 30%; right: 12%; --rotation: 10deg;">Daily</span>
     </div>
 
-    <!-- Navbar -->
-    <nav class="navbar">
-        <a href="dashboard.html" class="nav-brand">
-            <div class="nav-logo">SV</div>
-            <span class="nav-title">SmartVocab</span>
-        </a>
-        <div class="nav-menu">
-            <a href="dashboard.html" class="nav-link" data-page="dashboard">🏠 首页</a>
-            <a href="plans.html" class="nav-link active" data-page="plans">📋 计划</a>
-            <a href="levels.html" class="nav-link" data-page="levels">🎮 闯关</a>
-            <a href="evaluation.html" class="nav-link" data-page="evaluation">📝 测试</a>
-            <a href="statistics.html" class="nav-link" data-page="statistics">📊 统计</a>
-            <a href="favorites.html" class="nav-link" data-page="favorites">⭐ 收藏</a>
-            <a href="profile.html" class="nav-link" data-page="profile">👤 我的</a>
-        </div>
-        <div class="nav-user">
-            <span id="username-display" class="user-name"></span>
-            <button id="logout-btn" class="btn btn-ghost btn-sm">退出</button>
-        </div>
-    </nav>
+    <!-- Navbar (inserted by page-common.js) -->
 
     <main class="plans-container">
         <!-- Page Header -->
@@ -812,30 +793,20 @@
     </main>
 
     <script type="module">
-        import { apiRequest, getToken, clearToken } from '../js/api-client.js';
+        import { apiRequest } from '../js/api-client.js';
         import { showToast, escapeHtml } from '../js/utils.js';
-
-        // 检查登录状态
-        const token = getToken();
-        if (!token) {
-            window.location.href = 'login.html';
-        }
+        import { initPage, getCurrentUser } from '../js/page-common.js';
 
         let currentUser = null;
 
-        // 加载用户信息
-        async function loadUserProfile() {
-            try {
-                const result = await apiRequest('/auth/profile');
-                if (result.success) {
-                    currentUser = result.data;
-                    document.getElementById('username-display').textContent = currentUser.username;
-                    loadPlans();
-                }
-            } catch (err) {
-                console.error('加载用户信息失败:', err);
+        // 页面初始化
+        initPage({
+            navTarget: 'body',
+            onReady: async (user) => {
+                currentUser = user;
+                loadPlans();
             }
-        }
+        });
 
         // 加载计划
         async function loadPlans() {
@@ -1133,14 +1104,7 @@
             }, 100);
         });
 
-        // 退出
-        document.getElementById('logout-btn').addEventListener('click', () => {
-            clearToken();
-            window.location.href = 'login.html';
-        });
-
-        // 初始化
-        loadUserProfile();
+        // 初始化（已在 initPage 中完成）
     </script>
 </body>
 </html>

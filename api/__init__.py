@@ -5,4 +5,4 @@ API包初始化文件
 
 from .api_launcher import APILauncher, create_api_launcher
 
-__all__ = ['APILauncher', 'create_api_launcher']
+__all__ = ["APILauncher", "create_api_launcher"]

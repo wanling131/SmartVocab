@@ -3,8 +3,9 @@
 """
 
 import logging
-from typing import Optional, List, Dict, Any
 from datetime import datetime
+from typing import Any, Dict, List, Optional
+
 from .base_crud import BaseCRUD
 
 logger = logging.getLogger(__name__)
@@ -41,9 +42,11 @@ class FavoritesCRUD(BaseCRUD):
             WHERE user_id = %s AND word_id = %s
         """
         result = self.execute_query(query, (user_id, word_id), fetch_one=True)
-        return result.get('cnt', 0) > 0 if result else False
+        return result.get("cnt", 0) > 0 if result else False
 
-    def get_user_favorites(self, user_id: int, limit: int = 100, offset: int = 0) -> List[Dict[str, Any]]:
+    def get_user_favorites(
+        self, user_id: int, limit: int = 100, offset: int = 0
+    ) -> List[Dict[str, Any]]:
         """获取用户收藏列表（含单词详情）"""
         query = """
             SELECT f.id, f.word_id, f.note, f.created_at as favorited_at,
@@ -60,13 +63,13 @@ class FavoritesCRUD(BaseCRUD):
         """获取收藏数量"""
         query = "SELECT COUNT(*) as cnt FROM user_favorite_words WHERE user_id = %s"
         result = self.execute_query(query, (user_id,), fetch_one=True)
-        return result.get('cnt', 0) if result else 0
+        return result.get("cnt", 0) if result else 0
 
     def get_favorited_word_ids(self, user_id: int) -> List[int]:
         """获取用户收藏的所有单词ID（用于前端快速判断）"""
         query = "SELECT word_id FROM user_favorite_words WHERE user_id = %s"
         results = self.execute_query(query, (user_id,), fetch_all=True) or []
-        return [r['word_id'] for r in results]
+        return [r["word_id"] for r in results]
 
     def update_note(self, user_id: int, word_id: int, note: str) -> bool:
         """更新收藏备注"""

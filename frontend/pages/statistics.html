@@ -254,26 +254,7 @@
         <span class="hand-letter letter-E">E</span>
     </div>
 
-    <!-- 导航栏 -->
-    <nav class="navbar" role="navigation" aria-label="主导航">
-        <a href="dashboard.html" class="nav-brand">
-            <div class="nav-logo">SV</div>
-            <span class="nav-title">SmartVocab</span>
-        </a>
-        <div class="nav-menu" role="menubar">
-            <a href="dashboard.html" class="nav-link" role="menuitem">🏠 首页</a>
-            <a href="plans.html" class="nav-link" role="menuitem">📋 计划</a>
-            <a href="levels.html" class="nav-link" role="menuitem">🎮 闯关</a>
-            <a href="evaluation.html" class="nav-link" role="menuitem">📝 测试</a>
-            <a href="statistics.html" class="nav-link active" role="menuitem" aria-current="page">📊 统计</a>
-            <a href="favorites.html" class="nav-link" role="menuitem">⭐ 收藏</a>
-            <a href="profile.html" class="nav-link" role="menuitem">👤 我的</a>
-        </div>
-        <div class="nav-user">
-            <span class="user-name" id="username-display">用户</span>
-            <button class="btn btn-ghost" onclick="logout()" aria-label="退出登录">退出</button>
-        </div>
-    </nav>
+    <!-- 导航栏 (由 page-common.js 插入) -->
 
     <main class="stats-container">
         <!-- 页面标题 -->
@@ -359,24 +340,24 @@
     </main>
 
     <script type="module">
-        import { apiRequest, getToken, clearToken } from '../js/api-client.js';
+        import { apiRequest } from '../js/api-client.js';
         import { showToast } from '../js/utils.js';
+        import { initPage, getCurrentUser } from '../js/page-common.js';
 
         let currentUser = null;
         let charts = {};
         let currentPeriod = 7;
 
-        async function init() {
-            const token = getToken();
-            if (!token) { window.location.href = 'login.html'; return; }
-            const result = await apiRequest('/auth/profile');
-            if (!result.success) { window.location.href = 'login.html'; return; }
-            currentUser = result.data;
-            document.getElementById('username-display').textContent = currentUser.username;
-            loadStats();
-            initCharts();
-            initPeriodButtons();
-        }
+        // 页面初始化
+        initPage({
+            navTarget: 'body',
+            onReady: async (user) => {
+                currentUser = user;
+                loadStats();
+                initCharts();
+                initPeriodButtons();
+            }
+        });
         async function loadStats() {
             const result = await apiRequest(`/learning/progress/${currentUser.id}?days=${currentPeriod}`);
             if (result.success) {
@@ -509,15 +490,7 @@
                 });
             });
         }
-        function logout() {
-            clearToken();
-            window.location.href = 'login.html';
-        }
-
-        // 暴露到 window 供 onclick 使用
-        window.logout = logout;
-
-        init();
+        // 初始化已完成（由 initPage 处理）
     </script>
 </body>
 </html>

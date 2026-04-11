@@ -444,26 +444,7 @@
         </div>
     </div>
 
-    <!-- 导航栏 -->
-    <nav class="navbar" role="navigation" aria-label="主导航">
-        <a href="dashboard.html" class="nav-brand">
-            <div class="nav-logo">SV</div>
-            <span class="nav-title">SmartVocab</span>
-        </a>
-        <div class="nav-menu" role="menubar">
-            <a href="dashboard.html" class="nav-link active" role="menuitem" aria-current="page">🏠 首页</a>
-            <a href="plans.html" class="nav-link" role="menuitem">📋 计划</a>
-            <a href="levels.html" class="nav-link" role="menuitem">🎮 闯关</a>
-            <a href="evaluation.html" class="nav-link" role="menuitem">📝 测试</a>
-            <a href="statistics.html" class="nav-link" role="menuitem">📊 统计</a>
-            <a href="favorites.html" class="nav-link" role="menuitem">⭐ 收藏</a>
-            <a href="profile.html" class="nav-link" role="menuitem">👤 我的</a>
-        </div>
-        <div class="nav-user">
-            <span class="user-name" id="username-display">用户</span>
-            <button class="btn btn-ghost" onclick="logout()" aria-label="退出登录">退出</button>
-        </div>
-    </nav>
+    <!-- 导航栏 (由 page-common.js 插入) -->
 
     <main class="container">
         <!-- 欢迎区 -->
@@ -579,8 +560,9 @@
     </main>
 
     <script type="module">
-        import { apiRequest, getToken, clearToken } from '../js/api-client.js';
+        import { apiRequest } from '../js/api-client.js';
         import { showToast, escapeHtml } from '../js/utils.js';
+        import { initPage, getCurrentUser } from '../js/page-common.js';
 
         // 防抖函数（utils.js 中无此函数，保留内联）
         function debounce(func, wait) {
@@ -593,21 +575,17 @@
 
         let currentUser = null;
 
-        async function init() {
-            const token = getToken();
-            if (!token) { window.location.href = 'login.html'; return; }
-
-            const result = await apiRequest('/auth/profile');
-            if (!result.success) { window.location.href = 'login.html'; return; }
-
-            currentUser = result.data;
-            document.getElementById('username-display').textContent = currentUser.username;
-            document.getElementById('welcome-name').textContent = currentUser.username;
-
-            loadProgress();
-            loadRecommendations();
-            loadReviewCount();
-        }
+        // 页面初始化
+        initPage({
+            navTarget: 'body',
+            onReady: async (user) => {
+                currentUser = user;
+                document.getElementById('welcome-name').textContent = currentUser.username;
+                loadProgress();
+                loadRecommendations();
+                loadReviewCount();
+            }
+        });
 
         async function loadProgress() {
             const result = await apiRequest(`/learning/progress/${currentUser.id}`);
@@ -663,10 +641,8 @@
         }
 
         function learnWord(id) { window.location.href = `learning.html?word_id=${id}`; }
-        function logout() { clearToken(); window.location.href = 'login.html'; }
 
-        // 暴露到 window 供 onclick 使用
-        window.logout = logout;
+        // 暴露到 window 供 onclick 使用（logout 已由 page-common.js 处理）
         window.refreshRecommendations = refreshRecommendations;
         window.startLearning = startLearning;
         window.startReview = startReview;
@@ -678,8 +654,6 @@
                 learnWord(item.dataset.wordId);
             }
         });
-
-        init();
     </script>
 </body>
 </html>

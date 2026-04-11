@@ -3,8 +3,9 @@
 提供统一的路径设置和导入功能
 """
 
-import sys
 import os
+import sys
+
 
 def setup_project_path():
     """
@@ -15,6 +16,7 @@ def setup_project_path():
     project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
     if project_root not in sys.path:
         sys.path.append(project_root)
+
 
 # 自动设置路径
 setup_project_path()

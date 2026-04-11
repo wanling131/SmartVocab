@@ -12,7 +12,7 @@ from collections import defaultdict
 from datetime import datetime
 from typing import Dict, List, Optional, Set, Tuple
 
-from config import LEARNING_PARAMS, RECOMMENDATION_CONFIG
+from config import RECOMMENDATION_CONFIG
 from tools.learning_records_crud import LearningRecordsCRUD
 from tools.words_crud import WordsCRUD
 
@@ -49,13 +49,13 @@ class CollaborativeFiltering:
         records = self.learning_records_crud.list_all(limit=50000)
 
         for record in records:
-            user_id = record['user_id']
-            word_id = record['word_id']
-            mastery = record.get('mastery_level', 0.5)
+            user_id = record["user_id"]
+            word_id = record["word_id"]
+            mastery = record.get("mastery_level", 0.5)
 
             # 使用掌握程度作为隐式评分
             # 考虑复习次数加成
-            review_count = record.get('review_count', 0)
+            review_count = record.get("review_count", 0)
             adjusted_rating = min(1.0, mastery + review_count * 0.02)
 
             matrix[user_id][word_id] = adjusted_rating
@@ -93,8 +93,8 @@ class CollaborativeFiltering:
 
         # 计算余弦相似度
         dot_product = sum(user1_items[item] * user2_items[item] for item in common_items)
-        norm1 = math.sqrt(sum(v ** 2 for v in user1_items.values()))
-        norm2 = math.sqrt(sum(v ** 2 for v in user2_items.values()))
+        norm1 = math.sqrt(sum(v**2 for v in user1_items.values()))
+        norm2 = math.sqrt(sum(v**2 for v in user2_items.values()))
 
         if norm1 == 0 or norm2 == 0:
             return 0.0
@@ -136,10 +136,7 @@ class CollaborativeFiltering:
         return similarities[:k]
 
     def get_collaborative_recommendations(
-        self,
-        user_id: int,
-        learned_word_ids: Set[int],
-        limit: int = 20
+        self, user_id: int, learned_word_ids: Set[int], limit: int = 20
     ) -> List[Dict[str, any]]:
         """基于用户的协同过滤推荐。
 
@@ -187,16 +184,17 @@ class CollaborativeFiltering:
 
             # 获取单词详情
             all_words = self.words_crud.list_all(limit=5000)
-            word_dict = {w['id']: w for w in all_words}
+            word_dict = {w["id"]: w for w in all_words}
 
             # 构建推荐列表
             recommendations = []
-            for word_id, score in sorted(candidate_scores.items(),
-                                         key=lambda x: x[1], reverse=True)[:limit * 2]:
+            for word_id, score in sorted(
+                candidate_scores.items(), key=lambda x: x[1], reverse=True
+            )[: limit * 2]:
                 if word_id in word_dict:
                     word = word_dict[word_id].copy()
-                    word['recommendation_score'] = min(1.0, score)
-                    word['algorithm_type'] = 'collaborative_user'
+                    word["recommendation_score"] = min(1.0, score)
+                    word["algorithm_type"] = "collaborative_user"
                     recommendations.append(word)
 
             return recommendations[:limit]
@@ -244,10 +242,7 @@ class CollaborativeFiltering:
         return similarity
 
     def get_item_based_recommendations(
-        self,
-        user_id: int,
-        learned_word_ids: Set[int],
-        limit: int = 20
+        self, user_id: int, learned_word_ids: Set[int], limit: int = 20
     ) -> List[Dict[str, any]]:
         """基于物品的协同过滤推荐。
 
@@ -272,8 +267,8 @@ class CollaborativeFiltering:
 
             # 获取所有单词
             all_words = self.words_crud.list_all(limit=5000)
-            all_word_ids = {w['id'] for w in all_words}
-            word_dict = {w['id']: w for w in all_words}
+            all_word_ids = {w["id"] for w in all_words}
+            word_dict = {w["id"]: w for w in all_words}
 
             # 计算未学单词与已学单词的相似度
             candidate_scores = defaultdict(float)
@@ -292,12 +287,13 @@ class CollaborativeFiltering:
             recommendations = []
             max_score = max(candidate_scores.values()) if candidate_scores else 1
 
-            for word_id, score in sorted(candidate_scores.items(),
-                                         key=lambda x: x[1], reverse=True)[:limit * 2]:
+            for word_id, score in sorted(
+                candidate_scores.items(), key=lambda x: x[1], reverse=True
+            )[: limit * 2]:
                 if word_id in word_dict:
                     word = word_dict[word_id].copy()
-                    word['recommendation_score'] = min(1.0, score / max_score)
-                    word['algorithm_type'] = 'collaborative_item'
+                    word["recommendation_score"] = min(1.0, score / max_score)
+                    word["algorithm_type"] = "collaborative_item"
                     recommendations.append(word)
 
             return recommendations[:limit]
@@ -320,22 +316,20 @@ class DynamicWeightAdjuster:
 
         # 基础权重
         self.base_weights: Dict[str, float] = {
-            'difficulty_based': 0.25,
-            'frequency_based': 0.20,
-            'learning_history': 0.20,
-            'deep_learning': 0.25,
-            'random_exploration': 0.10,
+            "difficulty_based": 0.25,
+            "frequency_based": 0.20,
+            "learning_history": 0.20,
+            "deep_learning": 0.25,
+            "random_exploration": 0.10,
         }
 
         # 用户个性化权重缓存
         self._user_weights: Dict[int, Dict[str, float]] = {}
 
         # 算法效果追踪
-        self._algorithm_performance: Dict[str, Dict[str, any]] = defaultdict(lambda: {
-            'attempts': 0,
-            'successes': 0,
-            'total_mastery_gain': 0.0
-        })
+        self._algorithm_performance: Dict[str, Dict[str, any]] = defaultdict(
+            lambda: {"attempts": 0, "successes": 0, "total_mastery_gain": 0.0}
+        )
 
         # 用户学习轮次（用于探索衰减）
         self._user_episodes: Dict[int, int] = defaultdict(int)
@@ -379,14 +373,14 @@ class DynamicWeightAdjuster:
         # 收集各算法的表现
         performance_scores = {}
         for algo in weights.keys():
-            perf = self._algorithm_performance.get(f"{user_id}_{algo}", {
-                'attempts': 0, 'successes': 0, 'total_mastery_gain': 0.0
-            })
+            perf = self._algorithm_performance.get(
+                f"{user_id}_{algo}", {"attempts": 0, "successes": 0, "total_mastery_gain": 0.0}
+            )
 
-            if perf['attempts'] > 0:
+            if perf["attempts"] > 0:
                 # 成功率 + 平均掌握度提升
-                success_rate = perf['successes'] / perf['attempts']
-                avg_gain = perf['total_mastery_gain'] / perf['attempts']
+                success_rate = perf["successes"] / perf["attempts"]
+                avg_gain = perf["total_mastery_gain"] / perf["attempts"]
                 performance_scores[algo] = success_rate * 0.6 + avg_gain * 0.4
             else:
                 performance_scores[algo] = 0.5  # 默认中等表现
@@ -401,8 +395,9 @@ class DynamicWeightAdjuster:
         # 混合基础权重和表现权重
         adaptation_rate = self.config["weight_adaptation_rate"]
         for algo in weights:
-            weights[algo] = (1 - adaptation_rate) * weights[algo] + \
-                           adaptation_rate * normalized_perf[algo] * len(weights)
+            weights[algo] = (1 - adaptation_rate) * weights[
+                algo
+            ] + adaptation_rate * normalized_perf[algo] * len(weights)
 
         # 归一化
         total = sum(weights.values())
@@ -416,7 +411,7 @@ class DynamicWeightAdjuster:
         algorithm_type: str,
         mastery_before: float,
         mastery_after: float,
-        is_correct: bool
+        is_correct: bool,
     ) -> None:
         """记录算法反馈，用于权重调整。
 
@@ -430,12 +425,12 @@ class DynamicWeightAdjuster:
         key = f"{user_id}_{algorithm_type}"
         perf = self._algorithm_performance[key]
 
-        perf['attempts'] += 1
+        perf["attempts"] += 1
         if is_correct:
-            perf['successes'] += 1
+            perf["successes"] += 1
 
         mastery_gain = max(0, mastery_after - mastery_before)
-        perf['total_mastery_gain'] += mastery_gain
+        perf["total_mastery_gain"] += mastery_gain
 
         # 清除权重缓存，强制重新计算
         if user_id in self._user_weights:
@@ -458,8 +453,7 @@ class DynamicWeightAdjuster:
         decay_episodes = self.exploration_config["epsilon_decay_episodes"]
 
         # 指数衰减
-        epsilon = epsilon_end + (epsilon_start - epsilon_end) * \
-                  math.exp(-episode / decay_episodes)
+        epsilon = epsilon_end + (epsilon_start - epsilon_end) * math.exp(-episode / decay_episodes)
 
         return epsilon
 
@@ -486,29 +480,27 @@ class DynamicWeightAdjuster:
             str: 选择的算法名称。
         """
         alpha = self.exploration_config["ucb_alpha"]
-        total_attempts = sum(
-            self._algorithm_performance[f"{user_id}_{algo}"]['attempts']
-            for algo in algorithms
-        ) + 1  # 避免除零
+        total_attempts = (
+            sum(self._algorithm_performance[f"{user_id}_{algo}"]["attempts"] for algo in algorithms)
+            + 1
+        )  # 避免除零
 
         best_algo = None
-        best_ucb = -float('inf')
+        best_ucb = -float("inf")
 
         for algo in algorithms:
             key = f"{user_id}_{algo}"
             perf = self._algorithm_performance[key]
 
-            if perf['attempts'] == 0:
+            if perf["attempts"] == 0:
                 # 未尝试过的算法优先探索
                 return algo
 
             # 平均奖励
-            avg_reward = perf['total_mastery_gain'] / perf['attempts']
+            avg_reward = perf["total_mastery_gain"] / perf["attempts"]
 
             # UCB置信度上界
-            confidence = alpha * math.sqrt(
-                math.log(total_attempts) / perf['attempts']
-            )
+            confidence = alpha * math.sqrt(math.log(total_attempts) / perf["attempts"])
 
             ucb_value = avg_reward + confidence
 
@@ -533,7 +525,7 @@ class DiversityController:
         self,
         candidates: List[Dict[str, any]],
         limit: int,
-        user_history: Optional[List[Dict[str, any]]] = None
+        user_history: Optional[List[Dict[str, any]]] = None,
     ) -> List[Dict[str, any]]:
         """应用MMR（Maximal Marginal Relevance）算法选择多样化推荐。
 
@@ -556,32 +548,33 @@ class DiversityController:
         history_features = self._extract_history_features(user_history or [])
 
         while len(selected) < limit and remaining:
-            best_score = -float('inf')
+            best_score = -float("inf")
             best_idx = 0
 
             for i, candidate in enumerate(remaining):
                 # 相关性分数
-                relevance = candidate.get('recommendation_score', 0.5)
+                relevance = candidate.get("recommendation_score", 0.5)
 
                 # 多样性惩罚（与已选词的相似度）
                 diversity_penalty = 0
                 if selected:
                     diversity_penalty = max(
-                        self._calculate_similarity(candidate, s)
-                        for s in selected
+                        self._calculate_similarity(candidate, s) for s in selected
                     )
 
                 # 历史相似度惩罚（避免推荐与已学词过于相似的新词）
                 history_penalty = 0
                 if history_features:
-                    history_penalty = self._calculate_history_similarity(
-                        candidate, history_features
-                    ) * 0.3
+                    history_penalty = (
+                        self._calculate_history_similarity(candidate, history_features) * 0.3
+                    )
 
                 # MMR分数
-                mmr_score = (lambda_param * relevance -
-                            (1 - lambda_param) * diversity_penalty -
-                            history_penalty)
+                mmr_score = (
+                    lambda_param * relevance
+                    - (1 - lambda_param) * diversity_penalty
+                    - history_penalty
+                )
 
                 if mmr_score > best_score:
                     best_score = mmr_score
@@ -604,25 +597,25 @@ class DiversityController:
         similarity = 0.0
 
         # 难度相似度
-        diff1 = word1.get('difficulty_level', 3)
-        diff2 = word2.get('difficulty_level', 3)
+        diff1 = word1.get("difficulty_level", 3)
+        diff2 = word2.get("difficulty_level", 3)
         similarity += 1 - abs(diff1 - diff2) / 5
 
         # 词性相似度
-        pos1 = word1.get('pos', '')
-        pos2 = word2.get('pos', '')
+        pos1 = word1.get("pos", "")
+        pos2 = word2.get("pos", "")
         if pos1 and pos2:
             similarity += 0.3 if pos1 == pos2 else 0
 
         # 词频相似度
-        freq1 = word1.get('frequency_rank', 1000)
-        freq2 = word2.get('frequency_rank', 1000)
+        freq1 = word1.get("frequency_rank", 1000)
+        freq2 = word2.get("frequency_rank", 1000)
         freq_sim = 1 - min(1, abs(freq1 - freq2) / 5000)
         similarity += freq_sim * 0.3
 
         # 标签相似度
-        tag1 = set(word1.get('tag', '').split(',')) if word1.get('tag') else set()
-        tag2 = set(word2.get('tag', '').split(',')) if word2.get('tag') else set()
+        tag1 = set(word1.get("tag", "").split(",")) if word1.get("tag") else set()
+        tag2 = set(word2.get("tag", "").split(",")) if word2.get("tag") else set()
         if tag1 and tag2:
             jaccard = len(tag1 & tag2) / len(tag1 | tag2)
             similarity += jaccard * 0.4
@@ -642,10 +635,10 @@ class DiversityController:
             return {}
 
         features = {
-            'avg_difficulty': 0,
-            'common_pos': {},
-            'common_tags': set(),
-            'frequency_range': [float('inf'), 0]
+            "avg_difficulty": 0,
+            "common_pos": {},
+            "common_tags": set(),
+            "frequency_range": [float("inf"), 0],
         }
 
         difficulties = []
@@ -654,27 +647,25 @@ class DiversityController:
 
         for record in history:
             # 这里假设record包含word信息，实际可能需要关联查询
-            if 'difficulty_level' in record:
-                difficulties.append(record['difficulty_level'])
+            if "difficulty_level" in record:
+                difficulties.append(record["difficulty_level"])
 
-            if 'pos' in record:
-                pos_counts[record['pos']] += 1
+            if "pos" in record:
+                pos_counts[record["pos"]] += 1
 
-            if 'tag' in record and record['tag']:
-                all_tags.update(record['tag'].split(','))
+            if "tag" in record and record["tag"]:
+                all_tags.update(record["tag"].split(","))
 
         if difficulties:
-            features['avg_difficulty'] = sum(difficulties) / len(difficulties)
+            features["avg_difficulty"] = sum(difficulties) / len(difficulties)
 
-        features['common_pos'] = dict(pos_counts)
-        features['common_tags'] = all_tags
+        features["common_pos"] = dict(pos_counts)
+        features["common_tags"] = all_tags
 
         return features
 
     def _calculate_history_similarity(
-        self,
-        candidate: Dict[str, any],
-        history_features: Dict[str, any]
+        self, candidate: Dict[str, any], history_features: Dict[str, any]
     ) -> float:
         """计算候选词与用户历史的相似度。
 
@@ -691,22 +682,23 @@ class DiversityController:
         similarity = 0.0
 
         # 难度相似
-        if history_features.get('avg_difficulty'):
+        if history_features.get("avg_difficulty"):
             diff_diff = abs(
-                candidate.get('difficulty_level', 3) -
-                history_features['avg_difficulty']
+                candidate.get("difficulty_level", 3) - history_features["avg_difficulty"]
             )
             similarity += max(0, 1 - diff_diff / 3) * 0.4
 
         # 词性相似
-        candidate_pos = candidate.get('pos', '')
-        if candidate_pos and candidate_pos in history_features.get('common_pos', {}):
-            pos_freq = history_features['common_pos'][candidate_pos]
+        candidate_pos = candidate.get("pos", "")
+        if candidate_pos and candidate_pos in history_features.get("common_pos", {}):
+            pos_freq = history_features["common_pos"][candidate_pos]
             similarity += min(0.3, pos_freq * 0.05)
 
         return similarity
 
-    def ensure_difficulty_spread(self, recommendations: List[Dict[str, any]]) -> List[Dict[str, any]]:
+    def ensure_difficulty_spread(
+        self, recommendations: List[Dict[str, any]]
+    ) -> List[Dict[str, any]]:
         """确保推荐结果的难度分布合理。
 
         Args:
@@ -718,13 +710,12 @@ class DiversityController:
         if not self.config["enabled"]:
             return recommendations
 
-        spread = self.config["difficulty_spread"]
         result = []
 
         # 按难度分组
         by_difficulty = defaultdict(list)
         for rec in recommendations:
-            diff = rec.get('difficulty_level', 3)
+            diff = rec.get("difficulty_level", 3)
             by_difficulty[diff].append(rec)
 
         # 轮询各难度级别，确保多样性
@@ -755,7 +746,7 @@ class DiversityController:
         result = []
 
         for rec in recommendations:
-            pos = rec.get('pos', 'other')
+            pos = rec.get("pos", "other")
             current_ratio = pos_counts[pos] / (len(result) + 1) if result else 0
 
             if current_ratio < max_ratio or len(result) < 3:
@@ -780,11 +771,7 @@ class ColdStartHandler:
         # 热门词缓存
         self._popular_words: Optional[List[Dict[str, any]]] = None
 
-    def get_cold_start_recommendations(
-        self,
-        user_id: int,
-        limit: int = 20
-    ) -> List[Dict[str, any]]:
+    def get_cold_start_recommendations(self, user_id: int, limit: int = 20) -> List[Dict[str, any]]:
         """为新用户生成冷启动推荐。
 
         Args:
@@ -810,14 +797,14 @@ class ColdStartHandler:
         seen = set()
         unique_recommendations = []
         for rec in recommendations:
-            if rec['id'] not in seen:
-                seen.add(rec['id'])
+            if rec["id"] not in seen:
+                seen.add(rec["id"])
                 unique_recommendations.append(rec)
 
         # 为每个推荐添加理由
         for rec in unique_recommendations:
-            rec['algorithm_type'] = 'cold_start'
-            rec['reason'] = self._generate_cold_start_reason(rec)
+            rec["algorithm_type"] = "cold_start"
+            rec["reason"] = self._generate_cold_start_reason(rec)
 
         return unique_recommendations[:limit]
 
@@ -841,9 +828,9 @@ class ColdStartHandler:
             word_mastery_sum = defaultdict(float)
 
             for record in records:
-                word_id = record['word_id']
+                word_id = record["word_id"]
                 word_user_count[word_id] += 1
-                word_mastery_sum[word_id] += record.get('mastery_level', 0)
+                word_mastery_sum[word_id] += record.get("mastery_level", 0)
 
             # 计算热度分数：用户数 * 平均掌握度
             word_scores = {}
@@ -854,16 +841,17 @@ class ColdStartHandler:
 
             # 获取单词详情
             all_words = self.words_crud.list_all(limit=5000)
-            word_dict = {w['id']: w for w in all_words}
+            word_dict = {w["id"]: w for w in all_words}
 
             # 排序并构建推荐
             popular = []
-            for word_id, score in sorted(word_scores.items(),
-                                         key=lambda x: x[1], reverse=True)[:limit * 2]:
+            for word_id, score in sorted(word_scores.items(), key=lambda x: x[1], reverse=True)[
+                : limit * 2
+            ]:
                 if word_id in word_dict:
                     word = word_dict[word_id].copy()
-                    word['recommendation_score'] = min(1.0, score / 100)
-                    word['popularity_rank'] = len(popular) + 1
+                    word["recommendation_score"] = min(1.0, score / 100)
+                    word["popularity_rank"] = len(popular) + 1
                     popular.append(word)
 
             self._popular_words = popular
@@ -888,18 +876,17 @@ class ColdStartHandler:
 
             all_words = self.words_crud.list_all(limit=500)
             basic_words = [
-                w for w in all_words
-                if min_diff <= w.get('difficulty_level', 3) <= max_diff
+                w for w in all_words if min_diff <= w.get("difficulty_level", 3) <= max_diff
             ]
 
             # 按词频排序（高频优先）
-            basic_words.sort(key=lambda x: x.get('frequency_rank', 1000))
+            basic_words.sort(key=lambda x: x.get("frequency_rank", 1000))
 
             recommendations = []
             for word in basic_words[:limit]:
                 rec = word.copy()
-                freq = rec.get('frequency_rank', 1000)
-                rec['recommendation_score'] = max(0.3, 1 - freq / 5000)
+                freq = rec.get("frequency_rank", 1000)
+                rec["recommendation_score"] = max(0.3, 1 - freq / 5000)
                 recommendations.append(rec)
 
             return recommendations
@@ -917,15 +904,15 @@ class ColdStartHandler:
         Returns:
             str: 推荐理由字符串。
         """
-        difficulty = word.get('difficulty_level', 3)
-        frequency = word.get('frequency_rank', 1000)
-        tag = word.get('tag', '')
+        difficulty = word.get("difficulty_level", 3)
+        frequency = word.get("frequency_rank", 1000)
+        tag = word.get("tag", "")
 
         if frequency <= 100:
             return "高频词汇：最常用的英语单词"
         elif frequency <= 500:
             return "核心词汇：日常必备单词"
-        elif 'CET4' in tag or '四级' in tag:
+        elif "CET4" in tag or "四级" in tag:
             return "四级词汇：大学基础单词"
         elif difficulty <= 2:
             return "入门词汇：适合初学者"
@@ -963,12 +950,7 @@ class RealtimePersonalizer:
         self._recent_behavior_cache: Dict[int, Dict[str, any]] = {}
 
     def update_session(
-        self,
-        user_id: int,
-        word_id: int,
-        is_correct: bool,
-        response_time: float,
-        difficulty: int
+        self, user_id: int, word_id: int, is_correct: bool, response_time: float, difficulty: int
     ) -> None:
         """更新用户会话数据。
 
@@ -981,24 +963,26 @@ class RealtimePersonalizer:
         """
         if user_id not in self._session_cache:
             self._session_cache[user_id] = {
-                'words': [],
-                'correct_count': 0,
-                'total_time': 0,
-                'start_time': datetime.now()
+                "words": [],
+                "correct_count": 0,
+                "total_time": 0,
+                "start_time": datetime.now(),
             }
 
         session = self._session_cache[user_id]
-        session['words'].append({
-            'word_id': word_id,
-            'is_correct': is_correct,
-            'response_time': response_time,
-            'difficulty': difficulty,
-            'timestamp': datetime.now()
-        })
+        session["words"].append(
+            {
+                "word_id": word_id,
+                "is_correct": is_correct,
+                "response_time": response_time,
+                "difficulty": difficulty,
+                "timestamp": datetime.now(),
+            }
+        )
 
         if is_correct:
-            session['correct_count'] += 1
-        session['total_time'] += response_time
+            session["correct_count"] += 1
+        session["total_time"] += response_time
 
     def get_session_adjusted_difficulty(self, user_id: int) -> int:
         """根据会话表现动态调整推荐难度。
@@ -1013,23 +997,23 @@ class RealtimePersonalizer:
             return 3  # 默认中等难度
 
         session = self._session_cache[user_id]
-        words = session['words']
+        words = session["words"]
 
         if len(words) < 3:
             return 3
 
         # 计算正确率
-        accuracy = session['correct_count'] / len(words)
+        accuracy = session["correct_count"] / len(words)
 
         # 计算平均响应时间
-        avg_time = session['total_time'] / len(words)
+        avg_time = session["total_time"] / len(words)
 
         # 计算近期正确率趋势（最近5个词）
         recent_words = words[-5:]
-        recent_accuracy = sum(1 for w in recent_words if w['is_correct']) / len(recent_words)
+        recent_accuracy = sum(1 for w in recent_words if w["is_correct"]) / len(recent_words)
 
         # 计算当前平均难度
-        avg_difficulty = sum(w['difficulty'] for w in words) / len(words)
+        avg_difficulty = sum(w["difficulty"] for w in words) / len(words)
 
         # 动态调整
         if accuracy > 0.8 and recent_accuracy > 0.8 and avg_time < 10:
@@ -1052,57 +1036,60 @@ class RealtimePersonalizer:
                 fatigue_level、engagement_level 等字段。
         """
         preferences = {
-            'preferred_difficulty': 3,
-            'performance_trend': 'stable',
-            'fatigue_level': 'normal',
-            'engagement_level': 'normal'
+            "preferred_difficulty": 3,
+            "performance_trend": "stable",
+            "fatigue_level": "normal",
+            "engagement_level": "normal",
         }
 
         if user_id not in self._session_cache:
             return preferences
 
         session = self._session_cache[user_id]
-        words = session['words']
+        words = session["words"]
 
         if len(words) < 3:
             return preferences
 
         # 性能趋势
         if len(words) >= 6:
-            first_half = words[:len(words)//2]
-            second_half = words[len(words)//2:]
-            first_acc = sum(1 for w in first_half if w['is_correct']) / len(first_half)
-            second_acc = sum(1 for w in second_half if w['is_correct']) / len(second_half)
+            first_half = words[: len(words) // 2]
+            second_half = words[len(words) // 2 :]
+            first_acc = sum(1 for w in first_half if w["is_correct"]) / len(first_half)
+            second_acc = sum(1 for w in second_half if w["is_correct"]) / len(second_half)
 
             if second_acc > first_acc + 0.1:
-                preferences['performance_trend'] = 'improving'
+                preferences["performance_trend"] = "improving"
             elif second_acc < first_acc - 0.1:
-                preferences['performance_trend'] = 'declining'
+                preferences["performance_trend"] = "declining"
 
         # 疲劳度（基于响应时间趋势）
         if len(words) >= 5:
-            recent_times = [w['response_time'] for w in words[-5:]]
-            earlier_times = [w['response_time'] for w in words[-10:-5]] if len(words) >= 10 else [w['response_time'] for w in words[:5]]
+            recent_times = [w["response_time"] for w in words[-5:]]
+            earlier_times = (
+                [w["response_time"] for w in words[-10:-5]]
+                if len(words) >= 10
+                else [w["response_time"] for w in words[:5]]
+            )
 
-            if sum(recent_times) / len(recent_times) > sum(earlier_times) / len(earlier_times) * 1.5:
-                preferences['fatigue_level'] = 'high'
+            if (
+                sum(recent_times) / len(recent_times)
+                > sum(earlier_times) / len(earlier_times) * 1.5
+            ):
+                preferences["fatigue_level"] = "high"
 
         # 参与度（基于连续学习数量）
-        session_duration = (datetime.now() - session['start_time']).seconds / 60
+        session_duration = (datetime.now() - session["start_time"]).seconds / 60
         if len(words) > 10 and session_duration < 10:
-            preferences['engagement_level'] = 'high'
+            preferences["engagement_level"] = "high"
         elif len(words) < 5 and session_duration > 5:
-            preferences['engagement_level'] = 'low'
+            preferences["engagement_level"] = "low"
 
-        preferences['preferred_difficulty'] = self.get_session_adjusted_difficulty(user_id)
+        preferences["preferred_difficulty"] = self.get_session_adjusted_difficulty(user_id)
 
         return preferences
 
-    def adjust_recommendation_score(
-        self,
-        word: Dict[str, any],
-        user_id: int
-    ) -> float:
+    def adjust_recommendation_score(self, word: Dict[str, any], user_id: int) -> float:
         """根据实时偏好调整推荐分数。
 
         Args:
@@ -1112,23 +1099,23 @@ class RealtimePersonalizer:
         Returns:
             float: 调整后的分数，范围 [0, 1]。
         """
-        base_score = word.get('recommendation_score', 0.5)
+        base_score = word.get("recommendation_score", 0.5)
         preferences = self.get_realtime_preferences(user_id)
 
         adjustment = 1.0
 
         # 难度匹配调整
-        word_difficulty = word.get('difficulty_level', 3)
-        preferred_diff = preferences['preferred_difficulty']
+        word_difficulty = word.get("difficulty_level", 3)
+        preferred_diff = preferences["preferred_difficulty"]
         diff_match = 1 - abs(word_difficulty - preferred_diff) / 5
-        adjustment *= (0.7 + diff_match * 0.3)
+        adjustment *= 0.7 + diff_match * 0.3
 
         # 疲劳度调整（疲劳时降低高难度词分数）
-        if preferences['fatigue_level'] == 'high' and word_difficulty > 4:
+        if preferences["fatigue_level"] == "high" and word_difficulty > 4:
             adjustment *= 0.8
 
         # 趋势调整（进步中时略微提升难度词分数）
-        if preferences['performance_trend'] == 'improving' and word_difficulty > preferred_diff:
+        if preferences["performance_trend"] == "improving" and word_difficulty > preferred_diff:
             adjustment *= 1.1
 
         return min(1.0, base_score * adjustment)
@@ -1155,22 +1142,22 @@ class RealtimePersonalizer:
             return {}
 
         session = self._session_cache[user_id]
-        words = session['words']
+        words = session["words"]
 
         summary = {
-            'total_words': len(words),
-            'correct_count': session['correct_count'],
-            'accuracy': session['correct_count'] / len(words) if words else 0,
-            'avg_time': session['total_time'] / len(words) if words else 0,
-            'duration_minutes': (datetime.now() - session['start_time']).seconds / 60,
-            'final_difficulty': self.get_session_adjusted_difficulty(user_id),
-            'preferences': self.get_realtime_preferences(user_id)
+            "total_words": len(words),
+            "correct_count": session["correct_count"],
+            "accuracy": session["correct_count"] / len(words) if words else 0,
+            "avg_time": session["total_time"] / len(words) if words else 0,
+            "duration_minutes": (datetime.now() - session["start_time"]).seconds / 60,
+            "final_difficulty": self.get_session_adjusted_difficulty(user_id),
+            "preferences": self.get_realtime_preferences(user_id),
         }
 
         # 保存到近期行为缓存
         self._recent_behavior_cache[user_id] = {
-            'last_session': summary,
-            'last_updated': datetime.now()
+            "last_session": summary,
+            "last_updated": datetime.now(),
         }
 
         return summary
@@ -1178,9 +1165,9 @@ class RealtimePersonalizer:
 
 # 导出所有类
 __all__ = [
-    'CollaborativeFiltering',
-    'DynamicWeightAdjuster',
-    'DiversityController',
-    'ColdStartHandler',
-    'RealtimePersonalizer'
+    "CollaborativeFiltering",
+    "DynamicWeightAdjuster",
+    "DiversityController",
+    "ColdStartHandler",
+    "RealtimePersonalizer",
 ]
