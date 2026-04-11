@@ -51,6 +51,99 @@ body {
     min-height: 100vh;
 }
 
+/* 禁止选择装饰性文字和非编辑元素（全面覆盖） */
+/* 导航栏 */
+.navbar, .nav-link, .nav-brand, .nav-title, .nav-logo, .nav-menu, .nav-user, .user-name,
+
+/* 页面标题 */
+.page-header, .page-title, .page-title-icon, .page-subtitle,
+
+/* 卡片标题 */
+.card-header, .card-title, .card-subtitle, .card-footer,
+
+/* 欢迎区域 */
+.welcome-section, .welcome-text, .welcome-text h1, .welcome-text p,
+
+/* 统计相关 */
+.stat-card, .stat-header, .stat-icon, .stat-value, .stat-label, .stat-item,
+.progress-card, .progress-header, .progress-text, .progress-bar,
+
+/* 分区标题 */
+.section-header, .section-title, .section-title-icon, .section-subtitle, .section-icon,
+
+/* 按钮文字 */
+.btn, .btn-primary, .btn-secondary, .btn-ghost, .action-btn, .preset-btn, .preset-btn-title, .preset-btn-time,
+
+/* 功能标签 */
+.feature-tag, .feature-text, .feature-icon,
+
+/* 品牌区域 */
+.brand-section, .brand-title, .brand-subtitle, .brand-logo, .brand-content,
+
+/* 背景装饰 */
+.bg-decoration, .hand-letter, .wave-decoration, .wave-line,
+
+/* 成就徽章 */
+.achievement-badge, .achievement-icon, .achievement-title, .achievement-desc,
+
+/* 关卡/闯关 */
+.level-card, .level-title, .level-desc, .level-status, .level-icon,
+.gate-card, .gate-title, .gate-desc, .gate-status,
+
+/* 收藏/单词 */
+.favorite-item, .favorite-word, .favorite-translation, .word-item, .word-info, .word-text,
+.word-card, .word-title, .word-content,
+
+/* 学习页面 */
+.question-text, .question-type, .option-btn, .choice-option, .choice-label,
+.answer-feedback, .feedback-text,
+
+/* 评测/测试 */
+.evaluation-card, .evaluation-title, .evaluation-desc,
+.test-paper, .test-title, .test-question,
+.score-item, .score-label, .score-value, .score-result,
+
+/* 计划 */
+.plan-card, .plan-title, .plan-desc, .plan-status,
+.plan-stat, .plan-stat-icon, .plan-stat-value, .plan-stat-label,
+.history-plan, .history-title,
+
+/* 图表 */
+.chart-container, .chart-header, .chart-title,
+
+/* 空状态 */
+.empty-state, .empty-icon, .empty-title, .empty-text,
+
+/* 个人中心 */
+.profile-card, .profile-header, .profile-avatar, .profile-name,
+.info-label, .info-value, .info-item,
+
+/* 标签/筛选 */
+.filter-tag, .filter-text, .tag-item, .tag-text,
+
+/* 其他 */
+.sketch-tip, .divider, .toast-message, .loading-text, .error-text {
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+/* 允许输入框和文本编辑区域选择 */
+input, textarea, .form-input, [contenteditable="true"] {
+    user-select: text;
+    -webkit-user-select: text;
+}
+
+/* 隐藏浏览器自带的密码显示/清除按钮，避免与自定义按钮重叠 */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear,
+input[type="text"]::-ms-reveal,
+input[type="text"]::-ms-clear,
+input::-webkit-credentials-auto-fill-button,
+input::-webkit-caps-lock-indicator {
+    display: none;
+    visibility: hidden;
+}
+
 a {
     color: var(--klein-blue);
     text-decoration: none;

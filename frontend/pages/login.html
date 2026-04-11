@@ -387,6 +387,13 @@
             color: var(--klein-blue);
         }
 
+        /* 隐藏浏览器自带的密码显示按钮 */
+        input[type="password"]::-ms-reveal,
+        input[type="password"]::-ms-clear,
+        input::-webkit-credentials-auto-fill-button {
+            display: none;
+        }
+
         /* 手绘风格输入框装饰 */
         .input-wrapper {
             position: relative;
@@ -754,7 +761,7 @@
                     </div>
                     <div class="form-group">
                         <label class="form-label" for="login-password">密码</label>
-                        <div class="input-wrapper password-wrapper">
+                        <div class="input-wrapper password-input-wrapper">
                             <input type="password" class="form-input" id="login-password" placeholder="请输入密码" autocomplete="current-password">
                             <button type="button" class="password-toggle" data-input-id="login-password" aria-label="显示密码">👁</button>
                             <div class="sketch-line"></div>
