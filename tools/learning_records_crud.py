@@ -140,6 +140,16 @@ class LearningRecordsCRUD(BaseCRUD):
             # 回退到按 last_reviewed 获取
             return self.get_by_user(user_id, limit, offset)
 
+    def read(self, record_id: int) -> Optional[Dict[str, Any]]:
+        """根据ID读取学习记录"""
+        query = "SELECT * FROM user_learning_records WHERE id = %s"
+        return self.execute_query(query, (record_id,), fetch_one=True)
+
+    def delete(self, record_id: int) -> int:
+        """删除学习记录"""
+        query = "DELETE FROM user_learning_records WHERE id = %s"
+        return self.execute_update(query, (record_id,))
+
     def update(self, record_id: int, **kwargs) -> int:
         """
         更新学习记录（同时更新缓存）

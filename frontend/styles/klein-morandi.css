@@ -351,8 +351,9 @@ a:hover {
     position: fixed;
     bottom: 30px;
     right: 30px;
-    padding: 16px 24px;
-    border-radius: 12px;
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-size: 13px;
     font-weight: 600;
     z-index: 1000;
     transform: translateX(120%);

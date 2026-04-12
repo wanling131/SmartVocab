@@ -564,16 +564,8 @@
         import { showToast, escapeHtml } from '../js/utils.js';
         import { initPage, getCurrentUser } from '../js/page-common.js';
 
-        // 防抖函数（utils.js 中无此函数，保留内联）
-        function debounce(func, wait) {
-            let timeout;
-            return function(...args) {
-                clearTimeout(timeout);
-                timeout = setTimeout(() => func.apply(this, args), wait);
-            };
-        }
-
         let currentUser = null;
+        let recPageIndex = 0;
 
         // 页面初始化
         initPage({
@@ -582,7 +574,7 @@
                 currentUser = user;
                 document.getElementById('welcome-name').textContent = currentUser.username;
                 loadProgress();
-                loadRecommendations();
+                loadRecommendations();  // 首次加载，page=0
                 loadReviewCount();
             }
         });
@@ -598,21 +590,29 @@
             }
         }
 
+        // 加载推荐（page_index 由 recPageIndex 控制）
         async function loadRecommendations(forceRefresh = false) {
-            const url = forceRefresh
-                ? `/recommendations/${currentUser.id}?limit=5&refresh=true`
-                : `/recommendations/${currentUser.id}?limit=5`;
-            const result = await apiRequest(url, { forceRefresh });
+            // 刷新时重置页码为0（触发重新计算推荐池）
+            const page = forceRefresh ? 0 : recPageIndex;
+            const url = `/recommendations/${currentUser.id}?limit=5&page=${page}${forceRefresh ? '&refresh=true' : ''}`;
+            const result = await apiRequest(url);
             const list = document.getElementById('recommendations-list');
 
-            if (result.success && result.data?.length > 0) {
-                list.innerHTML = result.data.map(w => `
+            if (result.success && result.data?.words?.length > 0) {
+                // 更新页码
+                recPageIndex = result.data.page + 1;
+                // 检查是否翻到最后
+                if (!result.data.has_more) {
+                    recPageIndex = 0;  // 下次刷新重新计算
+                }
+
+                list.innerHTML = result.data.words.map(w => `
                     <div class="word-item" data-word-id="${w.id}">
                         <div class="word-info">
                             <h4>${escapeHtml(w.word)}</h4>
                             <p>${escapeHtml(w.translation) || ''}</p>
                         </div>
-                        <span class="word-badge">${escapeHtml(w.recommendation_reason) || '推荐'}</span>
+                        <span class="word-badge">${escapeHtml(w.reason) || '推荐'}</span>
                     </div>
                 `).join('');
             } else {
@@ -627,9 +627,9 @@
             }
         }
 
-        // 刷新按钮：强制刷新，清除缓存
-        function refreshRecommendations() {
-            loadRecommendations(true);
+        // 刷新按钮：翻页显示下一批推荐
+        async function refreshRecommendations() {
+            await loadRecommendations(false);  // 翻页而非强制刷新
             showToast('已刷新');
         }
 

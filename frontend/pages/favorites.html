@@ -656,7 +656,7 @@
                 <div class="favorite-card" style="animation-delay: ${index * 0.05}s">
                     <div class="favorite-header">
                         <div class="favorite-word">${escapeHtml(f.word)}</div>
-                        <button class="favorite-toggle" data-favorite-id="${f.id}" title="取消收藏">
+                        <button class="favorite-toggle" data-word-id="${f.word_id}" title="取消收藏">
                             ⭐
                         </button>
                     </div>
@@ -696,8 +696,8 @@
             if (speakBtn) { speakWord(speakBtn.dataset.word); return; }
 
             const toggleBtn = e.target.closest('.favorite-toggle');
-            if (toggleBtn && toggleBtn.dataset.favoriteId) {
-                removeFavorite(toggleBtn.dataset.favoriteId);
+            if (toggleBtn && toggleBtn.dataset.wordId) {
+                removeFavorite(toggleBtn.dataset.wordId);
             }
         });
 

@@ -600,9 +600,11 @@
         .toast {
             position: fixed;
             top: 20px;
+            bottom: auto;
             right: 20px;
-            padding: 16px 24px;
-            border-radius: 12px;
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-size: 13px;
             font-weight: 600;
             z-index: 1000;
             transform: translateX(120%);
@@ -967,7 +969,7 @@ function handlePasswordToggle(e) {
             // 密码强度检测
             const strength = getPasswordStrength(password);
             if (strength < 2) {
-                showToast('密码强度较弱，建议包含大小写字母、数字和特殊字符', 'error');
+                showToast('密码强度较弱，建议包含大小写字母、数字和特殊字符', 'warning');
             }
 
             if (password !== confirm) {

@@ -265,6 +265,19 @@
                 margin-top: 4px;
             }
 
+        /* 答题后的操作按钮（内联在卡片下方） */
+        .post-answer-actions {
+            display: none;
+            gap: 12px;
+            margin-top: 24px;
+            justify-content: center;
+        }
+
+        .post-answer-actions .action-btn {
+            flex: 1;
+            max-width: 200px;
+        }
+
         /* 隐藏类 */
         .hidden { display: none !important; }
 
@@ -397,8 +410,8 @@
 
         <!-- 单词卡片 -->
         <div class="word-card" id="word-card">
-            <button class="action-btn" onclick="toggleFavorite()" style="position: absolute; top: 16px; right: 16px;">☆</button>
-            <button class="action-btn" onclick="playSound()" style="position: absolute; top: 16px; left: 16px;">🔊</button>
+            <button class="action-btn" id="btn-favorite" style="position: absolute; top: 16px; right: 16px;">☆</button>
+            <button class="action-btn" id="btn-sound" style="position: absolute; top: 16px; left: 16px;">🔊</button>
             <div class="word-text" id="word-text">Loading...</div>
             <div class="word-phonetic" id="word-phonetic"></div>
         </div>
@@ -413,10 +426,10 @@
         <div class="translation-section" id="translation-section">
             <div class="translation-title">请输入英文单词</div>
             <input type="text" class="translation-input" id="answer-input" placeholder="输入单词...">
-            <button class="submit-btn" onclick="submitTranslation()">提交</button>
+            <button class="submit-btn" id="btn-submit-translation">提交</button>
         </div>
 
-        <!-- 完成提示 -->
+        <!-- 完成提示（保留用于多词学习结束） -->
         <div class="complete-section hidden" id="complete-section">
             <div class="complete-icon">🎉</div>
             <div class="complete-text">学习完成!</div>
@@ -431,9 +444,15 @@
                 </div>
             </div>
             <div class="action-buttons">
-                <button class="action-btn" onclick="goBack()">返回首页</button>
-                <button class="action-btn primary" onclick="nextWord()">继续学习</button>
+                <button class="action-btn" id="complete-go-back">返回首页</button>
+                <button class="action-btn primary" id="complete-continue">继续学习</button>
             </div>
+        </div>
+
+        <!-- 单词下方内联操作按钮（答题后显示） -->
+        <div class="post-answer-actions" id="post-answer-actions">
+            <button class="action-btn" id="inline-go-back">返回首页</button>
+            <button class="action-btn primary" id="inline-continue">继续学习</button>
         </div>
 
         <!-- 反馈提示 -->
@@ -446,6 +465,10 @@
         import { apiRequest } from '../js/api-client.js';
         import { showToast, escapeHtml } from '../js/utils.js';
         import { initPage, getCurrentUser } from '../js/page-common.js';
+
+        function getWordId(word) {
+            return word.id || word.word_id;
+        }
 
         let currentUser = null;
         let words = [];
@@ -508,6 +531,7 @@
                     words = result.data.words || [];
                     if (words.length > 0) {
                         currentIndex = 0;
+                        startTime = Date.now();
                         showWord();
                     } else {
                         showToast('该关卡暂无单词', 'error');
@@ -533,6 +557,7 @@
                     words = result.data.words || [];
                     if (words.length > 0) {
                         currentIndex = 0;
+                        startTime = Date.now();
                         showWord();
                     } else {
                         showToast('没有可学习的单词', 'error');
@@ -569,6 +594,7 @@
                 if (result.success && result.data) {
                     words = [result.data];
                     currentIndex = 0;
+                    startTime = Date.now();
                     showWord();
                 } else {
                     showToast('单词加载失败', 'error');
@@ -623,7 +649,7 @@
             try {
                 const result = await apiRequest('/vocabulary/current-word', {
                     method: 'POST',
-                    body: JSON.stringify({ session_info: sessionInfo, word_id: word.id })
+                    body: JSON.stringify({ session_info: sessionInfo, word_id: getWordId(word) })
                 });
 
                 if (result.success && result.data?.question?.options) {
@@ -657,7 +683,7 @@
             const options = [correctAnswer];
 
             // 从其他单词中随机选择作为干扰项
-            const otherWords = words.filter(w => w.id !== word.id && w.translation);
+            const otherWords = words.filter(w => getWordId(w) !== getWordId(word) && w.translation);
             const shuffled = otherWords.sort(() => Math.random() - 0.5);
             const distractors = shuffled.slice(0, 3).map(w => w.translation);
 
@@ -708,7 +734,7 @@
             try {
                 const body = {
                     user_id: currentUser.id,
-                    word_id: word.id || word.word_id,
+                    word_id: getWordId(word),
                     user_answer: userAnswer || (isCorrect ? 'correct' : 'wrong'),
                     correct_answer: correctAnswer || word.correct_answer || word.translation,
                     is_correct: isCorrect
@@ -727,7 +753,7 @@
                 console.error(e);
             }
 
-            setTimeout(() => nextWord(), 3000);  // 3秒后切换下一个单词，让反馈更明显
+            setTimeout(() => showPostAnswerButtons(), 1500);  // 1.5秒反馈后显示按钮
         }
 
         function submitTranslation() {
@@ -740,10 +766,17 @@
 
         function nextWord() {
             currentIndex++;
+            // 隐藏内联按钮
+            document.getElementById('post-answer-actions').style.display = 'none';
             document.querySelectorAll('.choice-option').forEach(opt => {
                 opt.classList.remove('correct', 'wrong', 'selected');
             });
             showWord();
+        }
+
+        function showPostAnswerButtons() {
+            const actions = document.getElementById('post-answer-actions');
+            actions.style.display = 'flex';
         }
 
         function showComplete() {
@@ -776,20 +809,41 @@
 
         async function toggleFavorite() {
             if (!currentWord) return;
+            const wordId = getWordId(currentWord);
+            if (!wordId) return;
             try {
-                const result = await apiRequest(`/favorites/${currentUser.id}/word/${currentWord.id}`);
-                if (result.success) {
-                    await apiRequest(`/favorites/${currentUser.id}/word/${currentWord.id}`, { method: 'DELETE' });
+                const result = await apiRequest(`/favorites/${currentUser.id}/word/${wordId}`);
+                if (result.success && result.data?.is_favorited) {
+                    await apiRequest(`/favorites/${currentUser.id}/word/${wordId}`, { method: 'DELETE' });
                     showToast('已取消收藏');
+                    document.getElementById('btn-favorite').textContent = '☆';
                 } else {
-                    await apiRequest(`/favorites/${currentUser.id}`, {
+                    await apiRequest(`/favorites/${currentUser.id}/word/${wordId}`, {
                         method: 'POST',
-                        body: JSON.stringify({ word_id: currentWord.id })
+                        body: JSON.stringify({ word_id: wordId })
                     });
                     showToast('已添加收藏');
+                    document.getElementById('btn-favorite').textContent = '★';
                 }
             } catch (e) {
                 showToast('操作失败', 'error');
+            }
+        }
+
+        async function continueLearning() {
+            // 隐藏按钮
+            document.getElementById('post-answer-actions').style.display = 'none';
+            document.querySelectorAll('.choice-option').forEach(opt => {
+                opt.classList.remove('correct', 'wrong', 'selected');
+            });
+
+            if (currentIndex < words.length - 1) {
+                // 还有下一个词，直接切换
+                nextWord();
+            } else {
+                // 当前批次学完，重新加载新单词
+                showToast('正在加载新单词...', 'success');
+                await startSession(2, 10);
             }
         }
 
@@ -800,11 +854,18 @@
         }
 
         // 暴露到 window 供 onclick 使用（logout 已由 page-common.js 处理）
-        window.toggleFavorite = toggleFavorite;
-        window.playSound = playSound;
-        window.submitTranslation = submitTranslation;
-        window.goBack = goBack;
-        window.nextWord = nextWord;
+        // 收藏和发音按钮
+        document.getElementById('btn-favorite').addEventListener('click', toggleFavorite);
+        document.getElementById('btn-sound').addEventListener('click', playSound);
+        document.getElementById('btn-submit-translation').addEventListener('click', submitTranslation);
+
+        // 内联操作按钮事件
+        document.getElementById('inline-go-back').addEventListener('click', goBack);
+        document.getElementById('inline-continue').addEventListener('click', continueLearning);
+
+        // 完成页面操作按钮
+        document.getElementById('complete-go-back').addEventListener('click', goBack);
+        document.getElementById('complete-continue').addEventListener('click', goBack);
 
         // Enter键提交
         document.getElementById('answer-input')?.addEventListener('keypress', (e) => {
