@@ -60,7 +60,11 @@ def start_learning_session() -> tuple:
     data = request.get_json()
     user_id = data.get("user_id")
     difficulty_level = data.get("difficulty_level")
+    if difficulty_level is not None:
+        difficulty_level = int(difficulty_level)
     word_count = data.get("word_count", LEARNING_PARAMS["default_word_count"])
+    if word_count is not None:
+        word_count = int(word_count)
     question_type = data.get("question_type", "mixed")
 
     if not user_id:

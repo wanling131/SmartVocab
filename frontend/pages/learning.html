@@ -527,8 +527,8 @@
                 });
 
                 if (result.success) {
-                    sessionInfo = result.data;
-                    words = result.data.words || [];
+                    sessionInfo = result.data.session_info;
+                    words = result.data.session_info.words || [];
                     if (words.length > 0) {
                         currentIndex = 0;
                         startTime = Date.now();
@@ -549,7 +549,7 @@
             try {
                 const result = await apiRequest('/vocabulary/start-session', {
                     method: 'POST',
-                    body: JSON.stringify({ user_id: currentUser.id, difficulty_level: difficulty, word_count: wordCount })
+                    body: JSON.stringify({ user_id: currentUser.id, difficulty_level: parseInt(difficulty), word_count: parseInt(wordCount) })
                 });
 
                 if (result.success) {
@@ -840,8 +840,24 @@
             if (currentIndex < words.length - 1) {
                 // 还有下一个词，直接切换
                 nextWord();
+            } else if (sessionInfo?.gate_id) {
+                // 闯关模式：提交关卡进度
+                try {
+                    await apiRequest(`/levels/complete/${sessionInfo.gate_id}`, {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            user_id: currentUser.id,
+                            correct_count: correctCount,
+                            total_count: words.length
+                        })
+                    });
+                } catch (e) {
+                    console.error('提交关卡进度失败:', e);
+                }
+                showToast('关卡完成！', 'success');
+                setTimeout(() => window.location.href = 'levels.html', 1500);
             } else {
-                // 当前批次学完，重新加载新单词
+                // 普通学习模式：加载新单词
                 showToast('正在加载新单词...', 'success');
                 await startSession(2, 10);
             }

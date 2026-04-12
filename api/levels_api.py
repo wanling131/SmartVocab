@@ -47,17 +47,26 @@ def get_gates_with_progress(user_id):
     progress = progress_crud.get_by_user(user_id) or []
     # 使用 level_gate_id 字段（数据库列名）
     progress_map = {p["level_gate_id"]: p for p in progress}
+
     result = []
     for gate in gates:
         p = progress_map.get(gate["id"], {})
         # 使用 gate_order 字段（数据库列名）
         is_first_gate = gate.get("gate_order", 1) == 1 or gate.get("order_index", 1) == 1
+
+        # 关卡专属进度：从 user_level_progress 取 mastered_count
+        total_words = gate.get("word_count", 20)
+        learned_in_gate = p.get("mastered_count", 0) if p else 0
+
         result.append(
             {
                 **gate,
                 "is_unlocked": p.get("is_unlocked", is_first_gate),
                 "is_completed": p.get("is_completed", False),
                 "user_score": p.get("best_score"),
+                # 前端需要的进度字段（基于闯关专属进度）
+                "total_words": total_words,
+                "learned_words": learned_in_gate,
                 # 添加前端期望的字段名（兼容）
                 "order": gate.get("gate_order"),
                 "name": gate.get("gate_name"),
@@ -143,8 +152,10 @@ def start_gate_session(gate_id):
     if not progress:
         # 自动创建并解锁第一关
         if gate["gate_order"] == 1:
-            progress = progress_crud.ensure_progress_exists(user_id, gate_id)
+            progress_crud.ensure_progress_exists(user_id, gate_id)
             progress_crud.unlock_gate(user_id, gate_id)
+            # 重新获取解锁后的进度
+            progress = progress_crud.get_by_user_gate(user_id, gate_id)
         else:
             return APIResponse.error("该关卡尚未解锁", 403)
 

@@ -19,6 +19,17 @@ plans_crud = UserLearningPlansCRUD()
 words_crud = WordsCRUD()
 
 
+def _add_plan_aliases(plan):
+    """为计划数据添加前端期望的字段别名"""
+    if not plan:
+        return plan
+    plan.setdefault("name", plan.get("plan_name"))
+    plan.setdefault("dataset", plan.get("dataset_type"))
+    plan.setdefault("daily_new_words", plan.get("daily_new_count"))
+    plan.setdefault("daily_review_words", plan.get("daily_review_count"))
+    return plan
+
+
 @plans_bp.route("/<int:user_id>", methods=["GET"])
 @handle_api_error
 @require_auth
@@ -28,7 +39,7 @@ def get_plans(user_id):
         return APIResponse.error("无权访问", 403)
     limit = request.args.get("limit", 50, type=int)
     plans = plans_crud.get_by_user(user_id, limit)
-    return APIResponse.success(plans, "获取计划列表成功")
+    return APIResponse.success([_add_plan_aliases(p) for p in plans], "获取计划列表成功")
 
 
 @plans_bp.route("", methods=["GET"])
@@ -43,7 +54,7 @@ def get_plans_by_query():
         return APIResponse.error("无权访问", 403)
     limit = request.args.get("limit", 50, type=int)
     plans = plans_crud.get_by_user(user_id, limit)
-    return APIResponse.success(plans, "获取计划列表成功")
+    return APIResponse.success([_add_plan_aliases(p) for p in plans], "获取计划列表成功")
 
 
 @plans_bp.route("/<int:user_id>/active", methods=["GET"])
@@ -54,7 +65,7 @@ def get_active_plan(user_id):
     if not check_user_access(user_id):
         return APIResponse.error("无权访问", 403)
     plan = plans_crud.get_active_plan(user_id)
-    return APIResponse.success(plan, "获取生效计划成功")
+    return APIResponse.success(_add_plan_aliases(plan), "获取生效计划成功")
 
 
 @plans_bp.route("", methods=["POST"])
@@ -64,10 +75,10 @@ def create_plan():
     """创建学习计划"""
     data = request.get_json()
     user_id = data.get("user_id")
-    dataset_type = data.get("dataset_type")
-    daily_new_count = data.get("daily_new_count", 20)
-    daily_review_count = data.get("daily_review_count", 20)
-    plan_name = data.get("plan_name")
+    dataset_type = data.get("dataset_type") or data.get("dataset")
+    daily_new_count = data.get("daily_new_count") or data.get("daily_new_words", 20)
+    daily_review_count = data.get("daily_review_count") or data.get("daily_review_words", 20)
+    plan_name = data.get("plan_name") or data.get("name")
     start_date = data.get("start_date")
     end_date = data.get("end_date")
 
