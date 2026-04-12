@@ -340,6 +340,23 @@ def export_words() -> Union[tuple, Response]:
     return APIResponse.success(words, "导出成功")
 
 
+# ==================== 单词学习 API（普通用户） ====================
+
+
+@vocabulary_bp.route("/learn/<int:word_id>", methods=["GET"])
+@handle_api_error
+@require_auth
+def get_word_for_learning(word_id):
+    """获取单个单词的学习信息（含题目）"""
+    word_info = words_crud.read(word_id)
+    if not word_info:
+        return APIResponse.error("单词不存在", 404)
+
+    # 生成选择题
+    question = vocabulary_manager._generate_choice_question(word_info)
+    return APIResponse.success(question, "获取成功")
+
+
 # ==================== 单条词管理 API（管理员） ====================
 
 

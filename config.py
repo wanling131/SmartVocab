@@ -111,18 +111,18 @@ RECOMMENDATION_CONFIG = {
     # 基础算法权重（总和应为1.0，会自动归一化）
     # 优化后权重：增强多样性和协同过滤，平衡各算法贡献
     "algorithm_weights": {
-        "difficulty_based": 0.21,       # 基于难度的推荐
-        "frequency_based": 0.16,        # 基于词频的推荐（微调）
-        "learning_history": 0.17,       # 基于学习历史的推荐
-        "deep_learning": 0.23,          # 深度学习推荐（微调）
-        "collaborative": 0.15,          # 协同过滤推荐（↑ 增强发现相似用户喜好）
-        "random_exploration": 0.08      # 随机探索（↑ 增强推荐多样性）
+        "difficulty_based": 0.25,       # ↑ 增强难度匹配（毕设演示直观）
+        "frequency_based": 0.20,        # ↑ 增强高频词（核心词汇）
+        "learning_history": 0.15,       # ↓ 降低历史依赖（记录少）
+        "deep_learning": 0.20,          # ↓ 降低（模型训练数据有限）
+        "collaborative": 0.05,          # ↓ 大幅降低（用户太少无法协同）
+        "random_exploration": 0.15      # ↑ 增强探索（增加推荐多样性）
     },
 
     # 动态权重调整参数
     "dynamic_weights": {
         "enabled": True,                 # 是否启用动态权重
-        "min_records_for_personalization": 15,  # 个性化权重所需最少记录（↓ 更早开始个性化）
+        "min_records_for_personalization": 15,  # 个性化权重所需最少记录
         "weight_adaptation_rate": 0.1,   # 权重适应速率
         "exploration_decay_rate": 0.05,  # 探索衰减率
     },
@@ -150,7 +150,7 @@ RECOMMENDATION_CONFIG = {
         "mmr_lambda": 0.65,              # MMR平衡参数（↓ 增加多样性）
         "category_penalty": 0.3,         # 同类别惩罚系数
         "difficulty_spread": 2,          # 推荐难度跨度
-        "max_same_pos_ratio": 0.25,      # 同词性最大比例（↓ 更严格限制）
+        "max_same_pos_ratio": 0.4,       # 同词性最大比例（↑ 放宽限制，允许更多推荐）
     },
 
     # 协同过滤配置

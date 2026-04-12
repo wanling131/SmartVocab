@@ -72,8 +72,12 @@ export function clearAllCache() {
 
 /**
  * 核心 API 请求函数（带请求去重）
+ * @param {string} endpoint - API路径
+ * @param {object} options - 请求选项
+ * @param {boolean} options.forceRefresh - 强制刷新，跳过缓存
  */
 export async function apiRequest(endpoint, options = {}) {
+  const forceRefresh = options.forceRefresh || false
   const token = getToken()
   const headers = {
     "Content-Type": "application/json",
@@ -82,13 +86,18 @@ export async function apiRequest(endpoint, options = {}) {
   }
 
   // 检查缓存（仅对GET请求且未禁用缓存时）
-  const useCache = (!options.method || options.method === "GET") && options.useCache !== false
+  const useCache = (!options.method || options.method === "GET") && options.useCache !== false && !forceRefresh
 
   if (useCache) {
     const cached = getCachedApiResponse(endpoint)
     if (cached) {
       return cached
     }
+  }
+
+  // 强制刷新时清除缓存
+  if (forceRefresh) {
+    apiCache.delete(endpoint)
   }
 
   // 请求去重：检查是否有相同的请求正在进行中

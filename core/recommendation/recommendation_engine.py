@@ -265,19 +265,19 @@ class RecommendationEngine:
         if self.weight_adjuster:
             should_explore = self.weight_adjuster.should_explore(user_id)
 
-        # 获取各种推荐结果
+        # 获取各种推荐结果（增加候选数量确保混合后有足够推荐）
         difficulty_recs = self._get_difficulty_based_recommendations(
-            user_id, learned_word_ids, limit * 2
+            user_id, learned_word_ids, limit * 3
         )
         frequency_recs = self._get_frequency_based_recommendations(
-            user_id, learned_word_ids, limit * 2
+            user_id, learned_word_ids, limit * 3
         )
-        history_recs = self._get_history_based_recommendations(user_id, learned_word_ids, limit * 2)
+        history_recs = self._get_history_based_recommendations(user_id, learned_word_ids, limit * 3)
         deep_learning_recs = self._get_deep_learning_recommendations(
-            user_id, learned_word_ids, limit * 2
+            user_id, learned_word_ids, limit * 3
         )
         collaborative_recs = self._get_collaborative_recommendations(
-            user_id, learned_word_ids, limit * 2
+            user_id, learned_word_ids, limit * 3
         )
 
         # 随机探索（如果需要）
@@ -724,7 +724,7 @@ class RecommendationEngine:
                 target_difficulty = adjusted_difficulty
 
         # 获取指定难度的单词
-        all_words = self.words_crud.list_all(limit=500)
+        all_words = self.words_crud.list_all(limit=5000)
         difficulty_words = [
             word
             for word in all_words
@@ -774,7 +774,7 @@ class RecommendationEngine:
             max_difficulty = min(6, base_difficulty + 1)
 
         # 获取指定难度范围内的高频单词
-        all_words = self.words_crud.list_all(limit=500)
+        all_words = self.words_crud.list_all(limit=5000)
         frequency_words = [
             word
             for word in all_words
@@ -816,7 +816,7 @@ class RecommendationEngine:
         user_preferences = self._analyze_user_preferences(user_records)
 
         # 根据偏好推荐相似单词
-        all_words = self.words_crud.list_all(limit=500)
+        all_words = self.words_crud.list_all(limit=5000)
         candidate_words = [word for word in all_words if word["id"] not in learned_word_ids]
 
         # 计算相似度分数
@@ -856,7 +856,7 @@ class RecommendationEngine:
             max_difficulty = min(6, base_difficulty + 1)
 
         # 获取指定难度范围内的未学单词
-        all_words = self.words_crud.list_all(limit=500)
+        all_words = self.words_crud.list_all(limit=5000)
         unlearned_words = [
             word
             for word in all_words

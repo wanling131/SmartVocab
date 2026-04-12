@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>仪表盘 - SmartVocab</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23002FA7'/><text x='16' y='21' font-family='Arial' font-size='16' font-weight='bold' fill='white' text-anchor='middle'>SV</text></svg>">
-    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.loli.net/css2?family=Caveat:wght@400;600&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../styles/klein-morandi.css">
     <style>
         /* Dashboard Page-Specific Styles */
@@ -598,12 +598,15 @@
             }
         }
 
-        async function loadRecommendations() {
-            const result = await apiRequest(`/recommendations/${currentUser.id}?limit=5`);
+        async function loadRecommendations(forceRefresh = false) {
+            const url = forceRefresh
+                ? `/recommendations/${currentUser.id}?limit=5&refresh=true`
+                : `/recommendations/${currentUser.id}?limit=5`;
+            const result = await apiRequest(url, { forceRefresh });
             const list = document.getElementById('recommendations-list');
 
-            if (result.success && result.data?.recommendations?.length > 0) {
-                list.innerHTML = result.data.recommendations.map(w => `
+            if (result.success && result.data?.length > 0) {
+                list.innerHTML = result.data.map(w => `
                     <div class="word-item" data-word-id="${w.id}">
                         <div class="word-info">
                             <h4>${escapeHtml(w.word)}</h4>
@@ -624,8 +627,11 @@
             }
         }
 
-        const debouncedRefresh = debounce(loadRecommendations, 300);
-        function refreshRecommendations() { debouncedRefresh(); showToast('已刷新'); }
+        // 刷新按钮：强制刷新，清除缓存
+        function refreshRecommendations() {
+            loadRecommendations(true);
+            showToast('已刷新');
+        }
 
         function startLearning() {
             sessionStorage.setItem('learning_settings', JSON.stringify({

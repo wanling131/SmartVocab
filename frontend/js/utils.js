@@ -145,13 +145,13 @@ export function typeWriter(element, text, speed = 50) {
  */
 export function showToast(message, type = 'success') {
   const toast = document.createElement('div')
-  toast.className = `toast ${type}`
+  toast.className = `toast ${type} show`
   toast.textContent = message
   document.body.appendChild(toast)
 
   setTimeout(() => {
     if (toast.parentNode) {
-      toast.style.animation = 'toastSlide 0.3s ease reverse'
+      toast.classList.remove('show')
       setTimeout(() => toast.parentNode?.removeChild(toast), 300)
     }
   }, 3000)

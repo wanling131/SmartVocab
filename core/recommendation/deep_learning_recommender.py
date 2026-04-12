@@ -985,7 +985,7 @@ class DeepLearningRecommendationEngine:
         user_feature = torch.FloatTensor(self.user_features[user_id]).unsqueeze(0).to(self.device)
 
         # 获取所有候选单词
-        all_words = self.words_crud.list_all(limit=500)
+        all_words = self.words_crud.list_all(limit=5000)
         candidates = []
 
         self.model.eval()
@@ -994,8 +994,9 @@ class DeepLearningRecommendationEngine:
                 if word["id"] in learned_word_ids:
                     continue
 
+                # 动态生成特征（如果不存在）
                 if word["id"] not in self.word_features:
-                    continue
+                    self.word_features[word["id"]] = self.extract_word_features(word)
 
                 word_feature = (
                     torch.FloatTensor(self.word_features[word["id"]]).unsqueeze(0).to(self.device)

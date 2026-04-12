@@ -6,9 +6,9 @@
     <meta name="description" content="SmartVocab 等级测试 - 评估你的词汇水平">
     <title>等级测试 - SmartVocab</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23002FA7'/><text x='16' y='21' font-family='Arial' font-size='16' font-weight='bold' fill='white' text-anchor='middle'>SV</text></svg>">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.loli.net">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.loli.net/css2?family=Caveat:wght@400;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../styles/klein-morandi.css">
     <style>
         /* Evaluation Page-Specific Styles */
@@ -919,6 +919,7 @@
         let timerInterval = null;
         let startTime = null;
         let totalQuestions = 10;
+        let currentPaperId = null;  // 保存当前试卷ID
 
         // 页面初始化
         initPage({
@@ -997,6 +998,7 @@
                     })
                 });
                 if (result.success) {
+                    currentPaperId = result.data.paper_id;  // 保存试卷ID
                     totalQuestions = result.data.questions.length;
                     renderQuestions(result.data.questions);
                     startTimer();
@@ -1014,7 +1016,7 @@
             const optionMarkers = ['A', 'B', 'C', 'D'];
 
             container.innerHTML = questions.map((q, index) => `
-                <div class="question-card" data-question="${index}">
+                <div class="question-card" data-question="${index}" data-word-id="${q.word_id || q.id}">
                     <div class="question-header">
                         <span class="question-number">${index + 1}</span>
                         <span class="question-word">${escapeHtml(q.word)}</span>
@@ -1057,7 +1059,15 @@
             // Collect answers
             for (let i = 0; i < totalQuestions; i++) {
                 const selected = document.querySelector(`input[name="q${i}"]:checked`);
-                answers.push(selected ? parseInt(selected.value) : -1);
+                // 需要发送完整的答案格式，包含 word_id 和 user_answer
+                const questionCard = document.querySelector(`.question-card[data-question="${i}"]`);
+                const wordId = questionCard ? parseInt(questionCard.dataset.wordId || '0') : 0;
+                const userAnswer = selected ? selected.nextElementSibling.querySelector('.option-text')?.textContent : '';
+                answers.push({
+                    word_id: wordId,
+                    user_answer: userAnswer || '',
+                    correct_answer: ''  // 服务器会从数据库获取
+                });
             }
 
             const elapsedTime = stopTimer();
@@ -1070,7 +1080,9 @@
                     method: 'POST',
                     body: JSON.stringify({
                         user_id: currentUser.id,
-                        answers
+                        paper_id: currentPaperId,  // 发送试卷ID
+                        answers: answers,
+                        duration_seconds: Math.floor((Date.now() - startTime) / 1000)
                     })
                 });
 

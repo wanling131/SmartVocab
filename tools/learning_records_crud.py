@@ -190,3 +190,18 @@ class LearningRecordsCRUD(BaseCRUD):
     def get_user_records(self, user_id: int) -> List[Dict[str, Any]]:
         """获取指定用户的学习记录（兼容性方法）"""
         return self.get_by_user(user_id)
+
+    def list_all(self, limit: int = 100, offset: int = 0) -> List[Dict[str, Any]]:
+        """
+        获取所有学习记录（用于推荐系统训练）
+
+        Args:
+            limit: 限制数量
+            offset: 偏移量
+
+        Returns:
+            所有学习记录列表
+        """
+        query = "SELECT * FROM user_learning_records ORDER BY last_reviewed_at DESC LIMIT %s OFFSET %s"
+        results = self.execute_query(query, (limit, offset), fetch_all=True)
+        return results or []

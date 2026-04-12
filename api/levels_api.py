@@ -45,16 +45,23 @@ def get_gates_with_progress(user_id):
         return APIResponse.error("无权访问", 403)
     gates = gates_crud.list_all() or []
     progress = progress_crud.get_by_user(user_id) or []
-    progress_map = {p["gate_id"]: p for p in progress}
+    # 使用 level_gate_id 字段（数据库列名）
+    progress_map = {p["level_gate_id"]: p for p in progress}
     result = []
     for gate in gates:
         p = progress_map.get(gate["id"], {})
+        # 使用 gate_order 字段（数据库列名）
+        is_first_gate = gate.get("gate_order", 1) == 1 or gate.get("order_index", 1) == 1
         result.append(
             {
                 **gate,
-                "is_unlocked": p.get("is_unlocked", gate.get("order_index", 1) == 1),
+                "is_unlocked": p.get("is_unlocked", is_first_gate),
                 "is_completed": p.get("is_completed", False),
                 "user_score": p.get("best_score"),
+                # 添加前端期望的字段名（兼容）
+                "order": gate.get("gate_order"),
+                "name": gate.get("gate_name"),
+                "description": gate.get("description", f"难度 {gate.get('difficulty_level', 1)} 关卡"),
             }
         )
     return APIResponse.success(result, "获取关卡列表成功")
@@ -78,7 +85,7 @@ def unlock_gate():
     """解锁下一关（满足条件时）"""
     data = request.get_json()
     user_id = data.get("user_id")
-    level_gate_id = data.get("level_gate_id")
+    level_gate_id = data.get("level_gate_id") or data.get("gate_id")
 
     if not user_id or not level_gate_id:
         return APIResponse.error("user_id 和 level_gate_id 不能为空", 400)

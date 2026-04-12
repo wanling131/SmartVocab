@@ -10,6 +10,7 @@ from typing import Any, List
 # 导入配置常量
 from config import LEARNING_PARAMS
 from tools.learning_records_crud import LearningRecordsCRUD
+from tools.words_crud import WordsCRUD
 
 
 def _circular_slice(items: List[Any], offset: int, limit: int) -> List[Any]:
@@ -33,6 +34,7 @@ class ForgettingCurveManager:
 
     def __init__(self):
         self.learning_records_crud = LearningRecordsCRUD()
+        self.words_crud = WordsCRUD()
         self.forgetting_rate = 0.84
         self.base_interval = 0.5
         self.mastery_coefficient = 3.0
@@ -107,7 +109,7 @@ class ForgettingCurveManager:
             offset (int): 偏移量，用于轮播
 
         Returns:
-            list: 需要复习的单词记录列表
+            list: 需要复习的单词记录列表（含单词详情）
         """
         # 尝试使用 next_review_at 从 DB 筛选到期词
         try:
@@ -130,7 +132,9 @@ class ForgettingCurveManager:
                             record["urgency"] = 500
                         review_records.append(record)
                 review_records.sort(key=lambda x: x["urgency"], reverse=True)
-                return _circular_slice(review_records, offset, limit)
+                result = _circular_slice(review_records, offset, limit)
+                # 添加单词详情
+                return self._enrich_with_word_details(result)
         except Exception:
             pass
 
@@ -151,7 +155,44 @@ class ForgettingCurveManager:
                     )
                     review_records.append(record)
         review_records.sort(key=lambda x: x["urgency"], reverse=True)
-        return _circular_slice(review_records, offset, limit)
+        result = _circular_slice(review_records, offset, limit)
+        # 添加单词详情
+        return self._enrich_with_word_details(result)
+
+    def _enrich_with_word_details(self, records):
+        """
+        为学习记录添加单词详情（word, translation, phonetic等）
+
+        Args:
+            records: 学习记录列表
+
+        Returns:
+            list: 含单词详情的记录列表
+        """
+        if not records:
+            return []
+
+        # 获取所有 word_id
+        word_ids = [r.get("word_id") for r in records if r.get("word_id")]
+        if not word_ids:
+            return records
+
+        # 批量查询单词详情
+        enriched = []
+        for record in records:
+            word_id = record.get("word_id")
+            if word_id:
+                word_info = self.words_crud.read(word_id)
+                if word_info:
+                    # 合并单词详情到记录中
+                    enriched_record = {**record, **word_info}
+                    enriched.append(enriched_record)
+                else:
+                    enriched.append(record)
+            else:
+                enriched.append(record)
+
+        return enriched
 
     def update_review_result(self, record_id, is_correct, response_time):
         """

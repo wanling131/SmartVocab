@@ -47,7 +47,8 @@ SmartVocab/
 │   ├── plans_api.py
 │   ├── evaluation_api.py
 │   ├── levels_api.py
-│   └── levels_api.py
+│   ├── achievements_api.py
+│   └── favorites_api.py
 ├── core/
 │   ├── auth/
 │   ├── learning/
@@ -61,27 +62,23 @@ SmartVocab/
 │   ├── base_crud.py
 │   └── *_crud.py
 ├── frontend/
-│   ├── index.html
-│   ├── styles.css
-│   ├── main.js              # 应用入口（ES module）
+│   ├── index.html           # 首页入口
+│   ├── pages/               # 多页 HTML
+│   ├── styles/klein-morandi.css
 │   └── js/
 │       └── api-client.js    # API 请求封装
 ├── tests/
 │   ├── conftest.py
-│   └── test_health.py       # 健康检查（需 pip install -r requirements.txt）
-├── automation/              # 自动化自检脚本（可选，可整体删除）
-│   ├── README.md
-│   └── smoke_check.py
+│   ├── test_*.py            # pytest 单元测试
+│   └── e2e/                 # Playwright E2E 测试
 ├── 文档/
 │   ├── 数据库建表脚本.sql
 │   ├── 数据库升级迁移脚本.sql
 │   └── 开发与部署说明.md
-├── config.py                # APP_CONFIG、学习参数；支持环境变量与 LOG_LEVEL
-├── wsgi.py                  # Gunicorn 入口：`gunicorn wsgi:app`
-├── Dockerfile               # 生产镜像（Gunicorn + APP_ENV=production）
-├── docker-compose.yml       # MySQL + 应用（需配置 SECRET_KEY、DB_* 等）
-├── .env.example             # 环境变量示例（复制为 .env）
-├── main.py                  # 开发启动：configure_logging + 数据库检查 + API
+├── config.py                # APP_CONFIG、学习参数
+├── main.py                  # 开发启动入口
+├── commands.bat             # Windows 常用命令快捷方式
+├── CLAUDE.md                # Claude Code 开发指南
 └── requirements.txt
 ```
 
@@ -116,10 +113,10 @@ pip install -r requirements.txt
 
 2. **数据库**
 - 创建数据库（如 `smartvocab`）
-- 执行 `文档/数据库建表脚本.sql` 与 `文档/数据库升级迁移脚本.sql`，或使用 `python tools/migrate_db.py`（若项目已提供）
+- 执行 `文档/数据库建表脚本.sql` 与 `文档/数据库升级迁移脚本.sql`
 
 3. **配置**
-- 使用 `.env` 配置数据库与日志（见上表）
+- 复制 `.env.example` 为 `.env`，配置数据库连接
 
 4. **启动**
 ```bash
@@ -127,36 +124,24 @@ python main.py
 ```
 
 5. **访问**
-- 浏览器打开 `http://localhost:5000`（端口以 `APP_PORT` 为准）
+- 浏览器打开 `http://localhost:5000`
+- 开发模式下可访问 `/api/docs` 查看 Swagger API 文档
 
-### 生产环境（Gunicorn）
-
-安装依赖后使用 `wsgi.py` 作为入口（见 `requirements.txt` 中的 `gunicorn`）：
-
+### Python Commands
 ```bash
-set APP_ENV=production
-set SECRET_KEY=你的强随机密钥
-gunicorn -w 4 -b 0.0.0.0:5000 --timeout 120 wsgi:app
+python commands.py run        # Start server
+python commands.py test       # Run unit tests
+python commands.py test-fast  # Fast tests (skip deep learning)
+python commands.py db         # Test database connection
 ```
-
-（Linux/macOS 可用 `export` 设置环境变量。）建议在反向代理（Nginx 等）后终止 **HTTPS**，并配置 `CORS_ORIGINS` 为实际前端域名。
-
-### Docker Compose
-
-1. 复制 `.env.example` 为 `.env`，**必须**设置 `SECRET_KEY`（如 `openssl rand -hex 32`）；`docker-compose.yml` 不再提供弱占位默认值，未设置时 `docker compose` 会报错。同时配置 `DB_*`（与 `docker-compose.yml` 中 MySQL 一致）。
-2. **先**在数据库中执行建表与迁移脚本（见下文「数据库」），或使用已初始化的 MySQL 数据卷。
-3. 在项目根目录执行：`docker compose up -d --build`
-
-更完整的上线自检见 [文档/生产部署与商用检查清单.md](文档/生产部署与商用检查清单.md)。
 
 ## 开发说明
 
-- **日志**：`main.py` 启动时调用 `configure_logging()`，业务代码请使用 `logging.getLogger(__name__)`，避免随意 `print`。
-- **API 路由**：所有接口以 `api_launcher.py` 注册的 Blueprint 为准。
-- **测试**：安装依赖后执行 `python -m pytest tests/ -v`（需已安装 Flask 等依赖）。
-- **自动化自检**（可选）：`python automation/smoke_check.py --quick`（全量自检去掉 `--quick`，并含智能推荐模块自检）；不需要时删除 `automation/` 文件夹即可。若 `pip install` 后 `test_client` 报错，请确认已安装 `requirements.txt` 中的 `werkzeug<3`。
-- **详细文档**：见 [文档/开发与部署说明.md](文档/开发与部署说明.md)、[文档/生产部署与商用检查清单.md](文档/生产部署与商用检查清单.md)。
-- **功能与论文对照**：[文档/系统功能与实现对照.md](文档/系统功能与实现对照.md)（系统性与答辩口径说明）。
+- **日志**：`main.py` 启动时调用 `configure_logging()`，业务代码使用 `logging.getLogger(__name__)`
+- **API 路由**：所有接口以 `api_launcher.py` 注册的 Blueprint 为准
+- **测试**：`python -m pytest tests/ -v`（单元测试），`cd tests/e2e && npx playwright test`（E2E）
+- **API 文档**：开发模式下访问 `/api/docs` 查看 Swagger UI
+- **详细文档**：见 [文档/开发与部署说明.md](文档/开发与部署说明.md)
 
 ## 许可证
 

@@ -91,29 +91,21 @@ class EvaluationManager:
         if not paper_id:
             return {"success": False, "message": "创建试卷失败"}
 
-        # 生成题目（复用 vocabulary 的题型逻辑）
-        # item_order 仅在成功入卷时递增，避免某词读取失败时出现 1,2,4,5 断层
+        # 生成题目（等级测试统一使用选择题格式）
         questions = []
         item_order = 0
         for w in selected:
             word_info = self.words_crud.read(w["id"])
             if not word_info:
                 continue
-            q_type = random.choice(["choice", "translation", "spelling"])
-            if q_type == "choice":
-                q = self.vocabulary_manager._generate_choice_question(word_info)
-            elif q_type == "spelling":
-                q = self.vocabulary_manager._generate_spelling_question(word_info)
-            else:
-                q = self.vocabulary_manager._generate_translation_question(word_info)
-                q["word"] = word_info.get("word")
-                q["phonetic"] = word_info.get("phonetic")
+            # 等级测试统一使用选择题（确保有 options 字段）
+            q = self.vocabulary_manager._generate_choice_question(word_info)
             item_order += 1
             q["item_order"] = item_order
             q["id"] = word_info["id"]
             questions.append(q)
             self.items_crud.create(
-                paper_id, w["id"], q.get("question_type", "translation"), item_order
+                paper_id, w["id"], "choice", item_order
             )
 
         # 与 evaluation_paper_items 实际行数一致（若有词在组卷时读失败，避免 question_count 虚高）
@@ -262,15 +254,17 @@ class EvaluationManager:
         Returns:
             bool: 答案是否正确。
         """
-        u = (user_answer or "").strip().lower()
-        c = (correct_answer or "").strip().lower()
+        import re
+        u = re.sub(r'\s+', ' ', (user_answer or "").strip().lower())
+        c = re.sub(r'\s+', ' ', (correct_answer or "").strip().lower())
 
         # 空答案直接返回False
         if not u or not c:
             return False
 
         if question_type == "choice":
-            return u == c
+            # 选择题：允许部分匹配（因为答案可能有不同格式）
+            return u == c or c in u or u in c
         if question_type == "spelling":
             return u == c
         # 翻译题：允许部分匹配

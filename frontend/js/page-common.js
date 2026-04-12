@@ -4,7 +4,13 @@
  */
 
 import { apiRequest, clearToken } from './api-client.js'
-import { escapeHtml, showToast } from './utils.js'
+import { escapeHtml, showToast, showLoading, hideLoading } from './utils.js'
+
+// ==================== 全局函数暴露 ====================
+// 暴露给 api-client.js 的 fetchWithState 使用
+window.showToast = showToast
+window.showLoading = showLoading
+window.hideLoading = hideLoading
 
 // ==================== 用户状态管理 ====================
 

@@ -6,7 +6,7 @@
     <meta name="description" content="SmartVocab 闯关模式 - 挑战关卡，逐步提升">
     <title>闯关模式 - SmartVocab</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23002FA7'/><text x='16' y='21' font-family='Arial' font-size='16' font-weight='bold' fill='white' text-anchor='middle'>SV</text></svg>">
-    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&family=Caveat:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.loli.net/css2?family=Nunito:wght@400;500;600;700;800&family=Caveat:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../styles/klein-morandi.css">
     <style>
         /* Levels Page-Specific Styles */
@@ -748,11 +748,11 @@
                 return `
                     <div class="${cardClass}" data-gate-id="${gate.id}">
                         <div class="level-header">
-                            <span class="level-order">关卡 ${gate.order || gate.id}</span>
+                            <span class="level-order">关卡 ${gate.gate_order || gate.id}</span>
                             <div class="level-difficulty">${stars}</div>
                         </div>
-                        <h3 class="level-name">${escapeHtml(gate.name)}</h3>
-                        <p class="level-desc">${escapeHtml(gate.description || '挑战这个关卡，提升你的词汇量！')}</p>
+                        <h3 class="level-name">${escapeHtml(gate.gate_name || gate.name || '关卡 ' + (gate.gate_order || gate.id))}</h3>
+                        <p class="level-desc">${escapeHtml(gate.description || '难度 ' + difficulty + ' - 挑战这个关卡，提升你的词汇量！')}</p>
                         <div class="level-progress">
                             <div class="progress-header">
                                 <span class="progress-label">学习进度</span>
@@ -774,9 +774,9 @@
 
         // Check if gate can be unlocked (previous gate completed)
         function canUnlock(gate, allGates) {
-            if (gate.order === 1 || gate.id === 1) return true;
+            if (gate.gate_order === 1 || gate.id === 1) return true;
             const prevGate = allGates.find(g =>
-                (g.order === gate.order - 1) || (g.id === gate.id - 1)
+                (g.gate_order === gate.gate_order - 1) || (g.id === gate.id - 1)
             );
             return prevGate && prevGate.is_completed;
         }
