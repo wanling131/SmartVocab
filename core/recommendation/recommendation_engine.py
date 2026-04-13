@@ -265,14 +265,23 @@ class RecommendationEngine:
         if self.weight_adjuster:
             should_explore = self.weight_adjuster.should_explore(user_id)
 
+        # 预加载共享数据，避免各子算法重复查询
+        preloaded_all_words = self.words_crud.list_all(limit=5000)
+        preloaded_user_records = user_records  # 已在 get_recommendations 中获取
+
         # 获取各种推荐结果（增加候选数量确保混合后有足够推荐）
         difficulty_recs = self._get_difficulty_based_recommendations(
-            user_id, learned_word_ids, limit * 3
+            user_id, learned_word_ids, limit * 3,
+            all_words=preloaded_all_words, user_records=preloaded_user_records
         )
         frequency_recs = self._get_frequency_based_recommendations(
-            user_id, learned_word_ids, limit * 3
+            user_id, learned_word_ids, limit * 3,
+            all_words=preloaded_all_words, user_records=preloaded_user_records
         )
-        history_recs = self._get_history_based_recommendations(user_id, learned_word_ids, limit * 3)
+        history_recs = self._get_history_based_recommendations(
+            user_id, learned_word_ids, limit * 3,
+            all_words=preloaded_all_words, user_records=preloaded_user_records
+        )
         deep_learning_recs = self._get_deep_learning_recommendations(
             user_id, learned_word_ids, limit * 3
         )
@@ -283,7 +292,10 @@ class RecommendationEngine:
         # 随机探索（如果需要）
         random_recs = []
         if should_explore:
-            random_recs = self._get_random_recommendations(user_id, learned_word_ids, limit)
+            random_recs = self._get_random_recommendations(
+                user_id, learned_word_ids, limit,
+                all_words=preloaded_all_words, user_records=preloaded_user_records
+            )
             # 探索时增加随机权重
             weights = weights.copy()
             weights["random_exploration"] = min(0.3, weights.get("random_exploration", 0.1) * 2)
@@ -691,7 +703,7 @@ class RecommendationEngine:
             logger.debug("生成推荐理由失败: %s", e)
             return "智能推荐"
 
-    def _get_difficulty_based_recommendations(self, user_id, learned_word_ids, limit):
+    def _get_difficulty_based_recommendations(self, user_id, learned_word_ids, limit, all_words=None, user_records=None):
         """
         基于难度的推荐
 
@@ -699,12 +711,15 @@ class RecommendationEngine:
             user_id (int): 用户ID
             learned_word_ids (set): 已学单词ID集合
             limit (int): 推荐数量
+            all_words (list): 预加载的单词列表（可选）
+            user_records (list): 预加载的用户记录（可选）
 
         Returns:
             list: 推荐单词列表
         """
-        # 获取用户学习进度
-        user_records = self.learning_records_crud.get_by_user(user_id)
+        # 获取用户学习进度（优先使用预加载数据）
+        if user_records is None:
+            user_records = self.learning_records_crud.get_by_user(user_id)
         if not user_records:
             # 新用户，推荐简单单词
             target_difficulty = 1
@@ -723,8 +738,9 @@ class RecommendationEngine:
             if adjusted_difficulty != 3:  # 如果有会话数据
                 target_difficulty = adjusted_difficulty
 
-        # 获取指定难度的单词
-        all_words = self.words_crud.list_all(limit=5000)
+        # 获取指定难度的单词（优先使用预加载数据）
+        if all_words is None:
+            all_words = self.words_crud.list_all(limit=5000)
         difficulty_words = [
             word
             for word in all_words
@@ -747,7 +763,7 @@ class RecommendationEngine:
 
         return selected_words
 
-    def _get_frequency_based_recommendations(self, user_id, learned_word_ids, limit):
+    def _get_frequency_based_recommendations(self, user_id, learned_word_ids, limit, all_words=None, user_records=None):
         """
         基于词频的推荐
 
@@ -755,12 +771,15 @@ class RecommendationEngine:
             user_id (int): 用户ID
             learned_word_ids (set): 已学单词ID集合
             limit (int): 推荐数量
+            all_words (list): 预加载的单词列表（可选）
+            user_records (list): 预加载的用户记录（可选）
 
         Returns:
             list: 推荐单词列表
         """
-        # 获取用户学习进度，确定合适难度范围
-        user_records = self.learning_records_crud.get_by_user(user_id)
+        # 获取用户学习进度，确定合适难度范围（优先使用预加载数据）
+        if user_records is None:
+            user_records = self.learning_records_crud.get_by_user(user_id)
         if not user_records:
             # 新用户，推荐简单单词
             min_difficulty, max_difficulty = 1, 2
@@ -773,8 +792,9 @@ class RecommendationEngine:
             min_difficulty = max(1, base_difficulty - 1)
             max_difficulty = min(6, base_difficulty + 1)
 
-        # 获取指定难度范围内的高频单词
-        all_words = self.words_crud.list_all(limit=5000)
+        # 获取指定难度范围内的高频单词（优先使用预加载数据）
+        if all_words is None:
+            all_words = self.words_crud.list_all(limit=5000)
         frequency_words = [
             word
             for word in all_words
@@ -795,7 +815,7 @@ class RecommendationEngine:
 
         return selected_words
 
-    def _get_history_based_recommendations(self, user_id, learned_word_ids, limit):
+    def _get_history_based_recommendations(self, user_id, learned_word_ids, limit, all_words=None, user_records=None):
         """
         基于学习历史的推荐
 
@@ -803,20 +823,24 @@ class RecommendationEngine:
             user_id (int): 用户ID
             learned_word_ids (set): 已学单词ID集合
             limit (int): 推荐数量
+            all_words (list): 预加载的单词列表（可选）
+            user_records (list): 预加载的用户记录（可选）
 
         Returns:
             list: 推荐单词列表
         """
-        # 获取用户学习记录
-        user_records = self.learning_records_crud.get_by_user(user_id)
+        # 获取用户学习记录（优先使用预加载数据）
+        if user_records is None:
+            user_records = self.learning_records_crud.get_by_user(user_id)
         if not user_records:
             return []
 
         # 分析用户学习偏好
         user_preferences = self._analyze_user_preferences(user_records)
 
-        # 根据偏好推荐相似单词
-        all_words = self.words_crud.list_all(limit=5000)
+        # 根据偏好推荐相似单词（优先使用预加载数据）
+        if all_words is None:
+            all_words = self.words_crud.list_all(limit=5000)
         candidate_words = [word for word in all_words if word["id"] not in learned_word_ids]
 
         # 计算相似度分数
@@ -829,7 +853,7 @@ class RecommendationEngine:
 
         return candidate_words[:limit]
 
-    def _get_random_recommendations(self, user_id, learned_word_ids, limit):
+    def _get_random_recommendations(self, user_id, learned_word_ids, limit, all_words=None, user_records=None):
         """
         随机推荐（用于探索）
 
@@ -837,12 +861,15 @@ class RecommendationEngine:
             user_id (int): 用户ID
             learned_word_ids (set): 已学单词ID集合
             limit (int): 推荐数量
+            all_words (list): 预加载的单词列表（可选）
+            user_records (list): 预加载的用户记录（可选）
 
         Returns:
             list: 推荐单词列表
         """
-        # 获取用户学习进度，确定合适难度范围
-        user_records = self.learning_records_crud.get_by_user(user_id)
+        # 获取用户学习进度，确定合适难度范围（优先使用预加载数据）
+        if user_records is None:
+            user_records = self.learning_records_crud.get_by_user(user_id)
         if not user_records:
             # 新用户，推荐简单单词
             min_difficulty, max_difficulty = 1, 2
@@ -855,8 +882,9 @@ class RecommendationEngine:
             min_difficulty = max(1, base_difficulty - 1)
             max_difficulty = min(6, base_difficulty + 1)
 
-        # 获取指定难度范围内的未学单词
-        all_words = self.words_crud.list_all(limit=5000)
+        # 获取指定难度范围内的未学单词（优先使用预加载数据）
+        if all_words is None:
+            all_words = self.words_crud.list_all(limit=5000)
         unlearned_words = [
             word
             for word in all_words
@@ -1025,6 +1053,7 @@ class RecommendationEngine:
         mastery_before: float,
         mastery_after: float,
         is_correct: bool,
+        response_time: float = None,
     ):
         """
         记录用户反馈（用于权重调整）
@@ -1036,6 +1065,7 @@ class RecommendationEngine:
             mastery_before: 学习前掌握度
             mastery_after: 学习后掌握度
             is_correct: 是否答对
+            response_time: 实际响应时间（秒），未传入时使用估算值
         """
         if self.weight_adjuster:
             self.weight_adjuster.record_algorithm_feedback(
@@ -1047,11 +1077,11 @@ class RecommendationEngine:
             word = self.words_crud.read(word_id)
             difficulty = word.get("difficulty_level", 3) if word else 3
 
-            # 估算响应时间（简化）
-            response_time = 10 if is_correct else 20
+            # 使用实际响应时间，未传入或为0时使用估算值
+            actual_response_time = response_time if response_time else (10 if is_correct else 20)
 
             self.realtime_personalizer.update_session(
-                user_id, word_id, is_correct, response_time, difficulty
+                user_id, word_id, is_correct, actual_response_time, difficulty
             )
 
     def end_learning_session(self, user_id: int) -> dict:

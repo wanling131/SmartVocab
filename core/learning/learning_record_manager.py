@@ -93,6 +93,7 @@ class LearningRecordManager:
     def get_user_learning_records(self, user_id, limit=None, offset=0):
         """
         获取用户学习记录（包含单词信息）
+        使用批量查询替代逐条查询，避免 N+1 问题
 
         Args:
             user_id (int): 用户ID
@@ -108,16 +109,27 @@ class LearningRecordManager:
         if not records:
             return []
 
-        # 后处理：为每个记录添加单词信息
+        # 批量收集所有 word_id 并去重
+        word_ids = list(set(r["word_id"] for r in records if r.get("word_id")))
+        word_map = {}
+        if word_ids:
+            try:
+                word_list = self.words_crud.get_by_ids(word_ids)
+                word_map = {w["id"]: w for w in word_list}
+            except Exception:
+                # 批量查询失败时退回逐条查询
+                for wid in word_ids:
+                    word_info = self.words_crud.read(wid)
+                    if word_info:
+                        word_map[wid] = word_info
+
+        # 合并学习记录和单词信息
         enriched_records = []
         for record in records:
-            # 获取单词详细信息
-            word_info = self.words_crud.read(record["word_id"])
-
+            word_info = word_map.get(record.get("word_id"))
             if word_info:
-                # 合并学习记录和单词信息
                 enriched_record = {
-                    **record,  # 包含所有学习记录字段
+                    **record,
                     "word": word_info.get("word", ""),
                     "translation": word_info.get("translation", ""),
                     "phonetic": word_info.get("phonetic", ""),
@@ -125,12 +137,10 @@ class LearningRecordManager:
                     "difficulty_level": word_info.get("difficulty_level", 1),
                     "is_correct": (
                         1 if record["mastery_level"] >= 0.1 else 0
-                    ),  # 基于掌握程度判断，降低阈值
-                    "created_at": record["last_reviewed_at"],  # 使用最后复习时间作为创建时间
+                    ),
+                    "created_at": record["last_reviewed_at"],
                 }
-                enriched_records.append(enriched_record)
             else:
-                # 如果单词不存在，仍然添加记录但标记为未知
                 enriched_record = {
                     **record,
                     "word": f"未知单词(ID:{record['word_id']})",
@@ -141,7 +151,7 @@ class LearningRecordManager:
                     "is_correct": 1 if record["mastery_level"] >= 0.1 else 0,
                     "created_at": record["last_reviewed_at"],
                 }
-                enriched_records.append(enriched_record)
+            enriched_records.append(enriched_record)
 
         return enriched_records
 

@@ -781,6 +781,24 @@ class ColdStartHandler:
         Returns:
             List[Dict[str, any]]: 推荐单词列表。
         """
+        # 查等级测试结果，动态调整难度范围
+        difficulty_range = self.config["default_difficulty_range"]  # 默认 [1, 2]
+        try:
+            from core.evaluation.evaluation_manager import LEVEL_TO_DIFFICULTY
+            from tools.evaluation_results_crud import EvaluationResultsCRUD
+            eval_crud = EvaluationResultsCRUD()
+            eval_history = eval_crud.get_by_user(user_id, limit=1)
+            if eval_history:
+                assessed = eval_history[0].get("assessed_level", "A2")
+                base_diff = LEVEL_TO_DIFFICULTY.get(assessed, 1)
+                difficulty_range = [max(1, base_diff - 1), min(6, base_diff + 1)]
+                logger.info(
+                    "冷启动用户 %d 有评测结果 %s，难度范围调整为 %s",
+                    user_id, assessed, difficulty_range,
+                )
+        except Exception:
+            logger.debug("读取评测结果失败，使用默认难度范围")
+
         recommendations = []
 
         # 策略1：热门词推荐
@@ -788,9 +806,8 @@ class ColdStartHandler:
             popular = self._get_popular_words(limit // 2)
             recommendations.extend(popular)
 
-        # 策略2：基础难度词
-        diff_range = self.config["default_difficulty_range"]
-        basic_words = self._get_basic_words(diff_range, limit // 2)
+        # 策略2：基础难度词（使用动态难度范围）
+        basic_words = self._get_basic_words(difficulty_range, limit // 2)
         recommendations.extend(basic_words)
 
         # 去重

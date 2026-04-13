@@ -162,6 +162,7 @@ class ForgettingCurveManager:
     def _enrich_with_word_details(self, records):
         """
         为学习记录添加单词详情（word, translation, phonetic等）
+        使用批量查询替代逐条查询，避免 N+1 问题
 
         Args:
             records: 学习记录列表
@@ -172,23 +173,30 @@ class ForgettingCurveManager:
         if not records:
             return []
 
-        # 获取所有 word_id
-        word_ids = [r.get("word_id") for r in records if r.get("word_id")]
+        # 收集所有 word_id 并去重
+        word_ids = list(set(r.get("word_id") for r in records if r.get("word_id")))
         if not word_ids:
             return records
 
         # 批量查询单词详情
+        word_map = {}
+        try:
+            word_list = self.words_crud.get_by_ids(word_ids)
+            word_map = {w["id"]: w for w in word_list}
+        except Exception:
+            # 批量查询失败时退回逐条查询
+            for wid in word_ids:
+                word_info = self.words_crud.read(wid)
+                if word_info:
+                    word_map[wid] = word_info
+
+        # 合并单词详情到记录中
         enriched = []
         for record in records:
             word_id = record.get("word_id")
-            if word_id:
-                word_info = self.words_crud.read(word_id)
-                if word_info:
-                    # 合并单词详情到记录中
-                    enriched_record = {**record, **word_info}
-                    enriched.append(enriched_record)
-                else:
-                    enriched.append(record)
+            word_info = word_map.get(word_id)
+            if word_info:
+                enriched.append({**record, **word_info})
             else:
                 enriched.append(record)
 

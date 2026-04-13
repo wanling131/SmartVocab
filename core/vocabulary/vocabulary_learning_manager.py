@@ -282,6 +282,25 @@ class VocabularyLearningManager:
             # 使该用户的缓存失效
             invalidate_user_cache(user_id)
 
+            # 记录推荐系统反馈（用于自适应难度和动态权重）
+            try:
+                mastery_before = existing_record["mastery_level"] if existing_record else 0.0
+                if existing_record:
+                    mastery_after = result.get("new_mastery_level", 0.0)
+                else:
+                    mastery_after = mastery_level
+                self.recommendation_engine.record_feedback(
+                    user_id=user_id,
+                    word_id=word_id,
+                    algorithm_type="mixed",
+                    mastery_before=mastery_before,
+                    mastery_after=mastery_after,
+                    is_correct=is_correct,
+                    response_time=response_time,
+                )
+            except Exception as e:
+                logger.debug("推荐反馈记录失败（不影响主流程）: %s", e)
+
             # 生成反馈消息
             if question_type == "choice":
                 message = "选择正确！" if is_correct else f"选择错误，正确答案是：{correct_answer}"
