@@ -37,6 +37,7 @@
         .page-header {
             margin-bottom: 40px;
             text-align: center;
+            animation: welcome-bounce 0.8s ease-out;
         }
 
         .page-title {
@@ -53,10 +54,13 @@
             font-size: 20px;
         }
 
-        /* Section Styles */
+        /* Section Styles 入场动画 */
         .section {
             margin-bottom: 40px;
+            animation: content-slide-in 0.6s ease-out backwards;
         }
+        .section:nth-child(2) { animation-delay: 0.2s; }
+        .section:nth-child(3) { animation-delay: 0.4s; }
 
         .section-header {
             display: flex;

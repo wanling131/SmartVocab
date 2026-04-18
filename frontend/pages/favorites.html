@@ -48,7 +48,7 @@
         /* Page Header */
         .page-header {
             margin-bottom: 32px;
-            animation: fadeIn 0.5s ease;
+            animation: welcome-bounce 0.8s ease-out;
             position: relative;
         }
 
@@ -72,7 +72,7 @@
             font-size: 36px;
             color: var(--accent-amber);
             opacity: 0.5;
-            animation: float 4s ease-in-out infinite;
+            animation: float-gentle 4s ease-in-out infinite;
             transform-origin: center;
         }
 
@@ -222,8 +222,19 @@
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
             gap: 24px;
-            animation: fadeIn 0.7s ease;
         }
+
+        /* Favorite Card 入场动画 */
+        .favorite-card {
+            animation: list-item-enter 0.4s ease-out backwards;
+        }
+        .favorite-card:nth-child(1) { animation-delay: 0.05s; }
+        .favorite-card:nth-child(2) { animation-delay: 0.1s; }
+        .favorite-card:nth-child(3) { animation-delay: 0.15s; }
+        .favorite-card:nth-child(4) { animation-delay: 0.2s; }
+        .favorite-card:nth-child(5) { animation-delay: 0.25s; }
+        .favorite-card:nth-child(6) { animation-delay: 0.3s; }
+        .favorite-card:nth-child(n+7) { animation-delay: 0.35s; }
 
         /* Favorite Card — 手绘便利贴 */
         .favorite-card {

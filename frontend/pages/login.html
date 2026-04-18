@@ -493,6 +493,25 @@
                 0 0 0 2px rgba(0, 47, 167, 0.1);
         }
 
+        /* 按钮涟漪效果 */
+        .btn-primary::before ripple {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: rgba(255, 255, 255, 0.4);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: width 0.5s ease, height 0.5s ease;
+        }
+
+        .btn-primary:active ripple {
+            width: 300px;
+            height: 300px;
+        }
+
         /* 次要按钮样式 */
         .btn-secondary {
             width: 100%;

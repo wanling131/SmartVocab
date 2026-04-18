@@ -44,6 +44,7 @@
         .page-header {
             text-align: center;
             margin-bottom: 48px;
+            animation: welcome-bounce 0.8s ease-out;
         }
 
         .page-title {
@@ -59,7 +60,7 @@
             color: var(--text-muted);
         }
 
-        /* User Hero Card */
+        /* User Hero Card 入场动画 */
         .user-hero-card {
             background: linear-gradient(135deg, var(--klein-blue) 0%, var(--klein-light) 100%);
             border-radius: 24px;
@@ -68,6 +69,7 @@
             position: relative;
             overflow: hidden;
             box-shadow: 0 12px 40px rgba(0, 47, 167, 0.25);
+            animation: card-pulse 0.6s ease-out;
         }
 
         .user-hero-card::before {
