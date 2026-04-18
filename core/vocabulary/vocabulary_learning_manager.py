@@ -42,6 +42,7 @@ class VocabularyLearningManager:
         difficulty_level=None,
         word_count=LEARNING_PARAMS["default_word_count"],
         question_type="mixed",
+        first_word_id=None,
     ):
         """
         开始学习会话
@@ -51,6 +52,7 @@ class VocabularyLearningManager:
             difficulty_level (int): 难度等级 (1-6)，如果为None则自动选择
             word_count (int): 学习单词数量
             question_type (str): 题型设置 ('mixed', 'choice', 'translation')
+            first_word_id (int): 指定第一个单词的ID（确保用户点击的单词优先出现）
 
         Returns:
             dict: 学习会话信息
@@ -60,6 +62,33 @@ class VocabularyLearningManager:
             recommendations = self._get_words_by_difficulty(difficulty_level, word_count)
         else:
             recommendations = self.recommendation_engine.get_recommendations(user_id, word_count)
+
+        # 如果指定了第一个单词，确保它在列表中并移到首位
+        if first_word_id and recommendations:
+            # 检查指定单词是否已在列表中
+            existing_index = next(
+                (i for i, w in enumerate(recommendations) if w["id"] == first_word_id), None
+            )
+
+            if existing_index is not None:
+                # 已存在，移到首位
+                first_word = recommendations[existing_index]
+                recommendations = [first_word] + [
+                    w for i, w in enumerate(recommendations) if i != existing_index
+                ]
+            else:
+                # 不在列表中，从数据库获取并插入首位
+                first_word_info = self.words_crud.read(first_word_id)
+                if first_word_info:
+                    first_word_data = {
+                        "id": first_word_info["id"],
+                        "word": first_word_info["word"],
+                        "translation": first_word_info["translation"],
+                        "difficulty_level": first_word_info["difficulty_level"],
+                    }
+                    # 插入首位，如果超长则移除最后一个
+                    recommendations = [first_word_data] + recommendations[:word_count - 1]
+                    logger.debug("将指定单词 %s 插入学习列表首位", first_word_id)
 
         # 创建学习会话
         session_info = {

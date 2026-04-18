@@ -14,6 +14,7 @@ from config import LEARNING_PARAMS
 from core.vocabulary.vocabulary_learning_manager import VocabularyLearningManager
 from tools.admin_utils import is_admin
 from tools.words_crud import WordsCRUD
+from tools.mistake_book_crud import mistake_book_crud
 
 from .auth_middleware import check_user_access, require_auth
 from .utils import APIResponse, handle_api_error
@@ -53,6 +54,7 @@ def start_learning_session() -> tuple:
         difficulty_level: 难度等级（可选）。
         word_count: 单词数量（可选，默认使用配置值）。
         question_type: 题目类型（可选，默认 'mixed'）。
+        first_word_id: 指定第一个单词ID（可选，用于确保点击的单词优先出现）。
 
     Returns:
         tuple: (JSON响应, HTTP状态码)。
@@ -66,6 +68,9 @@ def start_learning_session() -> tuple:
     if word_count is not None:
         word_count = int(word_count)
     question_type = data.get("question_type", "mixed")
+    first_word_id = data.get("first_word_id")
+    if first_word_id is not None:
+        first_word_id = int(first_word_id)
 
     if not user_id:
         return APIResponse.error("用户ID不能为空", 400)
@@ -73,7 +78,7 @@ def start_learning_session() -> tuple:
         return APIResponse.error("无权访问", 403)
 
     result = vocabulary_manager.start_learning_session(
-        user_id, difficulty_level, word_count, question_type
+        user_id, difficulty_level, word_count, question_type, first_word_id
     )
     if result["success"]:
         return APIResponse.success(result.get("session_info"), result["message"])
@@ -154,6 +159,20 @@ def submit_answer() -> tuple:
         mastery_override,
         session_info,
     )
+
+    # 记录错题（答错时）
+    if result["success"] and result.get("data", {}).get("is_correct") == False:
+        try:
+            mistake_book_crud.add_mistake(
+                user_id=user_id,
+                word_id=word_id,
+                user_answer=user_answer,
+                correct_answer=correct_answer,
+            )
+            logger.info(f"记录错题: user={user_id}, word={word_id}")
+        except Exception as e:
+            logger.warning(f"记录错题失败: {e}")
+
     if result["success"]:
         return APIResponse.success(result, result["message"])
     else:
@@ -475,3 +494,76 @@ def create_word():
         new_word = words_crud.read(word_id)
         return APIResponse.success(new_word, "创建成功")
     return APIResponse.error("创建失败", 500)
+
+
+# ==================== 错题本 API ====================
+
+@vocabulary_bp.route("/mistakes/<int:user_id>", methods=["GET"])
+@handle_api_error
+@require_auth
+def get_user_mistakes(user_id: int) -> tuple:
+    """获取用户错题列表。
+
+    Args:
+        user_id: 用户ID。
+
+    Returns:
+        tuple: (JSON响应, HTTP状态码)。
+    """
+    if not check_user_access(user_id):
+        return APIResponse.error("无权访问", 403)
+
+    limit = request.args.get("limit", 100, type=int)
+    mistakes = mistake_book_crud.get_user_mistakes(user_id, limit)
+    count = mistake_book_crud.get_mistake_count(user_id)
+
+    return APIResponse.success({
+        "mistakes": mistakes,
+        "total": count,
+    }, "获取错题成功")
+
+
+@vocabulary_bp.route("/mistakes/<int:user_id>/review", methods=["GET"])
+@handle_api_error
+@require_auth
+def get_mistakes_for_review(user_id: int) -> tuple:
+    """获取错题用于复习。
+
+    Args:
+        user_id: 用户ID。
+
+    Returns:
+        tuple: (JSON响应, HTTP状态码)。
+    """
+    if not check_user_access(user_id):
+        return APIResponse.error("无权访问", 403)
+
+    limit = request.args.get("limit", 10, type=int)
+    words = mistake_book_crud.get_mistake_words_for_review(user_id, limit)
+
+    return APIResponse.success({
+        "words": words,
+        "mode": "mistake_review",
+    }, "获取错题复习单词成功")
+
+
+@vocabulary_bp.route("/mistakes/<int:user_id>/word/<int:word_id>/master", methods=["POST"])
+@handle_api_error
+@require_auth
+def mark_mistake_mastered(user_id: int, word_id: int) -> tuple:
+    """标记错题已掌握。
+
+    Args:
+        user_id: 用户ID。
+        word_id: 单词ID。
+
+    Returns:
+        tuple: (JSON响应, HTTP状态码)。
+    """
+    if not check_user_access(user_id):
+        return APIResponse.error("无权访问", 403)
+
+    affected = mistake_book_crud.mark_mastered(user_id, word_id)
+    if affected > 0:
+        return APIResponse.success({"affected": affected}, "标记成功")
+    return APIResponse.error("未找到该错题记录", 404)

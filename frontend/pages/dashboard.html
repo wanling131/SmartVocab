@@ -52,6 +52,10 @@
             margin-bottom: 8px;
         }
 
+        .welcome-text.welcome-animate h1 {
+            animation: welcome-bounce 0.8s ease-out;
+        }
+
         .welcome-text h1 span {
             color: var(--klein-blue);
         }
@@ -73,6 +77,7 @@
             font-weight: 600;
             box-shadow: 0 8px 24px rgba(0, 47, 167, 0.25);
             position: relative;
+            animation: badge-glow 2s ease-in-out infinite;
             overflow: hidden;
         }
 
@@ -255,6 +260,42 @@
             border-color: var(--klein-blue);
             transform: translateX(8px);
             box-shadow: 0 4px 16px rgba(0, 47, 167, 0.1);
+        }
+
+        /* 推荐列表骨架屏 */
+        .word-item-skeleton {
+            background: rgba(235, 240, 249, 0.4);
+            border-radius: 14px 8px 14px 8px;
+            padding: 18px 20px;
+        }
+        .word-item-skeleton .skeleton-word {
+            height: 20px;
+            width: 120px;
+            margin-bottom: 8px;
+        }
+        .word-item-skeleton .skeleton-desc {
+            height: 14px;
+            width: 180px;
+        }
+
+        /* 推荐列表项动画 */
+        .word-item-animate {
+            animation: word-item-enter 0.4s ease-out backwards;
+        }
+        .word-item-animate:nth-child(1) { animation-delay: 0.05s; }
+        .word-item-animate:nth-child(2) { animation-delay: 0.1s; }
+        .word-item-animate:nth-child(3) { animation-delay: 0.15s; }
+        .word-item-animate:nth-child(4) { animation-delay: 0.2s; }
+        .word-item-animate:nth-child(5) { animation-delay: 0.25s; }
+        @keyframes word-item-enter {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
         }
 
         .word-info h4 {
@@ -554,6 +595,17 @@
                         </div>
                         <button class="btn btn-primary" onclick="startReview()" style="width:100%">🔄 开始复习</button>
                     </div>
+
+                    <!-- 错题复习 -->
+                    <div class="quick-card">
+                        <h4>📕 错题本</h4>
+                        <p>针对性复习答错的单词</p>
+                        <div class="review-stat">
+                            <span>错题数量</span>
+                            <span id="mistake-count">--</span>
+                        </div>
+                        <button class="btn btn-secondary" onclick="startMistakeReview()" style="width:100%">📝 复习错题</button>
+                    </div>
                 </div>
             </section>
         </div>
@@ -576,6 +628,7 @@
                 loadProgress();
                 loadRecommendations();  // 首次加载，page=0
                 loadReviewCount();
+                loadMistakeCount();
             }
         });
 
@@ -594,9 +647,19 @@
         async function loadRecommendations(forceRefresh = false) {
             // 刷新时重置页码为0（触发重新计算推荐池）
             const page = forceRefresh ? 0 : recPageIndex;
+            const list = document.getElementById('recommendations-list');
+
+            // 显示骨架屏
+            list.innerHTML = `
+                <div class="word-item-skeleton skeleton-box skeleton-word"></div>
+                <div class="word-item-skeleton skeleton-box skeleton-word"></div>
+                <div class="word-item-skeleton skeleton-box skeleton-word"></div>
+                <div class="word-item-skeleton skeleton-box skeleton-word"></div>
+                <div class="word-item-skeleton skeleton-box skeleton-word"></div>
+            `;
+
             const url = `/recommendations/${currentUser.id}?limit=5&page=${page}${forceRefresh ? '&refresh=true' : ''}`;
             const result = await apiRequest(url);
-            const list = document.getElementById('recommendations-list');
 
             if (result.success && result.data?.words?.length > 0) {
                 // 更新页码
@@ -606,8 +669,8 @@
                     recPageIndex = 0;  // 下次刷新重新计算
                 }
 
-                list.innerHTML = result.data.words.map(w => `
-                    <div class="word-item" data-word-id="${w.id}">
+                list.innerHTML = result.data.words.map((w, i) => `
+                    <div class="word-item word-item-animate" data-word-id="${w.id}" style="animation-delay: ${i * 0.05}s">
                         <div class="word-info">
                             <h4>${escapeHtml(w.word)}</h4>
                             <p>${escapeHtml(w.translation) || ''}</p>
@@ -646,7 +709,45 @@
             window.location.href = 'learning.html';
         }
 
-        function learnWord(id) { window.location.href = `learning.html?word_id=${id}`; }
+        // 加载错题数量
+        async function loadMistakeCount() {
+            const result = await apiRequest(`/vocabulary/mistakes/${currentUser.id}?limit=100`);
+            if (result.success) {
+                document.getElementById('mistake-count').textContent = result.data?.total || 0;
+            }
+        }
+
+        // 启动错题复习
+        function startMistakeReview() {
+            sessionStorage.setItem('mistake_review_mode', 'true');
+            window.location.href = 'learning.html';
+        }
+
+        // 点击推荐词：启动包含该词的学习会话（而非单单词）
+        async function learnWord(id) {
+            // 启动10词学习会话，传入 first_word_id 确保点击的词作为第一个词
+            const result = await apiRequest('/vocabulary/start-session', {
+                method: 'POST',
+                body: JSON.stringify({
+                    user_id: currentUser.id,
+                    difficulty_level: 2,
+                    word_count: 10,
+                    first_word_id: id  // 传入点击的词ID
+                })
+            });
+
+            if (result.success) {
+                // 保存会话信息
+                sessionStorage.setItem('learning_settings', JSON.stringify({
+                    difficulty: 2,
+                    wordCount: 10,
+                    sessionInfo: result.data
+                }));
+                window.location.href = 'learning.html';
+            } else {
+                showToast('启动学习失败', 'error');
+            }
+        }
 
         // 暴露到 window 供 onclick 使用（logout 已由 page-common.js 处理）
         window.refreshRecommendations = refreshRecommendations;
