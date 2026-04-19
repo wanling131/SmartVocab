@@ -93,7 +93,9 @@ def get_current_word() -> tuple:
     """获取当前学习的单词。
 
     Request JSON:
-        session_info: 会话信息字典（必填）。
+        session_info: 会话信息字典（必填，仅需 session_id + current_word_index + words[].id）。
+        session_id: 会话ID（可选，与 session_info 二选一）。
+        word_id: 单词ID（可选，与 session_info 二选一）。
 
     Returns:
         tuple: (JSON响应, HTTP状态码)。
@@ -101,8 +103,18 @@ def get_current_word() -> tuple:
     data = request.get_json()
     session_info = data.get("session_info")
 
+    # 支持轻量调用：只传 session_id + word_id
     if not session_info:
+        session_id = data.get("session_id")
+        word_id = data.get("word_id")
+        if session_id and word_id:
+            word_info = vocabulary_manager.words_crud.read(word_id)
+            if not word_info:
+                return APIResponse.error("单词不存在", 404)
+            question = vocabulary_manager._generate_choice_question(word_info)
+            return APIResponse.success(question, "获取单词成功")
         return APIResponse.error("会话信息不能为空", 400)
+
     if not _session_info_matches_user(session_info):
         return APIResponse.error("无权访问该会话", 403)
 
@@ -521,6 +533,17 @@ def get_user_mistakes(user_id: int) -> tuple:
         "mistakes": mistakes,
         "total": count,
     }, "获取错题成功")
+
+
+@vocabulary_bp.route("/mistakes/<int:user_id>/count", methods=["GET"])
+@handle_api_error
+@require_auth
+def get_mistake_count_api(user_id: int) -> tuple:
+    """获取用户错题数量（轻量接口）"""
+    if not check_user_access(user_id):
+        return APIResponse.error("无权访问", 403)
+    count = mistake_book_crud.get_mistake_count(user_id)
+    return APIResponse.success({"count": count}, "获取成功")
 
 
 @vocabulary_bp.route("/mistakes/<int:user_id>/review", methods=["GET"])

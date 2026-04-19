@@ -108,6 +108,11 @@
             color: var(--klein-blue);
             box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
             border: 4px solid rgba(255, 255, 255, 0.3);
+            transition: transform 0.3s ease;
+            cursor: pointer;
+        }
+        .user-avatar:hover {
+            transform: rotate(360deg) scale(1.1);
         }
 
         .avatar-badge {
@@ -580,7 +585,7 @@
 
     <!-- Navbar (由 page-common.js 插入) -->
 
-    <main class="profile-container">
+    <main class="profile-container page-transition">
         <!-- Page Header -->
         <header class="page-header animate-in">
             <h1 class="page-title">个人中心</h1>
@@ -634,10 +639,10 @@
                 </div>
             </div>
             <div class="achievements-grid" id="achievements-grid">
-                <div class="empty-state">
-                    <div class="empty-icon">🏅</div>
-                    <p class="empty-text">加载中...</p>
-                </div>
+                <div class="skeleton-box skeleton-text" style="grid-column:1/-1"></div>
+                <div class="skeleton-box" style="height:72px;border-radius:12px"></div>
+                <div class="skeleton-box" style="height:72px;border-radius:12px"></div>
+                <div class="skeleton-box" style="height:72px;border-radius:12px"></div>
             </div>
         </section>
 
@@ -680,7 +685,7 @@
             </div>
             <div class="form-group">
                 <label class="form-label" for="new-password">新密码</label>
-                <input type="password" id="new-password" class="form-input" placeholder="至少6个字符">
+                <input type="password" id="new-password" class="form-input" placeholder="至少8个字符，含大小写和数字">
             </div>
             <div class="form-group">
                 <label class="form-label" for="confirm-password">确认新密码</label>
@@ -719,6 +724,7 @@
 
         let currentUser = null;
 
+
         // 页面初始化
         initPage({
             navTarget: 'body',
@@ -743,11 +749,17 @@
         // Load statistics
         async function loadStats() {
             try {
-                const result = await apiRequest(`/learning/progress/${currentUser.id}`);
-                if (result.success) {
-                    const data = result.data || {};
+                const [progressRes, streakRes] = await Promise.all([
+                    apiRequest(`/learning/progress/${currentUser.id}`),
+                    apiRequest(`/achievements/${currentUser.id}/streak`)
+                ]);
+                if (progressRes.success) {
+                    const data = progressRes.data || {};
                     animateNumber(document.getElementById('profile-total-words'), data.total_words || 0, 1500);
                     animateNumber(document.getElementById('profile-mastered-words'), data.learned_words || 0, 1500);
+                }
+                if (streakRes.success) {
+                    animateNumber(document.getElementById('profile-streak-days'), streakRes.data?.streak || 0, 1500);
                 }
             } catch (err) {
                 console.error('加载统计失败:', err);
@@ -756,13 +768,17 @@
 
         // Load achievements
         async function loadAchievements() {
+            const grid = document.getElementById('achievements-grid');
             try {
                 const result = await apiRequest(`/achievements/${currentUser.id}`);
                 if (result.success) {
                     renderAchievements(result.data?.achievements || []);
+                } else {
+                    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">⚠️</div><p class="empty-text">加载失败，请刷新重试</p></div>`;
                 }
             } catch (err) {
                 console.error('加载成就失败:', err);
+                grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">⚠️</div><p class="empty-text">加载失败，请刷新重试</p></div>`;
             }
         }
 
@@ -792,14 +808,16 @@
         // Save profile
         document.getElementById('save-profile-btn').addEventListener('click', async () => {
             const email = document.getElementById('edit-email').value;
+            const btn = document.getElementById('save-profile-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<span>⏳</span> 保存中...';
             try {
-                const result = await apiRequest('/auth/profile', {
+                const result = await apiRequest(`/auth/profile/${currentUser.id}`, {
                     method: 'PUT',
-                    body: { email }
+                    body: JSON.stringify({ email })
                 });
                 if (result.success) {
                     showToast('保存成功', 'success');
-                    // 更新显示
                     currentUser = result.data || currentUser;
                     document.getElementById('profile-email').textContent = email || '-';
                 } else {
@@ -807,6 +825,9 @@
                 }
             } catch (err) {
                 showToast('保存失败', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<span>💾</span> 保存修改';
             }
         });
 
@@ -824,6 +845,9 @@
                 showToast('两次密码不一致', 'error');
                 return;
             }
+            const btn = document.getElementById('change-password-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<span>⏳</span> 修改中...';
             try {
                 const result = await apiRequest(`/auth/password/${currentUser.id}`, {
                     method: 'PUT',
@@ -839,6 +863,9 @@
                 }
             } catch (err) {
                 showToast('修改失败', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<span>🔐</span> 修改密码';
             }
         });
 

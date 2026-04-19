@@ -96,7 +96,7 @@
             background: rgba(235, 240, 249, 0.3);
             border-radius: 28px;
             padding: 28px;
-            margin-bottom: 32px;
+            margin-bottom: 36px;
             box-shadow: 3px 3px 0 var(--morandi-lavender);
             border: 2px solid var(--morandi-beige);
             animation: fadeIn 0.6s ease;
@@ -150,7 +150,7 @@
             font-weight: 600;
             color: var(--text-dark);
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: all 0.25s cubic-bezier(0.22, 1, 0.36, 1);
             font-family: inherit;
             position: relative;
         }
@@ -244,7 +244,9 @@
             position: relative;
             box-shadow: 3px 3px 0 var(--morandi-lavender);
             border: 2px dashed var(--morandi-rose);
-            transition: all 0.3s ease;
+            transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+                        box-shadow 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+                        border-color 0.2s ease;
             overflow: hidden;
         }
 
@@ -519,7 +521,7 @@
     <!-- Navbar (由 page-common.js 插入) -->
 
     <!-- Main Content -->
-    <main class="favorites-container">
+    <main class="favorites-container page-transition">
         <!-- Page Header -->
         <header class="page-header">
             <h1 class="page-title">
@@ -568,12 +570,15 @@
         </section>
 
         <!-- Empty State -->
-        <section id="favorites-empty" class="empty-state" style="display: none;">
-            <span class="empty-icon">📦</span>
+        <section id="favorites-empty" class="empty-state-animated" style="display: none;">
+            <svg class="empty-icon" viewBox="0 0 120 120" fill="none" style="width:100px;height:100px;margin:0 auto 16px;display:block;opacity:0.4;animation:float-gentle 3s ease-in-out infinite;">
+                <circle cx="60" cy="60" r="50" stroke="var(--morandi-rose)" stroke-width="2" stroke-dasharray="6,4"/>
+                <text x="60" y="68" text-anchor="middle" font-size="36">⭐</text>
+            </svg>
             <h3 class="empty-title">你的宝藏库空空如也</h3>
-            <p class="empty-subtitle">快去闯关收集单词吧！</p>
-            <a href="dashboard.html" class="empty-action">
-                开始学习
+            <p class="empty-subtitle">学习时点击星号收藏单词，这里就是你的专属词库</p>
+            <a href="learning.html" class="empty-action" style="display:inline-flex;align-items:center;gap:8px;padding:12px 24px;background:linear-gradient(135deg,var(--klein-blue),var(--klein-light));color:white;border:none;border-radius:14px;font-size:14px;font-weight:600;cursor:pointer;text-decoration:none;transition:all 0.3s ease;">
+                去收集单词
             </a>
         </section>
     </main>
@@ -582,6 +587,7 @@
         import { apiRequest } from '../js/api-client.js';
         import { showToast, escapeHtml } from '../js/utils.js';
         import { initPage, getCurrentUser } from '../js/page-common.js';
+
 
         let currentUser = null;
         let allFavorites = [];
@@ -600,15 +606,21 @@
 
         // Load favorites
         async function loadFavorites() {
+            const grid = document.getElementById('favorites-grid');
+            grid.innerHTML = `<div class="loading-state"><div class="loading-spinner"></div><p>正在召唤你的收藏单词...</p></div>`;
+
             try {
                 const result = await apiRequest(`/favorites/${currentUser.id}`);
                 if (result.success) {
                     allFavorites = result.data?.favorites || [];
                     document.getElementById('favorites-count').textContent = allFavorites.length;
                     renderFavorites();
+                } else {
+                    grid.innerHTML = `<div class="empty-state-animated"><div class="empty-icon">⚠️</div><h3 class="empty-title">加载失败</h3><p class="empty-text">请稍后重试</p></div>`;
                 }
             } catch (err) {
                 console.error('Failed to load favorites:', err);
+                grid.innerHTML = `<div class="empty-state-animated"><div class="empty-icon">⚠️</div><h3 class="empty-title">加载失败</h3><p class="empty-text">请稍后重试</p></div>`;
             }
         }
 
@@ -667,13 +679,13 @@
                 <div class="favorite-card" style="animation-delay: ${index * 0.05}s">
                     <div class="favorite-header">
                         <div class="favorite-word">${escapeHtml(f.word)}</div>
-                        <button class="favorite-toggle" data-word-id="${f.word_id}" title="取消收藏">
+                        <button class="favorite-toggle" data-word-id="${f.word_id}" title="取消收藏" aria-label="取消收藏">
                             ⭐
                         </button>
                     </div>
                     <div class="favorite-phonetic">
                         ${escapeHtml(f.phonetic || '')}
-                        <button class="speak-btn" data-word="${escapeHtml(f.word)}" title="发音">
+                        <button class="speak-btn" data-word="${escapeHtml(f.word)}" title="发音" aria-label="播放发音">
                             🔊
                         </button>
                     </div>
@@ -695,6 +707,8 @@
                 if (result.success) {
                     showToast('已取消收藏', 'success');
                     loadFavorites();
+                } else {
+                    showToast(result.message || '操作失败', 'error');
                 }
             } catch (err) {
                 showToast('操作失败', 'error');

@@ -44,23 +44,19 @@ class WordsCRUD(BaseCRUD):
 
     def list_all(self, limit: int = 100, offset: int = 0) -> List[Dict[str, Any]]:
         """
-        获取所有单词列表
-
-        Args:
-            limit (int): 限制返回记录数，默认100
-            offset (int): 偏移量，默认0
-
-        Returns:
-            List[Dict[str, Any]]: 单词记录列表
+        获取所有单词列表（带缓存）
         """
-        self.log_operation("列出所有单词", limit=limit, offset=offset)
+        cache_key = make_word_list_key(limit=limit, offset=offset)
+        cached = word_list_cache.get(cache_key)
+        if cached is not None:
+            return cached
 
         query = "SELECT * FROM words LIMIT %s OFFSET %s"
         results = self.execute_query(query, (limit, offset), fetch_all=True)
 
         if results:
             results = self._parse_domain_field(results)
-            self.logger.info(f"返回{len(results)}个单词")
+            word_list_cache.set(cache_key, results)
 
         return results or []
 
@@ -469,32 +465,33 @@ class WordsCRUD(BaseCRUD):
     ) -> List[Dict[str, Any]]:
         """
         获取随机单词（用于生成错误选项等）
-
-        Args:
-            exclude_ids (List[int]): 要排除的单词ID
-            limit (int): 数量限制
-            difficulty_range (tuple): 难度范围 (min, max)
-
-        Returns:
-            List[Dict[str, Any]]: 随机单词列表
+        使用缓存的全量列表 + Python随机采样，避免 ORDER BY RAND() 性能问题
         """
-        query = "SELECT * FROM words WHERE difficulty_level BETWEEN %s AND %s"
-        params = [difficulty_range[0], difficulty_range[1]]
+        # 尝试从缓存获取全量单词列表
+        cache_key = make_word_list_key(limit=5000, offset=0)
+        all_words = word_list_cache.get(cache_key)
 
+        if all_words is None:
+            # 首次查询：获取足够大的池
+            query = "SELECT * FROM words WHERE difficulty_level BETWEEN %s AND %s LIMIT %s"
+            params = [difficulty_range[0], difficulty_range[1], 5000]
+            all_words = self.execute_query(query, tuple(params), fetch_all=True)
+            if all_words:
+                all_words = self._parse_domain_field(all_words)
+                word_list_cache.set(cache_key, all_words)
+
+        if not all_words:
+            return []
+
+        # 过滤排除ID
         if exclude_ids:
-            placeholders = ",".join(["%s"] * len(exclude_ids))
-            query += f" AND id NOT IN ({placeholders})"
-            params.extend(exclude_ids)
+            exclude_set = set(exclude_ids)
+            all_words = [w for w in all_words if w["id"] not in exclude_set]
 
-        query += " ORDER BY RAND() LIMIT %s"
-        params.append(limit)
-
-        results = self.execute_query(query, tuple(params), fetch_all=True)
-
-        if results:
-            results = self._parse_domain_field(results)
-
-        return results or []
+        # Python 随机采样（比 SQL ORDER BY RAND() 快得多）
+        import random as _random
+        k = min(limit, len(all_words))
+        return _random.sample(all_words, k) if k > 0 else []
 
 
 def main():

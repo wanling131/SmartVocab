@@ -97,6 +97,7 @@ def health_db():
 
 @health_bp.route("/health/cache", methods=["GET"])
 @handle_api_error
+@require_auth
 def health_cache():
     """缓存状态检查。"""
     try:
@@ -159,6 +160,7 @@ def clear_cache():
 
 @health_bp.route("/health/metrics", methods=["GET"])
 @handle_api_error
+@require_auth
 def metrics():
     """
     系统指标端点

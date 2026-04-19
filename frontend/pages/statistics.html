@@ -6,9 +6,12 @@
     <meta name="description" content="SmartVocab 学习统计 - 数据可视化分析">
     <title>学习统计 - SmartVocab</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23002FA7'/><text x='16' y='21' font-family='Arial' font-size='16' font-weight='bold' fill='white' text-anchor='middle'>SV</text></svg>">
+    <link rel="preconnect" href="https://fonts.loli.net" crossorigin>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.loli.net/css2?family=Caveat:wght@400;600&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../styles/klein-morandi.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <style>
         body {
             font-family: 'Nunito', -apple-system, sans-serif;
@@ -95,8 +98,8 @@
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            gap: 20px;
-            margin-bottom: 30px;
+            gap: 24px;
+            margin-bottom: 32px;
         }
 
         .stat-card {
@@ -106,12 +109,18 @@
             text-align: center;
             border: 2px dashed var(--morandi-rose);
             box-shadow: 3px 3px 0 var(--morandi-lavender);
-            transition: all 0.3s ease;
+            transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+                        box-shadow 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+            animation: stat-card-enter 0.5s ease-out backwards;
         }
+        .stat-card:nth-child(1) { animation-delay: 0.1s; }
+        .stat-card:nth-child(2) { animation-delay: 0.2s; }
+        .stat-card:nth-child(3) { animation-delay: 0.3s; }
+        .stat-card:nth-child(4) { animation-delay: 0.4s; }
 
         .stat-card:hover {
             transform: translateY(-4px);
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+            box-shadow: 5px 5px 0 var(--morandi-lavender);
         }
 
         .stat-icon {
@@ -148,8 +157,8 @@
         .charts-grid {
             display: grid;
             grid-template-columns: 2fr 1fr;
-            gap: 20px;
-            margin-bottom: 30px;
+            gap: 24px;
+            margin-bottom: 32px;
         }
 
         .chart-card {
@@ -158,6 +167,8 @@
             padding: 24px;
             border: 2px dashed var(--morandi-rose);
             box-shadow: 3px 3px 0 var(--morandi-lavender);
+            animation: content-slide-in 0.6s ease-out backwards;
+            animation-delay: 0.5s;
         }
 
         .chart-header {
@@ -259,12 +270,12 @@
 
     <!-- 导航栏 (由 page-common.js 插入) -->
 
-    <main class="stats-container">
+    <main class="stats-container page-transition">
         <!-- 页面标题 -->
         <div class="page-header">
             <div>
-                <h1 class="page-title">📊 学习统计</h1>
-                <p class="page-subtitle">AI 驱动的智能数据分析</p>
+                <h1 class="page-title">📊 你的学习报告</h1>
+                <p class="page-subtitle">用数据见证你的成长轨迹</p>
             </div>
             <div class="period-selector">
                 <button class="period-btn active" data-period="7">本周</button>
@@ -344,65 +355,78 @@
 
     <script type="module">
         import { apiRequest } from '../js/api-client.js';
-        import { showToast } from '../js/utils.js';
+        import { showToast, animateNumber } from '../js/utils.js';
         import { initPage, getCurrentUser } from '../js/page-common.js';
 
         let currentUser = null;
         let charts = {};
         let currentPeriod = 7;
 
-        // 页面初始化
+
+        const COLORS = {
+            kleinBlue: '#002FA7',
+            kleinLight: '#1a4fd0',
+            coral: '#E07A5F',
+            sage: '#6B8E6B',
+            amber: '#F2A03D',
+            lavender: '#9B8AA6'
+        };
+
         initPage({
             navTarget: 'body',
             onReady: async (user) => {
                 currentUser = user;
-                loadStats();
-                initCharts();
+                initEmptyCharts();
+                await loadAllData();
                 initPeriodButtons();
             }
         });
-        async function loadStats() {
-            const result = await apiRequest(`/learning/progress/${currentUser.id}?days=${currentPeriod}`);
-            if (result.success) {
-                const data = result.data || {};
-                document.getElementById('stat-words').textContent = data.total_words || 0;
-                document.getElementById('stat-learned').textContent = data.learned_words || 0;
-                document.getElementById('stat-streak').textContent = data.streak_days || 0;
-                document.getElementById('stat-time').textContent = formatTime(data.total_minutes || 0);
-                if (data.trends) {
-                    document.getElementById('trend-words').textContent = `+${data.trends.words_trend || 0}%`;
-                    document.getElementById('trend-learned').textContent = `+${data.trends.learned_trend || 0}%`;
-                }
-            }
+
+        async function loadAllData() {
+            const [progressRes, statsRes, recordsRes, streakRes] = await Promise.all([
+                apiRequest(`/learning/progress/${currentUser.id}?days=${currentPeriod}`).catch(() => ({ success: false })),
+                apiRequest(`/learning/statistics/${currentUser.id}?days=${currentPeriod}`).catch(() => ({ success: false })),
+                apiRequest(`/learning/records/${currentUser.id}?limit=500`).catch(() => ({ success: false })),
+                apiRequest(`/achievements/${currentUser.id}/streak`).catch(() => ({ success: false }))
+            ]);
+
+            const progress = progressRes.success ? (progressRes.data || {}) : {};
+            const stats = statsRes.success ? (statsRes.data || {}) : {};
+            const records = recordsRes.success ? (recordsRes.data || []) : [];
+            const streak = streakRes.success ? (streakRes.data?.streak || 0) : 0;
+
+            // Update stat cards
+            animateNumber(document.getElementById('stat-words'), progress.total_words || stats.new_words || 0);
+            animateNumber(document.getElementById('stat-learned'), progress.learned_words || stats.learned_words || 0);
+            document.getElementById('stat-streak').textContent = streak;
+            const activeDays = stats.active_days || 0;
+            document.getElementById('stat-time').textContent = activeDays > 0 ? `${activeDays}天` : '0天';
+
+            // Update charts with real data
+            updateTrendChart(records, stats);
+            updateDifficultyChart(records);
+            updateRadarChart(progress, records);
+            updatePosChart(records);
         }
-        function formatTime(minutes) {
-            if (minutes < 60) return `${minutes}m`;
-            const hours = Math.floor(minutes / 60);
-            const mins = minutes % 60;
-            return `${hours}h ${mins}m`;
-        }
-        function initCharts() {
-            const kleinBlue = '#002FA7';
-            const kleinLight = '#1a4fd0';
-            const coral = '#E07A5F';
-            const sage = '#6B8E6B';
-            const amber = '#F2A03D';
-            // 趋势图
-            const trendCtx = document.getElementById('trend-chart').getContext('2d');
-            charts.trend = new Chart(trendCtx, {
+
+        function initEmptyCharts() {
+            const { kleinBlue, kleinLight, coral, sage, amber, lavender } = COLORS;
+
+            // Trend chart
+            charts.trend = new Chart(document.getElementById('trend-chart').getContext('2d'), {
                 type: 'line',
                 data: {
-                    labels: getLast7Days(),
+                    labels: getLastNDays(currentPeriod),
                     datasets: [{
                         label: '学习词汇',
-                        data: [12, 18, 25, 32, 45, 28, 15],
+                        data: new Array(currentPeriod).fill(0),
                         borderColor: kleinBlue,
                         backgroundColor: `${kleinBlue}20`,
                         tension: 0.4,
                         fill: true
                     }, {
                         label: '已掌握',
-                        data: [8, 12, 18, 20, 25, 18, 22],
+                        data: new Array(currentPeriod).fill(0),
                         borderColor: sage,
                         backgroundColor: `${sage}20`,
                         tension: 0.4,
@@ -415,14 +439,14 @@
                     scales: { y: { beginAtZero: true } }
                 }
             });
-            // 难度分布图
-            const diffCtx = document.getElementById('difficulty-chart').getContext('2d');
-            charts.difficulty = new Chart(diffCtx, {
+
+            // Difficulty distribution
+            charts.difficulty = new Chart(document.getElementById('difficulty-chart').getContext('2d'), {
                 type: 'doughnut',
                 data: {
                     labels: ['初级', '中级', '高级'],
                     datasets: [{
-                        data: [35, 45, 20],
+                        data: [1, 1, 1],
                         backgroundColor: [kleinBlue, kleinLight, coral],
                         borderWidth: 0
                     }]
@@ -433,15 +457,15 @@
                     cutout: '70%'
                 }
             });
-            // 雷达图
-            const radarCtx = document.getElementById('radar-chart').getContext('2d');
-            charts.radar = new Chart(radarCtx, {
+
+            // Radar chart
+            charts.radar = new Chart(document.getElementById('radar-chart').getContext('2d'), {
                 type: 'radar',
                 data: {
-                    labels: ['听力', '阅读', '写作', '口语', '词汇'],
+                    labels: ['词汇量', '掌握率', '复习频率', '难度覆盖', '学习时长'],
                     datasets: [{
                         label: '掌握度',
-                        data: [75, 82, 68, 70, 85],
+                        data: [0, 0, 0, 0, 0],
                         borderColor: kleinBlue,
                         backgroundColor: `${kleinBlue}33`,
                         borderWidth: 2,
@@ -450,25 +474,19 @@
                 },
                 options: {
                     responsive: true,
-                    scales: {
-                        r: {
-                            angleLines: { display: true },
-                            suggestedMin: 0,
-                            suggestedMax: 100
-                        }
-                    }
+                    scales: { r: { angleLines: { display: true }, suggestedMin: 0, suggestedMax: 100 } }
                 }
             });
-            // 词性分布图
-            const posCtx = document.getElementById('pos-chart').getContext('2d');
-            charts.pos = new Chart(posCtx, {
+
+            // POS distribution
+            charts.pos = new Chart(document.getElementById('pos-chart').getContext('2d'), {
                 type: 'bar',
                 data: {
                     labels: ['名词', '动词', '形容词', '副词', '介词', '连词'],
                     datasets: [{
                         label: '数量',
-                        data: [120, 85, 45, 30, 15, 10],
-                        backgroundColor: [kleinBlue, kleinLight, coral, amber, sage, '#9B8AA6'],
+                        data: [0, 0, 0, 0, 0, 0],
+                        backgroundColor: [kleinBlue, kleinLight, coral, amber, sage, lavender],
                         borderRadius: 8
                     }]
                 },
@@ -479,21 +497,107 @@
                 }
             });
         }
-        function getLast7Days() {
-            const days = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
-            return days;
+
+        function updateTrendChart(records, stats) {
+            if (!charts.trend) return;
+            const days = getLastNDays(currentPeriod);
+            const dailyNew = new Array(currentPeriod).fill(0);
+            const dailyMastered = new Array(currentPeriod).fill(0);
+            const now = new Date();
+
+            records.forEach(r => {
+                const reviewed = r.last_reviewed_at || r.created_at;
+                if (!reviewed) return;
+                const d = new Date(reviewed);
+                const diffDays = Math.floor((now - d) / 86400000);
+                const idx = currentPeriod - 1 - diffDays;
+                if (idx >= 0 && idx < currentPeriod) {
+                    dailyNew[idx]++;
+                    if (r.is_mastered || r.mastery_level >= 0.8) dailyMastered[idx]++;
+                }
+            });
+
+            charts.trend.data.labels = days;
+            charts.trend.data.datasets[0].data = dailyNew;
+            charts.trend.data.datasets[1].data = dailyMastered;
+            charts.trend.update();
         }
+
+        function updateDifficultyChart(records) {
+            if (!charts.difficulty) return;
+            const counts = { easy: 0, medium: 0, hard: 0 };
+            records.forEach(r => {
+                const d = r.difficulty_level || 3;
+                if (d <= 2) counts.easy++;
+                else if (d <= 4) counts.medium++;
+                else counts.hard++;
+            });
+            const data = [counts.easy || 1, counts.medium || 1, counts.hard || 1];
+            charts.difficulty.data.datasets[0].data = data;
+            charts.difficulty.update();
+        }
+
+        function updateRadarChart(progress, records) {
+            if (!charts.radar) return;
+            const total = progress.total_words || records.length || 1;
+            const learned = progress.learned_words || records.filter(r => r.is_mastered).length;
+            const avgMastery = records.length > 0
+                ? Math.round(records.reduce((s, r) => s + (r.mastery_level || 0), 0) / records.length * 100)
+                : 0;
+            const avgReviews = records.length > 0
+                ? Math.round(Math.min(100, records.reduce((s, r) => s + (r.review_count || 0), 0) / records.length * 20))
+                : 0;
+            const diffRange = new Set(records.map(r => r.difficulty_level)).size;
+            const diffCoverage = Math.round(Math.min(100, diffRange / 6 * 100));
+
+            const activeDays = progress.total_reviews > 0 ? Math.min(100, Math.round(learned / total * 100)) : 0;
+
+            charts.radar.data.datasets[0].data = [
+                Math.round(learned / total * 100),
+                avgMastery,
+                avgReviews,
+                diffCoverage,
+                activeDays
+            ];
+            charts.radar.update();
+        }
+
+        function updatePosChart(records) {
+            if (!charts.pos) return;
+            const posMap = { 'n': 0, 'v': 0, 'adj': 0, 'adv': 0, 'prep': 0, 'conj': 0 };
+            const posLabels = { 'n': '名词', 'v': '动词', 'adj': '形容词', 'adv': '副词', 'prep': '介词', 'conj': '连词' };
+            records.forEach(r => {
+                const pos = (r.pos || '').toLowerCase().split('.')[0].trim();
+                if (posMap.hasOwnProperty(pos)) posMap[pos]++;
+                else if (pos.includes('n')) posMap['n']++;
+                else if (pos.includes('v')) posMap['v']++;
+                else if (pos.includes('adj')) posMap['adj']++;
+            });
+            charts.pos.data.datasets[0].data = Object.values(posMap);
+            charts.pos.update();
+        }
+
+        function getLastNDays(n) {
+            const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+            const labels = [];
+            for (let i = n - 1; i >= 0; i--) {
+                const d = new Date();
+                d.setDate(d.getDate() - i);
+                labels.push(i === 0 ? '今天' : i === 1 ? '昨天' : weekdays[d.getDay()]);
+            }
+            return labels;
+        }
+
         function initPeriodButtons() {
             document.querySelectorAll('.period-btn').forEach(btn => {
                 btn.addEventListener('click', function() {
                     document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
                     this.classList.add('active');
                     currentPeriod = parseInt(this.dataset.period);
-                    loadStats();
+                    loadAllData();
                 });
             });
         }
-        // 初始化已完成（由 initPage 处理）
     </script>
 </body>
 </html>

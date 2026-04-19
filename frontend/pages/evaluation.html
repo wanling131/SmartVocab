@@ -324,6 +324,17 @@
             margin-bottom: 24px;
             border: 2px solid var(--morandi-beige);
             transition: all 0.3s ease;
+            animation: question-enter 0.4s ease-out backwards;
+        }
+        .question-card:nth-child(1) { animation-delay: 0.05s; }
+        .question-card:nth-child(2) { animation-delay: 0.1s; }
+        .question-card:nth-child(3) { animation-delay: 0.15s; }
+        .question-card:nth-child(4) { animation-delay: 0.2s; }
+        .question-card:nth-child(5) { animation-delay: 0.25s; }
+        .question-card:nth-child(n+6) { animation-delay: 0.3s; }
+        @keyframes question-enter {
+            from { opacity: 0; transform: translateX(-16px); }
+            to { opacity: 1; transform: translateX(0); }
         }
 
         .question-card:hover {
@@ -785,7 +796,7 @@
     <!-- Navbar (由 page-common.js 插入) -->
 
     <!-- Main Content -->
-    <main class="evaluation-container">
+    <main class="evaluation-container page-transition">
         <!-- Page Header -->
         <header class="page-header">
             <h1 class="page-title">
@@ -801,7 +812,7 @@
             <div style="position: absolute; top: -18px; left: 50%; transform: translateX(-50%); background: linear-gradient(135deg, var(--klein-blue), var(--klein-light)); color: white; padding: 6px 24px; border-radius: 20px; font-size: 13px; font-weight: 700; letter-spacing: 2px; box-shadow: 0 4px 12px rgba(0, 47, 167, 0.3); z-index: 2;">✦ TEST ✦</div>
             <div class="start-icon">🎯</div>
             <h2 class="start-title">准备好挑战了吗？</h2>
-            <p class="start-description">选择测试模式开始挑战，系统将评估你的词汇水平并推荐学习等级</p>
+            <p class="start-description">测试你的词汇水平，获取 AI 个性化推荐等级，开启高效学习之旅</p>
             <div class="preset-btn-group">
                 <button class="preset-btn active" data-count="10">
                     <div class="preset-btn-title">⚡ 快速测试</div>
@@ -912,9 +923,8 @@
 
     <script type="module">
         import { apiRequest } from '../js/api-client.js';
-        import { showToast, escapeHtml } from '../js/utils.js';
+        import { showToast, escapeHtml, showConfetti, animateNumber } from '../js/utils.js';
         import { initPage, getCurrentUser } from '../js/page-common.js';
-
         let currentUser = null;
         let timerInterval = null;
         let startTime = null;
@@ -1002,6 +1012,10 @@
                     totalQuestions = result.data.questions.length;
                     renderQuestions(result.data.questions);
                     startTimer();
+                } else {
+                    showToast(result.message || '生成试卷失败', 'error');
+                    document.getElementById('eval-start').style.display = 'block';
+                    document.getElementById('eval-test').style.display = 'none';
                 }
             } catch (err) {
                 showToast('生成试卷失败', 'error');
@@ -1074,7 +1088,7 @@
 
             try {
                 document.getElementById('submit-eval-btn').disabled = true;
-                document.getElementById('submit-eval-btn').innerHTML = '<span>⏳</span> 提交中...';
+                document.getElementById('submit-eval-btn').innerHTML = `<span>⏳</span> 提交中...`;
 
                 const result = await apiRequest('/evaluation/submit', {
                     method: 'POST',
@@ -1088,11 +1102,15 @@
 
                 if (result.success) {
                     showResult(result.data, elapsedTime);
+                } else {
+                    showToast(result.message || '提交失败', 'error');
+                    document.getElementById('submit-eval-btn').disabled = false;
+                    document.getElementById('submit-eval-btn').innerHTML = `✅ 提交答卷`;
                 }
             } catch (err) {
                 showToast('提交失败', 'error');
                 document.getElementById('submit-eval-btn').disabled = false;
-                document.getElementById('submit-eval-btn').innerHTML = '<span>✅</span> 提交答卷';
+                document.getElementById('submit-eval-btn').innerHTML = `✅ 提交答卷`;
             }
         });
 
@@ -1105,6 +1123,22 @@
             const correct = result.correct_count || 0;
             const total = result.total_count || totalQuestions;
             const level = result.level || '未知';
+
+            // 撒花效果
+            if (score >= 60) showConfetti(score >= 90 ? 40 : 20);
+
+            // 分级文案
+            const titles = { 90: '太强了！词汇达人！', 70: '表现出色！', 50: '继续加油！', 0: '别灰心，再来一次！' };
+            const subtitles = {
+                90: '你的词汇量令人印象深刻',
+                70: '离满分只差一步了',
+                50: '每一次练习都是进步',
+                0: '失败是成功之母，多做几次就好了'
+            };
+            const key = score >= 90 ? 90 : score >= 70 ? 70 : score >= 50 ? 50 : 0;
+
+            document.querySelector('.result-title').textContent = titles[key];
+            document.querySelector('.result-subtitle').textContent = subtitles[key];
 
             // Update score display
             const scoreEl = document.getElementById('eval-score');
@@ -1125,19 +1159,20 @@
 
             // Determine rank
             let rank = '-';
-            if (score >= 90) rank = '优秀';
-            else if (score >= 80) rank = '良好';
-            else if (score >= 60) rank = '及格';
-            else rank = '需加强';
+            if (score >= 90) rank = 'S 词汇大师';
+            else if (score >= 80) rank = 'A 词汇高手';
+            else if (score >= 70) rank = 'B 潜力选手';
+            else if (score >= 60) rank = 'C 及格过关';
+            else rank = 'D 加油少年';
             document.getElementById('stat-rank').textContent = rank;
 
             // Update level description
             const levelDescriptions = {
-                '入门': '建议从基础词汇开始学习，打好词汇基础',
-                '基础': '可以开始学习更多日常词汇，逐步提升',
-                '中级': '已经掌握了一定词汇量，可以挑战更高难度',
-                '高级': '词汇量较为丰富，建议深入学习高级词汇',
-                '专家': '词汇水平优秀，继续保持并拓展专业词汇'
+                '入门': '千里之行始于足下，推荐从基础词汇开始打地基',
+                '基础': '已经迈出了第一步，继续积累日常词汇吧',
+                '中级': '词汇量不错！可以挑战更有难度的内容了',
+                '高级': '实力不俗！深入学习高级词汇，向专家进发',
+                '专家': '令人佩服的词汇量！继续拓展专业领域词汇'
             };
             document.getElementById('level-description').textContent =
                 levelDescriptions[level] || '根据你的测试表现，系统为你推荐了适合的学习等级';
@@ -1167,7 +1202,7 @@
             document.getElementById('timer-value').textContent = '00:00';
             document.getElementById('progress-bar-fill').style.width = '0%';
             document.getElementById('submit-eval-btn').disabled = false;
-            document.getElementById('submit-eval-btn').innerHTML = '<span>✅</span> 提交答卷';
+            document.getElementById('submit-eval-btn').innerHTML = `✅ 提交答卷`;
         });
 
         // 初始化已完成（由 initPage 处理）

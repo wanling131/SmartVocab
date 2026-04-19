@@ -152,4 +152,4 @@ tests/e2e/package-lock.json
 
 # Claude Code local settings
 skills/
-**/.claude/
+**/.claude/node_modules/

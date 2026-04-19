@@ -5,12 +5,19 @@
 
 import { apiRequest, clearToken } from './api-client.js'
 import { escapeHtml, showToast, showLoading, hideLoading } from './utils.js'
+import { getIcon } from './icons.js'
 
 // ==================== 全局函数暴露 ====================
 // 暴露给 api-client.js 的 fetchWithState 使用
 window.showToast = showToast
 window.showLoading = showLoading
 window.hideLoading = hideLoading
+
+// 监听 401 事件，自动跳转登录页
+window.addEventListener('auth:logout', () => {
+  clearToken()
+  window.location.href = 'login.html'
+})
 
 // ==================== 用户状态管理 ====================
 
@@ -49,13 +56,13 @@ export function logout() {
  * 页面导航配置
  */
 const NAV_ITEMS = [
-  { href: 'dashboard.html', icon: '🏠', label: '首页', page: 'dashboard' },
-  { href: 'plans.html', icon: '📋', label: '计划', page: 'plans' },
-  { href: 'levels.html', icon: '🎮', label: '闯关', page: 'levels' },
-  { href: 'evaluation.html', icon: '📝', label: '测试', page: 'evaluation' },
-  { href: 'statistics.html', icon: '📊', label: '统计', page: 'statistics' },
-  { href: 'favorites.html', icon: '⭐', label: '收藏', page: 'favorites' },
-  { href: 'profile.html', icon: '👤', label: '我的', page: 'profile' }
+  { href: 'dashboard.html', icon: 'home', label: '首页', page: 'dashboard' },
+  { href: 'plans.html', icon: 'clipboard', label: '计划', page: 'plans' },
+  { href: 'levels.html', icon: 'gamepad', label: '闯关', page: 'levels' },
+  { href: 'evaluation.html', icon: 'edit', label: '测试', page: 'evaluation' },
+  { href: 'statistics.html', icon: 'chart', label: '统计', page: 'statistics' },
+  { href: 'favorites.html', icon: 'star', label: '收藏', page: 'favorites' },
+  { href: 'profile.html', icon: 'user', label: '我的', page: 'profile' }
 ]
 
 /**
@@ -80,7 +87,7 @@ export function renderNavbar() {
          role="menuitem"
          data-page="${item.page}"
          ${isActive ? 'aria-current="page"' : ''}>
-        ${item.icon} ${item.label}
+        ${getIcon(item.icon, { size: 'sm' })} ${item.label}
       </a>
     `
   }).join('')
@@ -96,7 +103,7 @@ export function renderNavbar() {
       </div>
       <div class="nav-user">
         <span class="user-name" id="username-display">用户</span>
-        <button class="btn btn-ghost" onclick="logout()" aria-label="退出登录">退出</button>
+        <button class="btn btn-logout" aria-label="退出登录">${getIcon('logout', { size: 'sm' })} 退出</button>
       </div>
     </nav>
   `
@@ -131,9 +138,12 @@ export async function initPage(options = {}) {
   // 初始化用户
   const user = await initUser()
 
-  // 暴露全局函数（供 onclick 使用）
+  // 暴露全局函数
   window.logout = logout
   window.currentUser = currentUser
+
+  // 导航栏退出按钮事件委托
+  document.querySelector('.navbar .btn-logout')?.addEventListener('click', logout)
 
   // 回调
   if (onReady && user) {

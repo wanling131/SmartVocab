@@ -253,7 +253,7 @@ class LearningRecordManager:
 
     def get_learning_progress(self, user_id):
         """
-        获取学习进度
+        获取学习进度（SQL 聚合，避免全量加载）
 
         Args:
             user_id (int): 用户ID
@@ -261,35 +261,7 @@ class LearningRecordManager:
         Returns:
             dict: 学习进度信息
         """
-        # 获取用户所有学习记录
-        all_records = self.learning_records_crud.get_by_user(user_id)
-
-        if not all_records:
-            return {
-                "total_words": 0,
-                "learned_words": 0,
-                "learning_words": 0,
-                "mastery_rate": 0.0,
-                "total_reviews": 0,
-                "average_mastery": 0.0,
-            }
-
-        # 统计学习进度
-        total_words = len(all_records)
-        learned_words = sum(1 for record in all_records if record["is_mastered"])
-        learning_words = total_words - learned_words
-        mastery_rate = learned_words / total_words if total_words > 0 else 0.0
-        total_reviews = sum(record["review_count"] for record in all_records)
-        average_mastery = sum(record["mastery_level"] for record in all_records) / total_words
-
-        return {
-            "total_words": total_words,
-            "learned_words": learned_words,
-            "learning_words": learning_words,
-            "mastery_rate": round(mastery_rate, 2),
-            "total_reviews": total_reviews,
-            "average_mastery": round(average_mastery, 2),
-        }
+        return self.learning_records_crud.get_progress_stats(user_id)
 
     def get_words_to_review(self, user_id, limit=LEARNING_PARAMS["default_review_limit"], offset=0):
         """
@@ -356,27 +328,30 @@ class LearningRecordManager:
     def _check_and_train_model_if_needed(self, user_id):
         """
         检查是否需要训练模型（每50个单词训练一次）
+        使用 COUNT 查询避免全量加载
 
         Args:
             user_id (int): 用户ID
         """
         try:
-            # 获取用户学习记录总数
-            all_records = self.learning_records_crud.get_by_user(user_id)
-            total_records = len(all_records)
+            total_records = self.learning_records_crud.count_by_user(user_id)
 
             # 检查是否是50的倍数
             if total_records > 0 and total_records % LEARNING_PARAMS["min_training_records"] == 0:
-                # 导入推荐引擎并触发模型训练
-                from core.recommendation.recommendation_engine import RecommendationEngine
-
-                recommendation_engine = RecommendationEngine()
+                # 延迟导入，复用已有实例而非创建新的
+                try:
+                    from core.vocabulary.vocabulary_learning_manager import VocabularyLearningManager
+                    vlm = VocabularyLearningManager()
+                    rec_engine = vlm.recommendation_engine
+                except Exception:
+                    from core.recommendation.recommendation_engine import RecommendationEngine
+                    rec_engine = RecommendationEngine()
 
                 if (
-                    hasattr(recommendation_engine, "deep_learning_recommender")
-                    and recommendation_engine.deep_learning_recommender
+                    hasattr(rec_engine, "deep_learning_recommender")
+                    and rec_engine.deep_learning_recommender
                 ):
-                    success = recommendation_engine.deep_learning_recommender.check_and_train_model(
+                    success = rec_engine.deep_learning_recommender.check_and_train_model(
                         user_id
                     )
                     if success:
@@ -391,7 +366,7 @@ class LearningRecordManager:
 
     def get_learning_statistics(self, user_id, days=7):
         """
-        获取学习统计
+        获取学习统计（SQL 聚合，避免全量加载）
 
         Args:
             user_id (int): 用户ID
@@ -400,40 +375,9 @@ class LearningRecordManager:
         Returns:
             dict: 学习统计数据
         """
-        # 获取用户所有学习记录
-        all_records = self.learning_records_crud.get_by_user(user_id)
-
-        # 计算时间范围
         end_date = datetime.now()
         start_date = end_date - timedelta(days=days)
-
-        # 筛选时间范围内的记录
-        recent_records = []
-        active_dates = set()  # 记录有学习活动的日期
-
-        for record in all_records:
-            last_reviewed = record["last_reviewed_at"]
-            if isinstance(last_reviewed, str):
-                last_reviewed = datetime.fromisoformat(last_reviewed.replace("Z", "+00:00"))
-
-            if start_date <= last_reviewed <= end_date:
-                recent_records.append(record)
-                # 记录学习日期
-                active_dates.add(last_reviewed.date())
-
-        # 统计学习数据
-        total_reviews = sum(record["review_count"] for record in recent_records)
-        new_words = len([r for r in recent_records if r["review_count"] == 1])
-        learned_words = len([r for r in recent_records if r["is_mastered"]])
-
-        return {
-            "period_days": days,
-            "total_reviews": total_reviews,
-            "new_words": new_words,
-            "learned_words": learned_words,
-            "average_reviews_per_day": round(total_reviews / days, 2),
-            "active_days": len(active_dates),  # 活跃学习天数
-        }
+        return self.learning_records_crud.get_statistics_in_range(user_id, start_date, end_date)
 
     def close(self):
         """

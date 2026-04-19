@@ -50,14 +50,18 @@ class FavoritesCRUD(BaseCRUD):
         """获取用户收藏列表（含单词详情）"""
         query = """
             SELECT f.id, f.word_id, f.note, f.created_at as favorited_at,
-                   w.word, w.translation, w.phonetic, w.pos, w.difficulty_level, w.cefr_standard
+                   w.word, w.translation, w.phonetic, w.pos,
+                   w.difficulty_level, w.cefr_standard, w.dataset_type
             FROM user_favorite_words f
             JOIN words w ON f.word_id = w.id
             WHERE f.user_id = %s
             ORDER BY f.created_at DESC
             LIMIT %s OFFSET %s
         """
-        return self.execute_query(query, (user_id, limit, offset), fetch_all=True) or []
+        results = self.execute_query(query, (user_id, limit, offset), fetch_all=True) or []
+        for r in results:
+            r.setdefault("dataset", r.get("dataset_type"))
+        return results
 
     def get_favorite_count(self, user_id: int) -> int:
         """获取收藏数量"""

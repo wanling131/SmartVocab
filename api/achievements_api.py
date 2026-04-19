@@ -106,19 +106,24 @@ def get_weekly_report(user_id):
     end_date = date.today()
     start_date = end_date - timedelta(days=7)
 
-    # 查询最近7天的学习数据
+    # 查询最近7天的学习数据（SQL 过滤，避免全量加载）
     records_crud = LearningRecordsCRUD()
-    all_records = records_crud.get_by_user(user_id)
-
-    # 筛选最近7天的记录
-    recent_records = []
-    for r in all_records:
-        last_reviewed = r.get("last_reviewed_at")
-        if last_reviewed:
-            if isinstance(last_reviewed, str):
-                last_reviewed = date.fromisoformat(last_reviewed.split()[0])
-            if start_date <= last_reviewed <= end_date:
-                recent_records.append(r)
+    try:
+        recent_records = records_crud.execute_query(
+            "SELECT * FROM learning_records WHERE user_id = %s AND last_reviewed_at >= %s ORDER BY last_reviewed_at DESC",
+            (user_id, start_date.isoformat()),
+            fetch_all=True,
+        ) or []
+    except Exception:
+        all_records = records_crud.get_by_user(user_id)
+        recent_records = []
+        for r in all_records:
+            last_reviewed = r.get("last_reviewed_at")
+            if last_reviewed:
+                if isinstance(last_reviewed, str):
+                    last_reviewed = date.fromisoformat(last_reviewed.split()[0])
+                if start_date <= last_reviewed <= end_date:
+                    recent_records.append(r)
 
     # 计算统计数据
     total_words = len(set(r["word_id"] for r in recent_records))

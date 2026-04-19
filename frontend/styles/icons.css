@@ -1,0 +1,33 @@
+/* SmartVocab SVG Icon System */
+/* Usage: <span class="icon icon-{name}" aria-hidden="true"></span> */
+/* Or with label: <span class="icon icon-{name}" aria-label="描述"></span> */
+
+.icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+}
+.icon svg {
+    width: 100%;
+    height: 100%;
+}
+.icon-sm { width: 16px; height: 16px; }
+.icon-lg { width: 24px; height: 24px; }
+.icon-xl { width: 32px; height: 32px; }
+
+/* Icon color variants */
+.icon-klein svg { stroke: var(--klein-blue); fill: none; }
+.icon-klein svg .filled { fill: var(--klein-blue); }
+.icon-muted svg { stroke: var(--text-muted); fill: none; }
+.icon-muted svg .filled { fill: var(--text-muted); }
+.icon-coral svg { stroke: var(--accent-coral); fill: none; }
+.icon-coral svg .filled { fill: var(--accent-coral); }
+.icon-white svg { stroke: white; fill: none; }
+.icon-white svg .filled { fill: white; }
+.icon-amber svg { stroke: var(--accent-amber); fill: none; }
+.icon-amber svg .filled { fill: var(--accent-amber); }
+.icon-sage svg { stroke: var(--accent-sage); fill: none; }
+.icon-sage svg .filled { fill: var(--accent-sage); }

@@ -5,68 +5,35 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SmartVocab - 智能英语词汇学习</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23002FA7'/><text x='16' y='21' font-family='Arial' font-size='16' font-weight='bold' fill='white' text-anchor='middle'>SV</text></svg>">
+    <link rel="preconnect" href="https://fonts.loli.net" crossorigin>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.loli.net/css2?family=Caveat:wght@400;600&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../styles/klein-morandi.css">
     <style>
-        /* Login Page-Specific Styles */
-        body {
-            overflow-x: hidden;
-        }
+        body { overflow-x: hidden; }
 
-        /* 手绘风格背景装饰 */
-        .bg-decoration {
-            position: fixed;
-            inset: 0;
-            pointer-events: none;
-            overflow: hidden;
-            z-index: 0;
-        }
+        .bg-decoration { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 0; }
 
-        /* 手绘波浪线条 */
-        .wave-line {
-            position: absolute;
-            width: 100%;
-            height: 60px;
-            opacity: 0.3;
-        }
-
-        .wave-line svg {
-            width: 100%;
-            height: 100%;
-        }
-
+        .wave-line { position: absolute; width: 100%; height: 60px; opacity: 0.3; }
+        .wave-line svg { width: 100%; height: 100%; }
         .wave-1 { top: 10%; }
         .wave-2 { top: 30%; opacity: 0.2; }
         .wave-3 { top: 50%; opacity: 0.15; }
         .wave-4 { top: 70%; opacity: 0.2; }
         .wave-5 { top: 90%; opacity: 0.25; }
 
-        /* 漂浮的手绘元素 */
-        .floating-element {
-            position: absolute;
-            animation: float 6s ease-in-out infinite;
-        }
-
-        .floating-element:nth-child(odd) {
-            animation-direction: reverse;
-        }
-
+        .floating-element { position: absolute; animation: float 6s ease-in-out infinite; }
+        .floating-element:nth-child(odd) { animation-direction: reverse; }
         @keyframes float {
             0%, 100% { transform: translateY(0) rotate(0deg); }
             50% { transform: translateY(-20px) rotate(5deg); }
         }
 
-        /* 手绘字母 */
         .hand-letter {
-            font-family: 'Caveat', cursive;
-            font-size: 48px;
-            font-weight: 600;
-            color: var(--klein-blue);
-            opacity: 0.15;
-            position: absolute;
+            font-family: 'Caveat', cursive; font-size: 48px; font-weight: 600;
+            color: var(--klein-blue); opacity: 0.15; position: absolute;
             transform: rotate(var(--rotation, 0deg));
         }
-
         .letter-A { top: 8%; left: 5%; --rotation: -15deg; animation-delay: 0s; }
         .letter-B { top: 15%; right: 8%; --rotation: 10deg; font-size: 36px; animation-delay: 0.5s; }
         .letter-C { top: 45%; left: 3%; --rotation: 5deg; font-size: 56px; animation-delay: 1s; }
@@ -75,612 +42,220 @@
         .letter-F { top: 25%; right: 12%; --rotation: -5deg; font-size: 32px; animation-delay: 0.3s; }
         .letter-G { top: 70%; right: 15%; --rotation: 8deg; font-size: 44px; animation-delay: 0.8s; }
 
-        /* 主容器 */
-        .main-container {
-            display: flex;
-            min-height: 100vh;
-            height: 100vh;
-            position: relative;
-            z-index: 1;
-        }
+        .main-container { display: flex; min-height: 100vh; height: 100vh; position: relative; z-index: 1; }
 
         /* 左侧品牌区 */
         .brand-section {
-            flex: 1;
-            height: 100vh;
-            position: sticky;
-            top: 0;
+            flex: 1; height: 100vh; position: sticky; top: 0;
             background: linear-gradient(135deg, var(--klein-blue) 0%, var(--klein-dark) 100%);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            padding: 60px;
-            position: relative;
-            overflow: hidden;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            padding: 60px; position: relative; overflow: hidden;
         }
-
-        /* 品牌区装饰 - 微弱网格纹理 */
         .brand-decoration {
-            position: absolute;
-            inset: 0;
-            opacity: 0.08;
+            position: absolute; inset: 0; opacity: 0.08;
             background-image:
                 linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px),
                 linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px);
             background-size: 50px 50px;
             animation: gridPulse 8s ease-in-out infinite;
         }
+        @keyframes gridPulse { 0%, 100% { opacity: 0.06; } 50% { opacity: 0.1; } }
 
-        @keyframes gridPulse {
-            0%, 100% { opacity: 0.06; }
-            50% { opacity: 0.1; }
-        }
-
-        /* 手绘圆圈装饰 */
-        .circle-sketch {
-            position: absolute;
-            border: 2px solid rgba(255,255,255,0.2);
-            border-radius: 50%;
-        }
-
+        .circle-sketch { position: absolute; border: 2px solid rgba(255,255,255,0.2); border-radius: 50%; }
         .circle-1 { width: 200px; height: 200px; top: -50px; left: -50px; }
         .circle-2 { width: 300px; height: 300px; bottom: -100px; right: -100px; }
         .circle-3 { width: 150px; height: 150px; top: 30%; left: 10%; border-style: dashed; }
 
-        .brand-content {
-            position: relative;
-            z-index: 2;
-            text-align: center;
-            color: white;
-        }
-
+        .brand-content { position: relative; z-index: 2; text-align: center; color: white; }
         .brand-logo {
-            width: 120px;
-            height: 120px;
-            background: white;
-            border-radius: 24px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto 30px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
-            position: relative;
+            width: 120px; height: 120px; background: white;
+            border-radius: 24px; display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 30px; box-shadow: 0 20px 60px rgba(0,0,0,0.2); position: relative;
         }
-
         .brand-logo::before {
-            content: '';
-            position: absolute;
-            inset: -4px;
-            border: 2px dashed rgba(255,255,255,0.5);
-            border-radius: 28px;
+            content: ''; position: absolute; inset: -4px;
+            border: 2px dashed rgba(255,255,255,0.5); border-radius: 28px;
             animation: spin 20s linear infinite;
         }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .brand-logo svg { width: 70px; height: 70px; }
 
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
+        .brand-title { font-size: 42px; font-weight: 800; margin-bottom: 16px; letter-spacing: -1px; }
+        .brand-subtitle { font-size: 18px; opacity: 0.9; margin-bottom: 40px; font-weight: 400; }
 
-        .brand-logo svg {
-            width: 70px;
-            height: 70px;
-        }
-
-        .brand-title {
-            font-size: 42px;
-            font-weight: 800;
-            margin-bottom: 16px;
-            letter-spacing: -1px;
-        }
-
-        .brand-subtitle {
-            font-size: 18px;
-            opacity: 0.9;
-            margin-bottom: 40px;
-            font-weight: 400;
-        }
-
-        /* 特色标签 */
-        .feature-tags {
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-            align-items: center;
-        }
-
+        .feature-tags { display: flex; flex-direction: column; gap: 16px; align-items: center; }
         .feature-tag {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            background: rgba(255,255,255,0.15);
-            backdrop-filter: blur(10px);
-            padding: 14px 24px;
-            border-radius: 50px;
+            display: flex; align-items: center; gap: 12px;
+            background: rgba(255,255,255,0.15); backdrop-filter: blur(10px);
+            padding: 14px 24px; border-radius: 50px;
             border: 1px solid rgba(255,255,255,0.2);
             transition: all 0.3s ease;
         }
-
-        .feature-tag:hover {
-            background: rgba(255,255,255,0.25);
-            transform: translateX(10px);
-        }
-
+        .feature-tag:hover { background: rgba(255,255,255,0.25); transform: translateX(10px); }
         .feature-icon {
-            width: 36px;
-            height: 36px;
-            background: var(--accent-coral);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 18px;
+            width: 36px; height: 36px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center; font-size: 18px;
         }
+        .feature-icon.ai { background: var(--accent-amber); }
+        .feature-icon.learn { background: var(--accent-sage); }
+        .feature-text { font-size: 15px; font-weight: 600; }
 
-        .feature-icon.ai {
-            background: var(--accent-amber);
-        }
-
-        .feature-icon.learn {
-            background: var(--accent-sage);
-        }
-
-        .feature-text {
-            font-size: 15px;
-            font-weight: 600;
+        .arrow-sketch {
+            position: absolute; bottom: 40px; left: -60px;
+            color: white; opacity: 0.3; font-family: 'Caveat', cursive;
+            font-size: 24px; transform: rotate(-10deg);
         }
 
         /* 右侧登录区 */
         .login-section {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            padding: 60px;
-            background: var(--morandi-cream);
-            position: relative;
-            min-height: 100vh; /* 鷻加最小高度防止布局抖动 */
+            flex: 1; display: flex; flex-direction: column;
+            justify-content: center; align-items: center;
+            padding: 60px; background: var(--morandi-cream); position: relative;
+            min-height: 100vh;
         }
 
-        /* 手绘风格卡片 */
         .login-card {
-            width: 100%;
-            max-width: 420px;
-            background: white;
-            border-radius: 24px;
-            padding: 48px 40px;
-            position: relative;
-            box-shadow:
-                0 4px 6px rgba(0,0,0,0.02),
-                0 12px 24px rgba(0,0,0,0.04),
-                0 24px 48px rgba(0,0,0,0.06);
+            width: 100%; max-width: 420px; background: white;
+            border-radius: 24px; padding: 48px 40px; position: relative;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.02), 0 12px 24px rgba(0,0,0,0.04), 0 24px 48px rgba(0,0,0,0.06);
+            animation: card-enter 0.8s cubic-bezier(0.22, 1, 0.36, 1);
         }
-
-        /* 手绘边框效果 */
+        @keyframes card-enter {
+            from { opacity: 0; transform: translateY(30px) scale(0.97); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
         .login-card::before {
-            content: '';
-            position: absolute;
-            inset: -3px;
-            border: 2px dashed var(--morandi-mist);
-            border-radius: 28px;
-            pointer-events: none;
+            content: ''; position: absolute; inset: -3px;
+            border: 2px dashed var(--morandi-mist); border-radius: 28px; pointer-events: none;
         }
 
-        .card-header {
-            text-align: center;
-            margin-bottom: 32px;
-        }
+        .card-header { text-align: center; margin-bottom: 32px; }
+        .card-title { font-size: 28px; font-weight: 700; color: var(--text-dark); margin-bottom: 8px; }
+        .card-subtitle { color: var(--text-muted); font-size: 14px; }
 
-        .card-title {
-            font-size: 28px;
-            font-weight: 700;
-            color: var(--text-dark);
-            margin-bottom: 8px;
-        }
-
-        .card-subtitle {
-            color: var(--text-muted);
-            font-size: 14px;
-        }
-
-        /* 标签切换 */
         .tab-switcher {
-            display: flex;
-            background: var(--morandi-beige);
-            border-radius: 12px;
-            padding: 4px;
-            margin-bottom: 32px;
+            display: flex; background: var(--morandi-beige);
+            border-radius: 12px; padding: 4px; margin-bottom: 32px;
         }
-
         .tab-btn {
-            flex: 1;
-            padding: 12px 20px;
-            border: none;
-            background: transparent;
-            font-family: inherit;
-            font-size: 15px;
-            font-weight: 600;
-            color: var(--text-muted);
-            cursor: pointer;
-            border-radius: 10px;
+            flex: 1; padding: 12px 20px; border: none; background: transparent;
+            font-family: inherit; font-size: 15px; font-weight: 600;
+            color: var(--text-muted); cursor: pointer; border-radius: 10px;
             transition: all 0.3s ease;
         }
+        .tab-btn.active { background: white; color: var(--klein-blue); box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
 
-        .tab-btn.active {
-            background: white;
-            color: var(--klein-blue);
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-        }
-
-        /* 表单 */
-        .form-group {
-            margin-bottom: 20px;
-        }
-
+        .form-group { margin-bottom: 20px; }
         .form-label {
-            display: block;
-            font-size: 13px;
-            font-weight: 600;
-            color: var(--text-muted);
-            margin-bottom: 8px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
+            display: block; font-size: 13px; font-weight: 600; color: var(--text-muted);
+            margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;
         }
-
         .form-input {
-            width: 100%;
-            padding: 14px 18px;
-            border: 2px solid var(--morandi-rose);
-            border-radius: 12px;
-            font-family: inherit;
-            font-size: 15px;
-            color: var(--text-dark);
-            background: var(--morandi-cream);
-            transition: all 0.3s ease;
+            width: 100%; padding: 14px 18px;
+            border: 2px solid var(--morandi-rose); border-radius: 12px;
+            font-family: inherit; font-size: 15px; color: var(--text-dark);
+            background: var(--morandi-cream); transition: border-color 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+                        box-shadow 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+                        background-color 0.2s ease;
         }
+        .form-input:focus { outline: none; border-color: var(--klein-blue); background: white; box-shadow: 0 0 0 4px rgba(0, 47, 167, 0.1); }
+        .form-input::placeholder { color: var(--text-light); }
 
-        .form-input:focus {
-            outline: none;
-            border-color: var(--klein-blue);
-            background: white;
-            box-shadow: 0 0 0 4px rgba(0, 47, 167, 0.1);
-        }
-
-        .form-input::placeholder {
-            color: var(--text-light);
-        }
-
-        /* 密码输入框容器 */
-        .password-input-wrapper {
-            position: relative;
-            display: flex;
-            align-items: center;
-        }
-
-        .password-input-wrapper .form-input {
-            flex: 1;
-            padding-right: 48px; /* 为眼睛图标留出空间 */
-        }
-
+        .password-input-wrapper { position: relative; display: flex; align-items: center; }
+        .password-input-wrapper .form-input { flex: 1; padding-right: 48px; }
         .password-toggle {
-            position: absolute;
-            right: 12px;
-            top: 50%;
-            transform: translateY(-50%);
-            background: none;
-            border: none;
-            cursor: pointer;
-            font-size: 18px;
-            color: var(--text-muted);
-            transition: color 0.3s ease;
-            padding: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+            background: none; border: none; cursor: pointer;
+            color: var(--text-muted); transition: color 0.2s ease, transform 0.15s ease; padding: 8px;
+            display: flex; align-items: center; justify-content: center;
         }
+        .password-toggle:hover { color: var(--klein-blue); transform: translateY(-50%) scale(1.1); }
+        .password-toggle.active { color: var(--klein-blue); }
 
-        .password-toggle:hover {
-            color: var(--klein-blue);
-        }
+        input[type="password"]::-ms-reveal, input[type="password"]::-ms-clear,
+        input::-webkit-credentials-auto-fill-button { display: none; }
 
-        .password-toggle.active {
-            color: var(--klein-blue);
-        }
-
-        /* 隐藏浏览器自带的密码显示按钮 */
-        input[type="password"]::-ms-reveal,
-        input[type="password"]::-ms-clear,
-        input::-webkit-credentials-auto-fill-button {
-            display: none;
-        }
-
-        /* 手绘风格输入框装饰 */
-        .input-wrapper {
-            position: relative;
-        }
-
+        .input-wrapper { position: relative; }
         .input-wrapper .sketch-line {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            height: 2px;
+            position: absolute; bottom: 0; left: 0; right: 0; height: 2px;
             background: linear-gradient(90deg, var(--klein-blue), var(--accent-coral));
-            transform: scaleX(0);
-            transition: transform 0.3s ease;
+            transform: scaleX(0); transition: transform 0.3s ease;
         }
+        .input-wrapper:focus-within .sketch-line { transform: scaleX(1); }
 
-        .input-wrapper:focus-within .sketch-line {
-            transform: scaleX(1);
-        }
-
-        /* 登录按钮 - 渐变风格 */
         .btn-primary {
-            width: 100%;
-            padding: 16px 24px;
+            width: 100%; padding: 16px 24px;
             background: linear-gradient(135deg, var(--klein-blue) 0%, var(--klein-light) 50%, var(--klein-blue) 100%);
-            background-size: 200% 200%;
-            color: white;
-            border: none;
-            border-radius: 14px;
-            font-family: inherit;
-            font-size: 16px;
-            font-weight: 700;
-            cursor: pointer;
-            transition: all 0.4s ease;
-            position: relative;
-            overflow: hidden;
-            letter-spacing: 1px;
+            background-size: 200% 200%; color: white; border: none; border-radius: 14px;
+            font-family: inherit; font-size: 16px; font-weight: 700; cursor: pointer;
+            transition: all 0.4s ease; position: relative; overflow: hidden; letter-spacing: 1px;
         }
-
-        /* 按钮光泽效果 */
         .btn-primary::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(
-                120deg,
-                transparent 30%,
-                rgba(255,255,255,0.3) 50%,
-                transparent 70%
-            );
+            content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%;
+            background: linear-gradient(120deg, transparent 30%, rgba(255,255,255,0.3) 50%, transparent 70%);
             transition: left 0.6s ease;
         }
-
-        .btn-primary:hover::before {
-            left: 100%;
-        }
-
-        /* 按钮底部渐变边框 */
+        .btn-primary:hover::before { left: 100%; }
         .btn-primary::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
+            content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 3px;
             background: linear-gradient(90deg, var(--accent-coral), var(--accent-amber), var(--accent-coral));
-            background-size: 200% 100%;
-            animation: borderShimmer 3s linear infinite;
+            background-size: 200% 100%; animation: borderShimmer 3s linear infinite;
             border-radius: 0 0 14px 14px;
         }
-
-        @keyframes borderShimmer {
-            0% { background-position: 0% 50%; }
-            100% { background-position: 200% 50%; }
-        }
-
+        @keyframes borderShimmer { 0% { background-position: 0% 50%; } 100% { background-position: 200% 50%; } }
         .btn-primary:hover {
-            background-position: 100% 50%;
-            transform: translateY(-3px);
-            box-shadow:
-                0 10px 30px rgba(0, 47, 167, 0.35),
-                0 0 0 4px rgba(0, 47, 167, 0.1);
+            background-position: 100% 50%; transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(0, 47, 167, 0.35), 0 0 0 4px rgba(0, 47, 167, 0.1);
         }
+        .btn-primary span { position: relative; z-index: 1; }
+        .btn-primary:active { transform: translateY(-1px); }
 
-        .btn-primary span {
-            position: relative;
-            z-index: 1;
-        }
-
-        .btn-primary:active {
-            transform: translateY(-1px);
-            box-shadow:
-                0 6px 20px rgba(0, 47, 167, 0.3),
-                0 0 0 2px rgba(0, 47, 167, 0.1);
-        }
-
-        /* 按钮涟漪效果 */
-        .btn-primary::before ripple {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 0;
-            height: 0;
-            background: rgba(255, 255, 255, 0.4);
-            border-radius: 50%;
-            transform: translate(-50%, -50%);
-            transition: width 0.5s ease, height 0.5s ease;
-        }
-
-        .btn-primary:active ripple {
-            width: 300px;
-            height: 300px;
-        }
-
-        /* 次要按钮样式 */
-        .btn-secondary {
-            width: 100%;
-            padding: 14px 24px;
-            background: transparent;
-            color: var(--klein-blue);
-            border: 2px solid var(--klein-blue);
-            border-radius: 14px;
-            font-family: inherit;
-            font-size: 15px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .btn-secondary::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background: var(--klein-blue);
-            transform: scaleX(0);
-            transform-origin: left;
-            transition: transform 0.3s ease;
-            z-index: 0;
-        }
-
-        .btn-secondary:hover::before {
-            transform: scaleX(1);
-        }
-
-        .btn-secondary:hover {
-            color: white;
-        }
-
-        .btn-secondary span {
-            position: relative;
-            z-index: 1;
-        }
-
-        /* 分隔线 */
         .divider {
-            display: flex;
-            align-items: center;
-            margin: 24px 0;
-            color: var(--text-light);
-            font-size: 13px;
+            display: flex; align-items: center; margin: 24px 0;
+            color: var(--text-light); font-size: 13px;
         }
+        .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: var(--morandi-rose); }
+        .divider span { padding: 0 16px; }
 
-        .divider::before,
-        .divider::after {
-            content: '';
-            flex: 1;
-            height: 1px;
-            background: var(--morandi-rose);
-        }
+        .card-footer { text-align: center; margin-top: 24px; }
+        .card-footer p { color: var(--text-muted); font-size: 14px; }
+        .card-footer a { color: var(--klein-blue); text-decoration: none; font-weight: 600; }
+        .card-footer a:hover { text-decoration: underline; }
 
-        .divider span {
-            padding: 0 16px;
-        }
-
-        /* 底部链接 */
-        .card-footer {
-            text-align: center;
-            margin-top: 24px;
-        }
-
-        .card-footer p {
-            color: var(--text-muted);
-            font-size: 14px;
-        }
-
-        .card-footer a {
-            color: var(--klein-blue);
-            text-decoration: none;
-            font-weight: 600;
-        }
-
-        .card-footer a:hover {
-            text-decoration: underline;
-        }
-
-        /* 手绘风格提示 */
         .sketch-tip {
-            position: absolute;
-            top: -20px;
-            right: -10px;
-            background: var(--accent-amber);
-            color: white;
-            padding: 8px 16px;
-            border-radius: 20px 20px 20px 4px;
-            font-size: 12px;
-            font-weight: 600;
-            transform: rotate(5deg);
+            position: absolute; top: -20px; right: -10px;
+            background: var(--accent-amber); color: white;
+            padding: 8px 16px; border-radius: 20px 20px 20px 4px;
+            font-size: 12px; font-weight: 600; transform: rotate(5deg);
             box-shadow: 0 4px 12px rgba(242, 160, 61, 0.3);
+            animation: tip-float 3s ease-in-out infinite;
+        }
+        @keyframes tip-float {
+            0%, 100% { transform: rotate(5deg) translateY(0); }
+            50% { transform: rotate(5deg) translateY(-4px); }
+        }
+        .sketch-tip::before { content: '✨'; margin-right: 4px; }
+
+        .form-panel { display: none; }
+        .form-panel.active { display: block; animation: form-fade 0.3s ease; }
+        @keyframes form-fade {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
-        .sketch-tip::before {
-            content: '✨';
-            margin-right: 4px;
-        }
+        .toast { position: fixed; top: 20px; bottom: auto; right: 20px; padding: 10px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; z-index: 1000; transform: translateX(120%); transition: transform 0.3s ease; }
+        .toast.show { transform: translateX(0); }
+        .toast.success { background: var(--morandi-sage); color: white; }
+        .toast.error { background: var(--accent-coral); color: white; }
 
-        /* Toast 消息 */
-        .toast {
-            position: fixed;
-            top: 20px;
-            bottom: auto;
-            right: 20px;
-            padding: 10px 16px;
-            border-radius: 8px;
-            font-size: 13px;
-            font-weight: 600;
-            z-index: 1000;
-            transform: translateX(120%);
-            transition: transform 0.3s ease;
-        }
-
-        .toast.show {
-            transform: translateX(0);
-        }
-
-        .toast.success {
-            background: var(--morandi-sage);
-            color: white;
-        }
-
-        .toast.error {
-            background: var(--accent-coral);
-            color: white;
-        }
-
-        /* 隐藏的表单 */
-        .form-panel {
-            display: none;
-        }
-
-        .form-panel.active {
-            display: block;
-        }
-
-        /* 手绘箭头装饰 */
-        .arrow-sketch {
-            position: absolute;
-            bottom: 40px;
-            left: -60px;
-            color: white;
-            opacity: 0.3;
-            font-family: 'Caveat', cursive;
-            font-size: 24px;
-            transform: rotate(-10deg);
-        }
-
-        /* 响应式隐藏 */
         @media (max-width: 900px) {
-            .brand-section {
-                display: none;
-            }
-
-            .login-section {
-                padding: 40px 20px;
-            }
+            .brand-section { display: none; }
+            .login-section { padding: 40px 20px; }
         }
     </style>
 </head>
 <body>
-    <!-- 背景装饰 -->
     <div class="bg-decoration">
-        <!-- 手绘字母 -->
         <span class="hand-letter letter-A floating-element">A</span>
         <span class="hand-letter letter-B floating-element">B</span>
         <span class="hand-letter letter-C floating-element">C</span>
@@ -689,7 +264,6 @@
         <span class="hand-letter letter-F floating-element">F</span>
         <span class="hand-letter letter-G floating-element">G</span>
 
-        <!-- 手绘波浪线 -->
         <div class="wave-line wave-1">
             <svg viewBox="0 0 1200 60" preserveAspectRatio="none">
                 <path d="M0,30 Q150,10 300,30 T600,30 T900,30 T1200,30" stroke="#002FA7" stroke-width="2" fill="none" stroke-linecap="round"/>
@@ -708,32 +282,26 @@
     </div>
 
     <div class="main-container">
-        <!-- 左侧品牌区 -->
         <div class="brand-section">
             <div class="brand-decoration"></div>
             <div class="circle-sketch circle-1"></div>
             <div class="circle-sketch circle-2"></div>
             <div class="circle-sketch circle-3"></div>
-
             <div class="brand-content">
                 <div class="brand-logo">
                     <svg viewBox="0 0 70 70" fill="none">
-                        <!-- 大脑/智能图标 -->
                         <path d="M35 10 C20 10 12 22 12 35 C12 48 20 58 35 58 C50 58 58 48 58 35 C58 22 50 10 35 10" fill="#002FA7"/>
                         <path d="M25 25 Q30 20 35 25 Q40 20 45 25" stroke="white" stroke-width="2" fill="none" stroke-linecap="round"/>
                         <path d="M25 35 Q35 30 45 35" stroke="white" stroke-width="2" fill="none" stroke-linecap="round"/>
                         <path d="M28 45 Q35 40 42 45" stroke="white" stroke-width="2" fill="none" stroke-linecap="round"/>
-                        <!-- 神经连接点 -->
                         <circle cx="30" cy="20" r="2" fill="white"/>
                         <circle cx="40" cy="20" r="2" fill="white"/>
                         <circle cx="35" cy="32" r="2" fill="white"/>
                         <circle cx="35" cy="48" r="2" fill="white"/>
                     </svg>
                 </div>
-
                 <h1 class="brand-title">SmartVocab</h1>
                 <p class="brand-subtitle">AI 驱动的智能英语词汇学习平台</p>
-
                 <div class="feature-tags">
                     <div class="feature-tag">
                         <div class="feature-icon ai">🧠</div>
@@ -749,29 +317,22 @@
                     </div>
                 </div>
             </div>
-
-            <div class="arrow-sketch">
-                Start here! →
-            </div>
+            <div class="arrow-sketch">Start here! →</div>
         </div>
 
-        <!-- 右侧登录区 -->
         <div class="login-section">
             <div class="login-card">
                 <div class="sketch-tip">免费开始学习</div>
-
                 <div class="card-header">
-                    <h2 class="card-title">欢迎回来</h2>
-                    <p class="card-subtitle">登录您的账户，继续学习之旅</p>
+                    <h2 class="card-title" id="card-title">欢迎回来</h2>
+                    <p class="card-subtitle" id="card-subtitle">登录账户，继续你的学习之旅</p>
                 </div>
 
-                <!-- 标签切换 -->
                 <div class="tab-switcher">
                     <button class="tab-btn active" data-tab="login">登录</button>
                     <button class="tab-btn" data-tab="register">注册</button>
                 </div>
 
-                <!-- 登录表单 -->
                 <div class="form-panel active" id="login-form">
                     <div class="form-group">
                         <label class="form-label" for="login-username">用户名</label>
@@ -788,23 +349,18 @@
                             <div class="sketch-line"></div>
                         </div>
                     </div>
-                    <button class="btn-primary" id="login-btn">
-                        <span>🚀 开始学习</span>
-                    </button>
-
+                    <button class="btn-primary" id="login-btn"><span>开始学习</span></button>
                     <div class="divider"><span>或者</span></div>
-
                     <div class="card-footer">
                         <p>首次使用？ <a href="#" id="switch-to-register">创建新账户</a></p>
                     </div>
                 </div>
 
-                <!-- 注册表单 -->
                 <div class="form-panel" id="register-form">
                     <div class="form-group">
                         <label class="form-label" for="register-username">用户名</label>
                         <div class="input-wrapper">
-                            <input type="text" class="form-input" id="register-username" placeholder="设置您的用户名" autocomplete="username">
+                            <input type="text" class="form-input" id="register-username" placeholder="设置你的用户名" autocomplete="username">
                             <div class="sketch-line"></div>
                         </div>
                     </div>
@@ -831,12 +387,8 @@
                             <div class="sketch-line"></div>
                         </div>
                     </div>
-                    <button class="btn-primary" id="register-btn">
-                        <span>✨ 创建账户</span>
-                    </button>
-
+                    <button class="btn-primary" id="register-btn"><span>创建账户</span></button>
                     <div class="divider"><span>或者</span></div>
-
                     <div class="card-footer">
                         <p>已有账户？ <a href="#" id="switch-to-login">返回登录</a></p>
                     </div>
@@ -846,10 +398,9 @@
     </div>
 
     <script type="module">
-        import { API_BASE_URL, apiRequest, setToken } from '../js/api-client.js';
+        import { API_BASE_URL, apiRequest, setToken, onLoginSuccess } from '../js/api-client.js';
         import { showToast } from '../js/utils.js';
 
-        // 密码强度检测
         function getPasswordStrength(password) {
             let strength = 0;
             if (password.length >= 8) strength++;
@@ -859,165 +410,83 @@
             return strength;
         }
 
-        // 标签切换
         const tabBtns = document.querySelectorAll('.tab-btn');
         const loginForm = document.getElementById('login-form');
         const registerForm = document.getElementById('register-form');
 
-        // 密码可见性切换（事件委托）
-function handlePasswordToggle(e) {
-            const button = e.target.closest('.password-toggle');
-            if (!button) return;
-
-            const inputId = button.dataset.inputId;
-            if (!inputId) return;
-
-            const input = document.getElementById(inputId);
-            if (!input) return;
-
-            const isPassword = input.type === 'password';
-            input.type = isPassword ? 'text' : 'password';
-            button.textContent = isPassword ? '🙈' : '👁';
-            button.classList.toggle('active', isPassword);
-            button.setAttribute('aria-label', isPassword ? '隐藏密码' : '显示密码');
-        }
-
-        // 事件委托：所有密码切换按钮
         document.querySelectorAll('.password-toggle').forEach(btn => {
-            btn.addEventListener('click', handlePasswordToggle);
+            btn.addEventListener('click', () => {
+                const input = document.getElementById(btn.dataset.inputId);
+                if (!input) return;
+                const isPassword = input.type === 'password';
+                input.type = isPassword ? 'text' : 'password';
+                btn.textContent = isPassword ? '🙈' : '👁';
+                btn.classList.toggle('active', isPassword);
+                btn.setAttribute('aria-label', isPassword ? '隐藏密码' : '显示密码');
+            });
         });
 
         function switchTab(tab) {
-            tabBtns.forEach(btn => {
-                btn.classList.toggle('active', btn.dataset.tab === tab);
-            });
+            tabBtns.forEach(btn => btn.classList.toggle('active', btn.dataset.tab === tab));
             loginForm.classList.toggle('active', tab === 'login');
             registerForm.classList.toggle('active', tab === 'register');
 
-            // 更新标题
-            const cardTitle = document.querySelector('.card-title');
-            const cardSubtitle = document.querySelector('.card-subtitle');
+            const title = document.getElementById('card-title');
+            const subtitle = document.getElementById('card-subtitle');
             if (tab === 'login') {
-                cardTitle.textContent = '欢迎回来';
-                cardSubtitle.textContent = '登录您的账户，继续学习之旅';
+                title.textContent = '欢迎回来';
+                subtitle.textContent = '登录账户，继续你的学习之旅';
+                setTimeout(() => document.getElementById('login-username')?.focus(), 100);
             } else {
-                cardTitle.textContent = '创建账户';
-                cardSubtitle.textContent = '开启您的智能学习之旅';
-                // 切换到注册时自动聚焦到第一个输入框
-                setTimeout(() => {
-                    document.getElementById('register-username')?.focus();
-                }, 100);
+                title.textContent = '开启旅程';
+                subtitle.textContent = '创建账户，开始智能学习';
+                setTimeout(() => document.getElementById('register-username')?.focus(), 100);
             }
         }
 
-        tabBtns.forEach(btn => {
-            btn.addEventListener('click', () => switchTab(btn.dataset.tab));
-        });
+        tabBtns.forEach(btn => btn.addEventListener('click', () => switchTab(btn.dataset.tab)));
+        document.getElementById('switch-to-register').addEventListener('click', (e) => { e.preventDefault(); switchTab('register'); });
+        document.getElementById('switch-to-login').addEventListener('click', (e) => { e.preventDefault(); switchTab('login'); });
 
-        document.getElementById('switch-to-register').addEventListener('click', (e) => {
-            e.preventDefault();
-            switchTab('register');
-        });
-
-        document.getElementById('switch-to-login').addEventListener('click', (e) => {
-            e.preventDefault();
-            switchTab('login');
-            // 切换到登录时自动聚焦
-            setTimeout(() => {
-                document.getElementById('login-username')?.focus();
-            }, 100);
-        });
-
-        // 登录
         document.getElementById('login-btn').addEventListener('click', async () => {
             const username = document.getElementById('login-username').value.trim();
             const password = document.getElementById('login-password').value;
+            if (!username || !password) { showToast('请填写用户名和密码', 'error'); return; }
 
-            if (!username || !password) {
-                showToast('请填写用户名和密码', 'error');
-                return;
-            }
-
-            const data = await apiRequest('/auth/login', {
-                method: 'POST',
-                body: { username, password }
-            });
-
+            const data = await apiRequest('/auth/login', { method: 'POST', body: { username, password } });
             if (data.success) {
                 setToken(data.data.token);
-                localStorage.setItem('userId', data.data.user_id);
-                localStorage.setItem('username', username);
-                showToast('登录成功！', 'success');
-                setTimeout(() => {
-                    window.location.href = 'dashboard.html';
-                }, 1000);
+                onLoginSuccess(data.data);
+                showToast('登录成功！欢迎回来', 'success');
+                setTimeout(() => { window.location.href = 'dashboard.html'; }, 1000);
             } else {
-                showToast(data.message || '登录失败', 'error');
+                showToast(data.message || '登录失败，请检查用户名和密码', 'error');
             }
         });
 
-        // 注册
         document.getElementById('register-btn').addEventListener('click', async () => {
             const username = document.getElementById('register-username').value.trim();
             const email = document.getElementById('register-email').value.trim();
             const password = document.getElementById('register-password').value;
             const confirm = document.getElementById('register-confirm').value;
 
-            if (!username || !password) {
-                showToast('请填写用户名和密码', 'error');
-                return;
-            }
+            if (!username || !password) { showToast('请填写用户名和密码', 'error'); return; }
+            if (!/^[a-zA-Z0-9_\u4e00-\u9fa5]{2,20}$/.test(username)) { showToast('用户名只能包含字母、数字、下划线、中文，2-20个字符', 'error'); return; }
+            if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showToast('请输入有效的邮箱地址', 'error'); return; }
+            if (password.length < 6) { showToast('密码至少需要 6 个字符', 'error'); return; }
+            if (password !== confirm) { showToast('两次输入的密码不一致', 'error'); return; }
 
-            // 用户名格式验证
-            if (!/^[a-zA-Z0-9_\u4e00-\u9fa5]{2,20}$/.test(username)) {
-                showToast('用户名只能包含字母、数字、下划线、中文，2-20个字符', 'error');
-                return;
-            }
-
-            // 邮箱格式验证
-            if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-                showToast('请输入有效的邮箱地址', 'error');
-                return;
-            }
-
-            if (password.length < 6) {
-                showToast('密码至少需要 6 个字符', 'error');
-                return;
-            }
-
-            // 密码强度检测
-            const strength = getPasswordStrength(password);
-            if (strength < 2) {
-                showToast('密码强度较弱，建议包含大小写字母、数字和特殊字符', 'warning');
-            }
-
-            if (password !== confirm) {
-                showToast('两次输入的密码不一致', 'error');
-                return;
-            }
-
-            const data = await apiRequest('/auth/register', {
-                method: 'POST',
-                body: { username, email, password }
-            });
-
+            const data = await apiRequest('/auth/register', { method: 'POST', body: { username, email, password } });
             if (data.success) {
-                showToast('注册成功！请登录', 'success');
+                showToast('注册成功！快来登录吧', 'success');
                 setTimeout(() => switchTab('login'), 1500);
             } else {
                 showToast(data.message || '注册失败', 'error');
             }
         });
 
-        // Enter 键提交
-        document.getElementById('login-password').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') document.getElementById('login-btn').click();
-        });
-
-        document.getElementById('register-confirm').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') document.getElementById('register-btn').click();
-        });
-
-            </script>
+        document.getElementById('login-password').addEventListener('keypress', (e) => { if (e.key === 'Enter') document.getElementById('login-btn').click(); });
+        document.getElementById('register-confirm').addEventListener('keypress', (e) => { if (e.key === 'Enter') document.getElementById('register-btn').click(); });
+    </script>
 </body>
 </html>

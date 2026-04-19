@@ -393,6 +393,14 @@
             border: 2px dashed var(--morandi-rose);
         }
 
+        /* Loading skeleton */
+        .plan-loading-skeleton {
+            background: white;
+            border-radius: 24px 14px 24px 14px;
+            padding: 24px;
+            border: 2px dashed var(--morandi-beige);
+        }
+
         .empty-icon {
             font-size: 64px;
             margin-bottom: 16px;
@@ -527,7 +535,9 @@
             font-size: 15px;
             color: var(--text-dark);
             background: rgba(235, 240, 249, 0.3);
-            transition: all 0.3s ease;
+            transition: border-color 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+                        box-shadow 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+                        background-color 0.2s ease;
             font-family: inherit;
         }
 
@@ -708,7 +718,7 @@
 
     <!-- Navbar (inserted by page-common.js) -->
 
-    <main class="plans-container">
+    <main class="plans-container page-transition">
         <!-- Page Header -->
         <header class="page-header animate-in">
             <h1 class="page-title">学习计划</h1>
@@ -727,7 +737,16 @@
                 </button>
             </div>
             <div id="active-plan-display">
-                <!-- Will be populated by JavaScript -->
+                <div class="plan-loading-skeleton">
+                    <div class="skeleton-box" style="height:28px;width:40%;margin-bottom:16px;border-radius:8px"></div>
+                    <div class="skeleton-box" style="height:12px;width:100%;margin-bottom:12px;border-radius:6px"></div>
+                    <div class="skeleton-box" style="height:12px;width:70%;margin-bottom:20px;border-radius:6px"></div>
+                    <div style="display:flex;gap:16px">
+                        <div class="skeleton-box" style="height:60px;flex:1;border-radius:12px"></div>
+                        <div class="skeleton-box" style="height:60px;flex:1;border-radius:12px"></div>
+                        <div class="skeleton-box" style="height:60px;flex:1;border-radius:12px"></div>
+                    </div>
+                </div>
             </div>
         </section>
 
@@ -743,7 +762,10 @@
                 </button>
             </div>
             <div id="plans-history" class="plans-list">
-                <!-- Will be populated by JavaScript -->
+                <div class="plan-loading-skeleton">
+                    <div class="skeleton-box" style="height:80px;width:100%;margin-bottom:12px;border-radius:12px"></div>
+                    <div class="skeleton-box" style="height:80px;width:100%;border-radius:12px"></div>
+                </div>
             </div>
         </section>
 
@@ -773,17 +795,17 @@
                     <div class="form-group">
                         <label class="form-label" for="plan-daily-new">🌟 每日新学单词</label>
                         <div class="number-input-wrapper">
-                            <button type="button" class="number-btn number-btn-minus" data-target="plan-daily-new" data-step="5" data-min="5" data-max="100">−</button>
+                            <button type="button" class="number-btn number-btn-minus" data-target="plan-daily-new" data-step="5" data-min="5" data-max="100" aria-label="减少每日新词">−</button>
                             <input type="number" id="plan-daily-new" class="form-input" value="20" min="5" max="100" readonly>
-                            <button type="button" class="number-btn number-btn-plus" data-target="plan-daily-new" data-step="5" data-min="5" data-max="100">+</button>
+                            <button type="button" class="number-btn number-btn-plus" data-target="plan-daily-new" data-step="5" data-min="5" data-max="100" aria-label="增加每日新词">+</button>
                         </div>
                     </div>
                     <div class="form-group">
                         <label class="form-label" for="plan-daily-review">🔄 每日复习单词</label>
                         <div class="number-input-wrapper">
-                            <button type="button" class="number-btn number-btn-minus" data-target="plan-daily-review" data-step="5" data-min="5" data-max="100">−</button>
+                            <button type="button" class="number-btn number-btn-minus" data-target="plan-daily-review" data-step="5" data-min="5" data-max="100" aria-label="减少每日复习">−</button>
                             <input type="number" id="plan-daily-review" class="form-input" value="20" min="5" max="100" readonly>
-                            <button type="button" class="number-btn number-btn-plus" data-target="plan-daily-review" data-step="5" data-min="5" data-max="100">+</button>
+                            <button type="button" class="number-btn number-btn-plus" data-target="plan-daily-review" data-step="5" data-min="5" data-max="100" aria-label="增加每日复习">+</button>
                         </div>
                     </div>
                 </div>
@@ -800,7 +822,6 @@
         import { apiRequest } from '../js/api-client.js';
         import { showToast, escapeHtml } from '../js/utils.js';
         import { initPage, getCurrentUser } from '../js/page-common.js';
-
         let currentUser = null;
 
         // 页面初始化
@@ -814,14 +835,24 @@
 
         // 加载计划
         async function loadPlans() {
+            const activeDisplay = document.getElementById('active-plan-display');
+            const historyList = document.getElementById('plans-history');
+            activeDisplay.innerHTML = `<div class="plan-loading-skeleton"><div class="skeleton-box" style="height:28px;width:40%;margin-bottom:16px;border-radius:8px"></div><div class="skeleton-box" style="height:12px;width:100%;margin-bottom:12px;border-radius:6px"></div><div style="display:flex;gap:16px"><div class="skeleton-box" style="height:60px;flex:1;border-radius:12px"></div><div class="skeleton-box" style="height:60px;flex:1;border-radius:12px"></div><div class="skeleton-box" style="height:60px;flex:1;border-radius:12px"></div></div></div>`;
+            historyList.innerHTML = `<div class="plan-loading-skeleton"><div class="skeleton-box" style="height:80px;width:100%;margin-bottom:12px;border-radius:12px"></div><div class="skeleton-box" style="height:80px;width:100%;border-radius:12px"></div></div>`;
+
             try {
                 const result = await apiRequest(`/plans?user_id=${currentUser.id}`, { useCache: false });
                 if (result.success) {
                     const plans = result.data || [];
                     renderPlans(plans);
+                } else {
+                    activeDisplay.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><h3 class="empty-title" style="color:var(--text-muted)">加载失败</h3><p class="empty-text">请稍后重试</p></div>`;
+                    historyList.innerHTML = '';
                 }
             } catch (err) {
                 console.error('加载计划失败:', err);
+                activeDisplay.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><h3 class="empty-title" style="color:var(--text-muted)">加载失败</h3><p class="empty-text">请稍后重试</p></div>`;
+                historyList.innerHTML = '';
             }
         }
 
@@ -899,7 +930,7 @@
                                 </div>
                             </div>
                             <div class="daily-goal-item">
-                                <div class="goal-icon">🔁</div>
+                                <div class="goal-icon">🔄</div>
                                 <div class="goal-info">
                                     <div class="goal-label">今日复习</div>
                                     <div class="goal-value">${activePlan.today_review || 0} / ${activePlan.daily_review_words || 20}</div>
@@ -935,7 +966,7 @@
                         <div class="empty-icon">🌱</div>
                         <h3 class="empty-title" style="color: var(--text-muted);">还没有生效的计划</h3>
                         <p class="empty-text">快去创建一个吧！制定计划，追踪进度，成就更好的自己。</p>
-                        <button class="btn btn-primary" onclick="document.getElementById('plan-name').focus()">
+                        <button class="btn btn-primary" data-action="focus-plan-name">
                             ✨ 立即创建
                         </button>
                     </div>
@@ -988,6 +1019,13 @@
 
         // Bind event handlers for plan actions
         function bindPlanEventHandlers() {
+            // Focus plan name input
+            document.querySelectorAll('[data-action="focus-plan-name"]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.getElementById('plan-name')?.focus();
+                });
+            });
+
             // Deactivate plan buttons
             document.querySelectorAll('.deactivate-plan').forEach(btn => {
                 btn.addEventListener('click', async () => {
@@ -1020,6 +1058,10 @@
                 name = `学习计划 - ${new Date().toLocaleDateString('zh-CN')}`;
             }
 
+            const btn = document.getElementById('create-plan-btn');
+            btn.disabled = true;
+            btn.innerHTML = '⏳ 创建中...';
+
             try {
                 const result = await apiRequest('/plans', {
                     method: 'POST',
@@ -1040,6 +1082,9 @@
                 }
             } catch (err) {
                 showToast('创建失败，请稍后重试', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '🚀 创建计划';
             }
         });
 

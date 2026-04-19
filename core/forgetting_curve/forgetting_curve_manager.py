@@ -136,7 +136,7 @@ class ForgettingCurveManager:
                 # 添加单词详情
                 return self._enrich_with_word_details(result)
         except Exception:
-            pass
+            logger.debug("DB-based review query failed, falling back to real-time calculation")
 
         # 回退：实时计算（无 next_review_at 列或出错时）
         all_records = self.learning_records_crud.get_by_user(user_id)

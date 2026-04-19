@@ -85,6 +85,7 @@ class VocabularyLearningManager:
                         "word": first_word_info["word"],
                         "translation": first_word_info["translation"],
                         "difficulty_level": first_word_info["difficulty_level"],
+                        "reason": first_word_info.get("reason", ""),
                     }
                     # 插入首位，如果超长则移除最后一个
                     recommendations = [first_word_data] + recommendations[:word_count - 1]
@@ -554,7 +555,10 @@ class VocabularyLearningManager:
         words = self.words_crud.get_by_difficulty(difficulty_level)
         if not words:
             return []
-        return random.sample(words, min(word_count, len(words)))
+        selected = random.sample(words, min(word_count, len(words)))
+        for w in selected:
+            w.setdefault("reason", f"难度推荐：适合当前水平的词汇")
+        return selected
 
     def _generate_choice_question(self, word_info):
         """
@@ -625,7 +629,7 @@ class VocabularyLearningManager:
 
     def _generate_wrong_options(self, correct_translation, current_word_id):
         """
-        生成错误选项（从数据库随机获取）
+        生成错误选项（从数据库随机获取，带缓存）
 
         Args:
             correct_translation (str): 正确答案
@@ -635,28 +639,33 @@ class VocabularyLearningManager:
             list: 错误选项列表
         """
         try:
-            # 从数据库获取随机单词作为错误选项
-            all_words = self.words_crud.list_all(limit=500)  # 获取更多单词用于随机选择
+            # 使用 get_random_words 替代 list_all，避免加载大量数据
+            random_words = self.words_crud.get_random_words(
+                exclude_ids=[current_word_id], limit=20
+            )
             wrong_options = []
+            for random_word in random_words:
+                wrong_translation = self._simplify_translation(
+                    random_word["translation"], random_word["pos"]
+                )
+                if (
+                    wrong_translation != correct_translation
+                    and wrong_translation not in wrong_options
+                    and wrong_translation.strip()
+                ):
+                    wrong_options.append(wrong_translation)
+                if len(wrong_options) >= 3:
+                    break
 
-            # 随机选择3个不同的单词
-            while len(wrong_options) < 3:
-                random_word = random.choice(all_words)
-                if random_word["id"] != current_word_id:  # 确保不是当前单词
-                    # 简化翻译并添加词性
-                    wrong_translation = self._simplify_translation(
-                        random_word["translation"], random_word["pos"]
-                    )
+            # 如果随机词不足，用备用选项补齐
+            if len(wrong_options) < 3:
+                for fallback in self._get_fallback_wrong_options(correct_translation):
+                    if fallback not in wrong_options and fallback != correct_translation:
+                        wrong_options.append(fallback)
+                    if len(wrong_options) >= 3:
+                        break
 
-                    # 确保不与正确答案重复，且不重复
-                    if (
-                        wrong_translation != correct_translation
-                        and wrong_translation not in wrong_options
-                        and wrong_translation.strip()
-                    ):  # 确保不为空
-                        wrong_options.append(wrong_translation)
-
-            return wrong_options
+            return wrong_options[:3]
 
         except Exception as e:
             logger.warning("生成错误选项失败: %s", e)
@@ -674,27 +683,21 @@ class VocabularyLearningManager:
             list: 错误选项列表
         """
         fallback_options = [
-            "n. 时间",
-            "n. 地点",
-            "n. 人物",
-            "n. 事件",
-            "v. 开始",
-            "v. 结束",
-            "v. 过程",
-            "v. 方法",
-            "adj. 颜色",
-            "adj. 形状",
-            "adj. 大小",
-            "adj. 数量",
+            "n. 时间", "n. 地点", "n. 人物", "n. 事件",
+            "v. 开始", "v. 结束", "v. 过程", "v. 方法",
+            "adj. 颜色", "adj. 形状", "adj. 大小", "adj. 数量",
         ]
 
         wrong_options = []
-        while len(wrong_options) < 3:
+        max_attempts = 30
+        attempts = 0
+        while len(wrong_options) < 3 and attempts < max_attempts:
+            attempts += 1
             option = random.choice(fallback_options)
             if option != correct_translation and option not in wrong_options:
                 wrong_options.append(option)
 
-        return wrong_options
+        return wrong_options[:3]
 
     def _check_answer(self, user_answer, correct_answer, question_type="translation"):
         """

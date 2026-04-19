@@ -137,6 +137,14 @@ export async function apiRequest(endpoint, options = {}) {
         setCachedApiResponse(endpoint, payload)
       }
 
+      // 非GET请求成功后，自动清除该用户相关的GET缓存
+      if (payload && payload.success && options.method && options.method !== "GET") {
+        const currentUserId = JSON.parse(localStorage.getItem("currentUser") || "{}").id
+        if (currentUserId) {
+          invalidateUserCache(currentUserId)
+        }
+      }
+
       return payload
     } catch (error) {
       console.error("API请求失败:", error)

@@ -156,8 +156,8 @@ class UserAuth:
             "UserAuth._is_valid_password: 检查密码长度=%s", len(password) if password else 0
         )
         result = (
-            password and isinstance(password, str) and 3 <= len(password) <= 200
-        )  # 放宽密码长度限制
+            password and isinstance(password, str) and 6 <= len(password) <= 200
+        )  # 最少6位
         logger.debug("UserAuth._is_valid_password: 结果=%s", result)
         return result
 

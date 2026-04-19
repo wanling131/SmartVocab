@@ -52,7 +52,7 @@ def get_learning_records(user_id):
     """获取学习记录"""
     if not check_user_access(user_id):
         return APIResponse.error("无权访问", 403)
-    limit = request.args.get("limit", type=int)
+    limit = request.args.get("limit", 500, type=int)
     offset = request.args.get("offset", 0, type=int)
 
     records = learning_record_manager.get_user_learning_records(user_id, limit, offset)
@@ -81,6 +81,17 @@ def get_review_words(user_id):
     limit = request.args.get("limit", 100, type=int)
     review_words = forgetting_curve_manager.get_review_words(user_id, limit=limit)
     return APIResponse.success({"words": review_words}, "获取待复习单词成功")
+
+
+@learning_bp.route("/review-words/<int:user_id>/count", methods=["GET"])
+@handle_api_error
+@require_auth
+def get_review_word_count(user_id):
+    """获取待复习单词数量（轻量接口）"""
+    if not check_user_access(user_id):
+        return APIResponse.error("无权访问", 403)
+    review_words = forgetting_curve_manager.get_review_words(user_id, limit=10000)
+    return APIResponse.success({"count": len(review_words)}, "获取成功")
 
 
 @learning_bp.route("/record/<int:record_id>", methods=["GET"])
